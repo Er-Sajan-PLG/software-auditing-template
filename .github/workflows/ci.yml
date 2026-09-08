@@ -120,10 +120,19 @@ jobs:
       - name: Dependency vulnerability scan
         run: npm audit --audit-level=high
 
+      # Run the gitleaks binary directly rather than through gitleaks-action:
+      # the Action ships its own default config and does not reliably pick up
+      # the repo's .gitleaks.toml, which is the file that allowlists the
+      # deliberately vulnerable demo app. The binary is MIT; the Action wrapper
+      # is what carries the organisation-licence gate.
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=8.28.0
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks detect --source . --config .gitleaks.toml --redact --no-banner
 
       - name: License scan
         run: npx license-checker --production --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;Unlicense;Python-2.0'
