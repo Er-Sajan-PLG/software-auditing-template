@@ -35,7 +35,7 @@ export function loadConfig(target: string, explicit?: string): UsatConfig {
       sections: strList(doc.sections),
     };
   } catch (err) {
-    throw new Error(`Could not parse ${file}: ${(err as Error).message}`);
+    throw new Error(`Could not parse ${file}: ${(err as Error).message}`, { cause: err });
   }
 }
 
