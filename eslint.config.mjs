@@ -15,6 +15,8 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': 'off',
+      // CQ-013: complexity is measured (report-only at first per USAT remediation).
+      complexity: ['warn', 10],
     },
   },
   {
