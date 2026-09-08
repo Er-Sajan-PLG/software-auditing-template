@@ -1,0 +1,6 @@
+# Default owner for everything
+* @Er-Sajan-PLG
+
+# Core engine and rules require review from the maintainer
+/src/engine/ @Er-Sajan-PLG
+/rules/    @Er-Sajan-PLG
