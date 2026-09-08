@@ -57,6 +57,14 @@ describe('gitleaks report filter', () => {
     expect(withoutMarker.real).toHaveLength(1);
   });
 
+  it('ignores credential-shaped fixtures in tests (a filter must be testable)', () => {
+    const { real } = partitionFindings([
+      leak('tests/gitleaks-filter.test.ts', 'AKIAIOSFODNN7EXAMPLE'),
+      leak('tests/e2e.test.ts', 'apiKey = "abcdefgh12345678"'),
+    ]);
+    expect(real).toHaveLength(0);
+  });
+
   it('handles an empty or absent report', () => {
     expect(partitionFindings([]).real).toHaveLength(0);
     expect(loadFindings('/tmp/definitely-not-here.json')).toEqual([]);

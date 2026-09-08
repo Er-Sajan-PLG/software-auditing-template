@@ -23,6 +23,11 @@ export const ALLOWED_PATHS = [
   /^examples\/demo-app\//,
   /^examples\/sample-report\.md$/,
   /^README\.md$/,
+  // Test fixtures have to contain credential-shaped strings — a secret-scanner
+  // filter that cannot be tested against a realistic key is not a filter.
+  // Leaks in tests still ship to anyone who clones, but they are fake by
+  // construction and they are the reason the scanner works.
+  /^tests\//,
 ];
 
 /** Every planted credential carries this marker. */
