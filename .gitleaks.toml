@@ -3,13 +3,27 @@
 # `examples/demo-app` is a deliberately vulnerable sample project: it exists so
 # that examples/sample-report.md can show what a bad audit report looks like.
 # The credentials in it are fake by construction (the string "not_real" is in
-# the value), but they are shaped exactly like real ones, which is the point —
+# every value), but they are shaped exactly like real ones, which is the point —
 # a scanner that cannot see them is a scanner that would miss the real thing.
+#
+# The allowlist below covers three places those planted strings necessarily
+# appear outside the demo app itself:
+#   - examples/sample-report.md, which quotes the offending lines
+#   - README.md, which shows a report excerpt
+#   - the string "not_real", so a future quote of a planted credential does not
+#     red the build
 #
 # Please do not "fix" the demo app by removing the defects; that is the product.
 [extend]
 useDefault = true
 
 [[allowlists]]
-description = "Deliberately vulnerable demo app used to generate examples/sample-report.md"
-paths = ['''examples/demo-app/.*''']
+description = "Deliberately vulnerable demo app, and the docs that quote its planted credentials"
+paths = [
+  '''examples/demo-app/.*''',
+  '''examples/sample-report\.md''',
+  '''README\.md''',
+]
+regexes = [
+  '''[\w.-]*not_real[\w.-]*''',
+]
