@@ -202,6 +202,43 @@ describe('markdown report', () => {
     expect(md).toContain('A \\| B');
   });
 
+  // Escaping `|` without escaping `\\` first lets an input backslash become an
+  // escape for the next character (CodeQL: incomplete multi-character escaping).
+  // This runs on the judgement-queue table, where rule text is a cell value.
+  it('escapes backslashes before pipes in table cells', () => {
+    const md = renderMarkdown(
+      baseReport([
+        finding({
+          status: 'UNKNOWN',
+          title: 'Check C:\\temp | hot',
+          why: 'a trailing backslash \\',
+          evidenceHint: 'output of ls C:\\temp',
+        }),
+      ]),
+      profile,
+    );
+    const row = md.split('\n').find((l) => l.includes('Check C:'))!;
+    // Backslash doubled, then pipe escaped: `C:\\temp \\| hot`
+    expect(row).toContain('C:\\\\temp');
+    expect(row).toContain('\\| hot');
+    // Only the table's own delimiters survive: every `|` that came from the
+    // rule text is escaped, so the row still has the header's column count.
+    const header = md.split('\n').find((l) => l.includes('| Rule |'))!;
+    const delimiters = (line: string) => (line.match(/(?<!\\)\|/g) ?? []).length;
+    expect(delimiters(row)).toBe(delimiters(header));
+  });
+
+  // The wildcard form /BEGIN([\\s\\S]*?)END/ is polynomial on input with many
+  // partial BEGIN markers; parseTrailer walks back from END for that reason.
+  it('parses the trailer out of a document full of decoy markers', () => {
+    const real = renderMarkdown(baseReport([finding({})]), profile);
+    const noise = `${'<!-- USAT:TRAILER:BEGIN -->'.repeat(200)}x`;
+    const started = Date.now();
+    const parsed = parseTrailer(`${noise}\n${real}\n${noise}`);
+    expect(parsed).toContain('schema: usat-report-v1');
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
   it('trailer is valid YAML', async () => {
     const { parse } = await import('yaml');
     const raw = parseTrailer(renderMarkdown(baseReport([finding({})]), profile))!;

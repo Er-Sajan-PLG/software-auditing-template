@@ -349,11 +349,11 @@ export function renderMarkdown(report: AuditReport, profile: MaturityProfile): s
   p();
 
   /* -------------------------------------------------------------- trailer -- */
-  p('<!-- USAT:TRAILER:BEGIN -->');
+  p(TRAILER_BEGIN);
   p('```yaml');
   p(trailer(report));
   p('```');
-  p('<!-- USAT:TRAILER:END -->');
+  p(TRAILER_END);
   p();
 
   return out.join('\n');
@@ -434,7 +434,9 @@ function groupBy<T>(items: T[], key: (t: T) => string): Map<string, T[]> {
 }
 
 function escapeCell(s: string): string {
-  return s.replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+  // Backslashes first: escaping `|` without escaping `\` lets an input
+  // backslash turn into an escape for the character that follows it.
+  return s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
 }
 
 /**
@@ -442,6 +444,9 @@ function escapeCell(s: string): string {
  * the report stays a single self-contained artifact you can commit, email, or
  * paste into a PR.
  */
+export const TRAILER_BEGIN = '<!-- USAT:TRAILER:BEGIN -->';
+export const TRAILER_END = '<!-- USAT:TRAILER:END -->';
+
 export function trailer(report: AuditReport): string {
   const lines: string[] = [];
   lines.push('schema: usat-report-v1');
@@ -467,8 +472,22 @@ export function trailer(report: AuditReport): string {
 
 /** Extracts the machine-readable trailer from a previously rendered report. */
 export function parseTrailer(markdown: string): string | null {
-  const m = /<!-- USAT:TRAILER:BEGIN -->([\s\S]*?)<!-- USAT:TRAILER:END -->/.exec(markdown);
-  if (!m) return null;
-  const fence = /```ya?ml\n([\s\S]*?)```/.exec(m[1]!);
-  return fence ? fence[1]! : null;
+  // indexOf + slice rather than /BEGIN([\s\S]*?)END/: the wildcard form is
+  // polynomial on input containing many partial BEGIN markers, and this runs
+  // on documents supplied by whoever hands us a report.
+  //
+  // Find the END first and then walk back: a report that *quotes* an earlier
+  // BEGIN marker (or one concatenated with a decoy) must still yield its own
+  // trailer, so the nearest BEGIN before END is the one that matters.
+  const end = markdown.indexOf(TRAILER_END);
+  if (end < 0) return null;
+  const start = markdown.lastIndexOf(TRAILER_BEGIN, end);
+  if (start < 0) return null;
+  const body = markdown.slice(start + TRAILER_BEGIN.length, end);
+
+  const fence = /```ya?ml\n/.exec(body);
+  if (!fence) return null;
+  const yamlStart = fence.index + fence[0].length;
+  const yamlEnd = body.indexOf('```', yamlStart);
+  return yamlEnd < 0 ? body.slice(yamlStart) : body.slice(yamlStart, yamlEnd);
 }

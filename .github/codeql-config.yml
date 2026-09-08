@@ -1,0 +1,9 @@
+# CodeQL configuration.
+#
+# `examples/demo-app` is a deliberately vulnerable fixture: its SQL injection
+# and eval() findings are the product, not defects. Reporting them on every run
+# buries the two or three real findings CodeQL might surface in src/.
+#
+# The rest of the repository — including tests/ — is analysed.
+paths-ignore:
+  - examples/demo-app

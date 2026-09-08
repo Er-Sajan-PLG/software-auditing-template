@@ -62,6 +62,29 @@ describe('core/security rules', () => {
     expect(evaluateAt(root, sec002.check).status).toBe('WRONG');
   });
 
+  // `regex.exec(body)` is not dynamic code execution, and a bare `body` also
+  // matches document.body / res.body.
+  it('SEC-006 does not flag regex.exec or DOM bodies', () => {
+    const sec006 = ruleOf('core/security.yaml', 'SEC-006');
+    const root = fixture({
+      'src/parse.ts': [
+        'const m = /```ya?ml\\n/.exec(body);',
+        'document.body.querySelector("a");',
+        'const r = evaluateRule(rule, ctx);',
+        'execFileSync("sh", ["-c", cmd], {});',
+      ].join('\n'),
+    });
+    expect(evaluateAt(root, sec006.check).status).toBe('PASS');
+  });
+
+  it('SEC-006 still flags eval and exec with user input', () => {
+    const sec006 = ruleOf('core/security.yaml', 'SEC-006');
+    const root = fixture({
+      'src/run.js': 'eval(userExpr);\nexec("ls " + req.query.path);\n',
+    });
+    expect(evaluateAt(root, sec006.check).status).toBe('WRONG');
+  });
+
   it('SEC-002 catches a hardcoded credential but not an env lookup', () => {
     const sec001 = ruleOf('core/security.yaml', 'SEC-001');
     const bad = fixture({ 'src/config.ts': 'const api_key = "abcdefghijklmnop";\n' });

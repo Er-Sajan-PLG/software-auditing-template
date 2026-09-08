@@ -275,7 +275,11 @@ export class Project {
   }
 
   dirExists(dir: string): boolean {
-    const d = dir.replace(/\/+$/, '');
+    // Trailing slashes are trimmed by index rather than /\/+$/: a run of
+    // slashes makes that pattern backtrack quadratically.
+    let end = dir.length;
+    while (end > 0 && dir[end - 1] === '/') end--;
+    const d = dir.slice(0, end);
     return d === '' || this.dirCache.has(d) || isDir(path.join(this.root, d));
   }
 

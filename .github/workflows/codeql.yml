@@ -44,6 +44,8 @@ jobs:
           # falls back to autodetection, which tries to build a Python database
           # for a repository that contains no Python.
           languages: javascript-typescript
+          # Skips examples/demo-app, whose defects are planted on purpose.
+          config-file: .github/codeql-config.yml
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
