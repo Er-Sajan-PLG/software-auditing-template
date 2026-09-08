@@ -47,7 +47,11 @@ rules:
     class: security
     check:
       kind: grep_wrong
-      pattern: '(console\.(log|info|debug|warn|error)|print\(|logger\.(info|debug|warn|error)|log\.(Info|Debug|Warn|Error))\s*\(.*(password|passwd|secret|token|api[_-]?key|authorization|ssn|credit[_-]?card)'
+      # The sensitive word must be followed by a separator and a *value* —
+      # `token:`, `password=`, `api_key: "${k}"`. Matching the bare word flags
+      # every log line that merely talks about secrets, including the honest
+      # ones ("No unexpected secrets found.").
+      pattern: '(console\.(log|info|debug|warn|error)|print|logger\.(info|debug|warn|error)|log\.(Info|Debug|Warn|Error))\s*\(.*(password|passwd|secret|token|api[_-]?key|authorization|ssn|credit[_-]?card)\b\s*[''"`]?\s*[:=]'
       include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php}']
       exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**']
       flags: i

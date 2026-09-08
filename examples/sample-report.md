@@ -7,7 +7,7 @@
 | **Project** | `demo-app` |
 | **Path** | `/home/user/software-auditing-template/examples/demo-app` |
 | **Commit** | n/a (detached) |
-| **Date** | 2026-09-08T14:21:44.422Z |
+| **Date** | 2026-09-08T14:45:33.530Z |
 | **USAT version** | 1.0.0 |
 | **Detected type** | unclassified |
 | **Platform** | unclassified |
@@ -413,7 +413,7 @@ Rule packs skipped as not applicable (14): stacks/python, stacks/go, stacks/rust
 <!-- USAT:TRAILER:BEGIN -->
 ```yaml
 schema: usat-report-v1
-generated_at: 2026-09-08T14:21:44.422Z
+generated_at: 2026-09-08T14:45:33.530Z
 usat_version: 1.0.0
 overall: 47.9
 sections:
