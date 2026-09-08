@@ -1,0 +1,54 @@
+# Static analysis. USAT's own rule SUP-006 asks whether SAST runs in CI, so this
+# repo runs it. CodeQL is free for public repositories.
+#
+# Note: this is *Advanced* setup. If the repository has CodeQL *Default* setup
+# enabled instead, the analysis step reports the conflict rather than blocking a
+# merge — a settings change cannot be made from a pull request.
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # 06:17 UTC Mondays — off the hour, so we are not queued behind everyone else.
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          # Plural `languages` is the current input; the singular `language`
+          # falls back to autodetection, which tries to build a Python database
+          # for a repository that contains no Python.
+          languages: javascript-typescript
+          # Skips examples/demo-app, whose defects are planted on purpose.
+          config-file: .github/codeql-config.yml
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        continue-on-error: true
+        with:
+          category: '/language:javascript-typescript'

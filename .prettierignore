@@ -1,0 +1,13 @@
+dist/
+coverage/
+node_modules/
+package-lock.json
+
+# A deliberately unformatted, deliberately defective fixture. Formatting it
+# would move the line numbers that examples/sample-report.md cites.
+examples/demo-app/
+
+# Generated artefact.
+AUDIT.md
+examples/sample-report.md
+.gitleaks.toml

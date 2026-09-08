@@ -1,0 +1,135 @@
+# =============================================================================
+# USAT — Maturity profiles  (schema: usat-profiles-v1)
+# -----------------------------------------------------------------------------
+# The same repo at two different stages deserves two different reports.
+# A 3-day prototype should not be graded against a production bar, and a
+# production system should not be excused because it "moves fast".
+#
+# `dampen` = how many severity steps a failing rule is reduced by, per rule
+# class. Severity ladder: FUTURE < LOW < MEDIUM < HIGH < CRITICAL.
+#
+# HARD RULE: CRITICAL is never dampened, at any stage. A leaked credential is
+# a leaked credential. Everything else is negotiable with the calendar.
+# =============================================================================
+
+schema: usat-profiles-v1
+ladder: [FUTURE, LOW, MEDIUM, HIGH, CRITICAL]
+
+profiles:
+  prototype:
+    label: Prototype / Spike
+    summary: >
+      Proving an idea. Optimise for learning speed, but never for leaking
+      secrets or shipping unrecoverable data loss.
+    dampen:
+      security: 1
+      supply-chain: 1
+      correctness: 1
+      maintainability: 2
+      operations: 2
+      performance: 2
+      compliance: 2
+      documentation: 2
+      style: 2
+    expected_band: [30, 65]
+    focus:
+      - Secret hygiene and .gitignore (non-negotiable, costs 5 minutes)
+      - A README that says what this is and how to run it
+      - One smoke test so the happy path is known-good
+    defer:
+      - Kubernetes, multi-region, formal ADRs, 80% coverage gates
+
+  mvp:
+    label: MVP / Early product
+    summary: >
+      Real users, real data. Security and recovery basics must exist;
+      process ceremony can wait.
+    dampen:
+      security: 0
+      supply-chain: 1
+      correctness: 1
+      maintainability: 1
+      operations: 1
+      performance: 1
+      compliance: 1
+      documentation: 2
+      style: 2
+    expected_band: [45, 75]
+    focus:
+      - Input validation and output encoding on every user-facing path
+      - Automated backup + a restore you have actually performed
+      - CI that runs lint + tests on every PR
+      - Dependency scanning (Dependabot/Renovate) before the graph grows
+    defer:
+      - Formal threat model, multi-region, chaos engineering, SBOM/VEX
+
+  beta:
+    label: Beta / Growing
+    summary: >
+      Scaling users and contributors. Close the process gaps before they
+      compound.
+    dampen:
+      security: 0
+      supply-chain: 0
+      correctness: 0
+      maintainability: 1
+      operations: 1
+      performance: 1
+      compliance: 1
+      documentation: 1
+      style: 1
+    expected_band: [60, 85]
+    focus:
+      - Branch protection + mandatory review on the default branch
+      - Structured logging with correlation IDs; real alerting
+      - Integration test suite around critical flows
+      - Documented rollback procedure
+    defer:
+      - Full DR site, formal verification, mutation testing
+
+  production:
+    label: Production / GA
+    summary: >
+      Full bar. Nothing is dampened — this is the profile USAT grades
+      against when you pass --profile production.
+    dampen:
+      security: 0
+      supply-chain: 0
+      correctness: 0
+      maintainability: 0
+      operations: 0
+      performance: 0
+      compliance: 0
+      documentation: 0
+      style: 0
+    expected_band: [75, 95]
+    focus:
+      - Close every HIGH; timebox a plan for each MEDIUM
+      - Provenance/attestation on release artifacts (SLSA)
+      - Tested disaster recovery with a real RTO/RPO
+      - Observability that answers "is it broken?" in under 5 minutes
+    defer: []
+
+  legacy:
+    label: Legacy / Maintenance
+    summary: >
+      Still running, no longer evolving. Graded on risk containment and
+      replacement cost, not on modernisation ambition.
+    dampen:
+      security: 0
+      supply-chain: 0
+      correctness: 0
+      maintainability: 1
+      operations: 0
+      performance: 1
+      compliance: 0
+      documentation: 1
+      style: 1
+    expected_band: [40, 70]
+    focus:
+      - Inventory EOL dependencies and pin a replacement date for each
+      - Confirm backups restore, and that someone still knows how
+      - Keep the lights on: monitoring, alerting, and an owner per service
+      - Document the system well enough to hand over or retire
+    defer:
+      - Rewrites without a strangler plan, framework migrations for their own sake

@@ -1,0 +1,75 @@
+name: Self audit
+
+# USAT audits itself on every PR. If this workflow fails, the tool regressed or
+# the repo picked up a finding at or above the threshold.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  schedule:
+    - cron: '0 6 1 * *' # monthly drift check
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  usat:
+    name: USAT audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Run USAT from source
+        id: audit
+        run: |
+          node dist/cli.js audit . \
+            --depth deep \
+            --out AUDIT.md \
+            --fail-on critical
+
+      - name: Publish to job summary
+        if: always()
+        run: cat AUDIT.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Score for the PR comment
+        if: always()
+        run: |
+          SCORE=$(grep -m1 -oP '(?<=Overall Health Score: \*\*)[0-9.]+' AUDIT.md || echo '?')
+          echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        id: score
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usat-audit
+          path: AUDIT.md
+
+      - name: Comment score on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: usat
+          message: |
+            ## 🧠 USAT self-audit
+
+            **Score: ${{ steps.score.outputs.score }}/100** · depth `deep`
+
+            <details><summary>Full report</summary>
+
+            See the artifact `usat-audit` on this run, or the job summary above.
+
+            </details>

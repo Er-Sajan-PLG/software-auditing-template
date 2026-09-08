@@ -45,3 +45,5 @@ config.local.json
 *.crt
 secrets/
 credentials/
+# Generated audit reports
+AUDIT.md

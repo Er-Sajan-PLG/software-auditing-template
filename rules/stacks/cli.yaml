@@ -1,0 +1,105 @@
+id: stacks/cli
+title: CLI Tools
+section: S15
+section_title: Platform-Specific
+description: 'Activated when the project exposes a binary or console script entry point.'
+version: '1.0'
+skip_when: { fact: 'project:cli', op: 'absent' }
+
+rules:
+  - id: CLI-001
+    title: --help is implemented and useful
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: documentation
+    check:
+      kind: grep_present
+      pattern: "(--help|'help'|describe\\(|usage:|commander|yargs|argparse|clap|click|cobra|oclif|cac)"
+      include: ['**/*.{ts,js,py,go,rs,java,kt,rb}', 'package.json', 'Cargo.toml', 'pyproject.toml']
+      exclude: ['**/node_modules/**', '**/*.test.*']
+      flags: i
+    why: 'A CLI without --help forces users to read the source, which is the least friendly documentation format.'
+    remediation: 'Use an argument parser that generates help automatically; write a one-line description per command.'
+    references: ['CLIG']
+
+  - id: CLI-002
+    title: Exit codes are meaningful
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_present
+      # Matches both styles: inline `process.exit(n)`, and the cleaner
+      # `process.exitCode = main(argv)` used by single-entry-point CLIs.
+      pattern: '(process\.exit(Code)?\s*=|process\.exit\s*\(\s*[0-3]\s*\)|(sys\.)?exit\s*\(\s*[0-3]\s*\)|os\.Exit\s*\(\s*[0-3]\s*\)|ExitCode|SystemExit)'
+      include: ['**/*.{ts,js,py,go,rs,java,kt,rb}']
+      exclude: ['**/node_modules/**', '**/*.test.*', '**/tests/**']
+    why: 'Scripts pipe your CLI into `&&` and `set -e`. Exit 0 on failure corrupts everything downstream.'
+    remediation: 'Exit 0 on success, 1 on expected failure, 2 on usage error. Document the codes in --help.'
+    references: ['CLIG', 'POSIX-Exit-Codes']
+
+  - id: CLI-003
+    title: Destructive operations support --dry-run
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: correctness
+    check: { kind: manual }
+    evidence: 'For every command that deletes, overwrites, or publishes: a --dry-run flag, or a confirmation prompt.'
+    why: 'A CLI that deletes without asking will eventually be run in the wrong directory by someone having a bad day.'
+    remediation: 'Add --dry-run that prints the intended actions and exits 0 without performing them.'
+    references: ['CLIG']
+
+  - id: CLI-004
+    title: Input from arguments and stdin is validated
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: security
+    check: { kind: manual }
+    evidence: 'Path arguments resolved and checked; stdin length bounded; no unchecked interpolation into shell commands.'
+    why: 'CLI input is user input. Path traversal and command injection apply here too.'
+    remediation: 'Validate and canonicalise paths; cap stdin size; never pass raw input to a shell.'
+    references: ['CWE-22', 'CWE-78']
+
+  - id: CLI-005
+    title: Operations are idempotent where expected
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check: { kind: manual }
+    evidence: 'Running the same command twice produces the same end state (or a clear "already done" message).'
+    why: 'CLIs get run twice — by retries, by scripts, and by humans who forgot they already ran it.'
+    remediation: 'Check before acting; make writes atomic; report no-op as success.'
+    references: ['CLIG']
+
+  - id: CLI-006
+    title: Errors go to stderr, output to stdout
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: correctness
+    check: { kind: manual }
+    evidence: '`cli > out.txt` captures only machine-readable output; errors remain on the terminal.'
+    why: 'Mixing them breaks every pipe and every parser downstream.'
+    remediation: 'Log diagnostics to stderr; keep stdout clean for piping (optionally JSON with --json).'
+    references: ['CLIG']
+
+  - id: CLI-007
+    title: Machine-readable output mode exists
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: maintainability
+    check:
+      kind: grep_present
+      pattern: '(--json|--format|--output\s+(json|yaml)|jsonOutput|as_json)'
+      include: ['**/*.{ts,js,py,go,rs}', 'README*']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'Agents and scripts are now the primary consumers of most CLIs. Human text is not an API.'
+    remediation: 'Add --json with a stable schema; document it.'
+    references: ['CLIG', 'Agent-Skills']

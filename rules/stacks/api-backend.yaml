@@ -1,0 +1,121 @@
+id: stacks/api-backend
+title: Backend / API
+section: S15
+section_title: Platform-Specific
+description: 'Activated for server-side applications and API services.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'platform:server', op: 'absent' }
+    - { fact: 'project:api', op: 'absent' }
+
+rules:
+  - id: API-001
+    title: The API is versioned
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: grep_present
+      pattern: '(/(v[0-9]+|api/v[0-9]+)/|version\s*:\s*[''"]?[0-9]|Accept.*version|setGlobalPrefix)'
+      include: ['**/*.{ts,js,py,go,rs,java,kt,rb,yml,yaml,json}']
+      exclude: ['**/node_modules/**', 'package.json']
+      flags: i
+    why: 'Without a version in the path or header, every breaking change is a coordinated deploy across every client.'
+    remediation: 'Prefix routes with /v1 (or use a version header); never break an existing version in place.'
+    references: ['ASVS-14.1.3', 'API-Design']
+
+  - id: API-002
+    title: Request timeouts are configured
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: performance
+    check: { kind: manual }
+    evidence: 'Server request timeout, upstream client timeouts, and DB statement timeouts — all three, with values.'
+    why: 'No timeout means one slow dependency exhausts your entire worker pool.'
+    remediation: 'Set a request timeout at the edge, per-upstream client timeouts, and statement_timeout in the database.'
+    references: ['CWE-400', 'Release-It']
+
+  - id: API-003
+    title: Retries are bounded with jitter
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    check: { kind: manual }
+    evidence: 'Retry configuration: max attempts, backoff strategy, and whether retries are applied to non-idempotent calls.'
+    why: 'Retrying a POST three times can create three charges. Retrying without jitter synchronises your thundering herd.'
+    remediation: 'Exponential backoff with jitter, capped attempts, and retry only on idempotent/transient failures.'
+    references: ['AWS-Builders-Library:Timeouts']
+
+  - id: API-004
+    title: Write operations are idempotent
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check: { kind: manual }
+    evidence: 'An idempotency-key mechanism (or natural-key upsert) on POST/PUT endpoints that create resources.'
+    why: 'Networks retry. Clients double-click. Only one of those should create two orders.'
+    remediation: 'Accept an Idempotency-Key header, store the result, and replay it on duplicate requests.'
+    references: ['Stripe-Idempotency', 'API-Design']
+
+  - id: API-005
+    title: Response format is consistent
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: maintainability
+    check: { kind: manual }
+    evidence: 'One success envelope, one error envelope (code, message, details, requestId) used everywhere.'
+    why: 'Clients should not need per-endpoint parsing logic.'
+    remediation: 'Define the envelopes once in middleware and enforce with contract tests.'
+    references: ['API-Design', 'RFC-7807']
+
+  - id: API-006
+    title: An OpenAPI/contract spec exists and is current
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: documentation
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: any_file
+      patterns: ['**/openapi.{yaml,yml,json}', '**/swagger.{yaml,yml,json}', 'docs/api/**']
+    why: 'A spec that is generated and published is documentation. One that is written once is a memory.'
+    remediation: 'Generate the spec from code (or code from the spec) in CI and publish it with the release.'
+    references: ['OpenAPI', 'NIST-SSDF-PS.1']
+
+  - id: API-007
+    title: GraphQL depth/complexity limits are enforced
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'api:graphql' }
+    check:
+      kind: grep_present
+      pattern: '(depthLimit|depth-limit|complexity|maxDepth|costAnalysis|graphql-armor|rate-limit)'
+      include: ['**/*.{ts,js,py,go,rs}']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'A cyclic query can bring a GraphQL server to its knees with a single request.'
+    remediation: 'Add depth and complexity limits; disable introspection in production unless the API is public.'
+    references: ['OWASP-API4:2023', 'CWE-770']
+
+  - id: API-008
+    title: Health and readiness endpoints are unauthenticated but minimal
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: operations
+    check: { kind: manual }
+    evidence: '/health returns no version strings, dependency names, or configuration details to anonymous callers.'
+    why: 'A verbose /health endpoint is a free architecture diagram for an attacker.'
+    remediation: 'Return {"status":"ok"}; put diagnostics behind authentication or a separate internal port.'
+    references: ['CWE-200', 'K8s-Probes']

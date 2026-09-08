@@ -1,0 +1,91 @@
+id: core/future-readiness
+title: Future Readiness
+section: S16
+section_title: Future Readiness
+description: >
+  Not needed today, expensive to bolt on later. These are plans, not defects —
+  every rule here is FUTURE severity and never blocks a release.
+version: '1.0'
+
+rules:
+  - id: FUT-001
+    title: A path off the current architecture exists
+    section: S16
+    section_title: Future Readiness
+    severity: FUTURE
+    class: maintainability
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'A written note on what the current architecture stops supporting (scale, team size, latency) and what you would do about it.'
+    why: 'Every architecture has a ceiling. Knowing where yours is turns a crisis into a project.'
+    remediation: 'Write one page: current limits, the trigger that would force a change, and the likely direction.'
+    references: ['Team-Topologies']
+
+  - id: FUT-002
+    title: No core technology is at or near end of life
+    section: S16
+    section_title: Future Readiness
+    severity: FUTURE
+    class: maintainability
+    check: { kind: manual }
+    evidence: 'Runtime version, framework major versions, and their upstream EOL dates.'
+    why: 'Node 16, Python 3.8, and CentOS 7 all had an EOL date that everyone knew about in advance.'
+    remediation: 'Track EOL dates in the README; schedule upgrades one major behind current, never two.'
+    references: ['endoflife.date']
+
+  - id: FUT-003
+    title: Data archiving strategy exists
+    section: S16
+    section_title: Future Readiness
+    severity: FUTURE
+    class: operations
+    applies_when: { fact: 'has:database' }
+    check: { kind: manual }
+    evidence: 'Retention policy per table/dataset and where cold data goes.'
+    why: 'A table nobody can archive eventually makes every query slow and every migration terrifying.'
+    remediation: 'Define retention per dataset; partition by time; move cold rows to object storage.'
+    references: ['AWS-Well-Architected']
+
+  - id: FUT-004
+    title: Multi-region or failover is at least designed
+    section: S16
+    section_title: Future Readiness
+    severity: FUTURE
+    class: operations
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Either a multi-region design, or a documented decision to accept single-region risk (with an RTO you have told customers about).'
+    why: 'You do not have to run multi-region. You do have to have decided.'
+    remediation: 'Document the decision; if single-region, keep backups cross-region so recovery is possible.'
+    references: ['AWS-Well-Architected:Reliability']
+
+  - id: FUT-005
+    title: A tech radar or equivalent exists
+    section: S16
+    section_title: Future Readiness
+    severity: FUTURE
+    class: maintainability
+    applies_when: { fact: 'metric:contributors', op: 'gt', value: 4 }
+    check: { kind: manual }
+    evidence: 'A document listing technologies as adopt / trial / assess / hold, last reviewed within 12 months.'
+    why: 'Without it, every new project re-litigates the same choices with whoever argues hardest.'
+    remediation: 'Create a one-page radar; review it quarterly.'
+    references: ['Thoughtworks-Tech-Radar']
+
+  - id: FUT-006
+    title: Cost/usage is monitored
+    section: S16
+    section_title: Future Readiness
+    severity: FUTURE
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'has:serverless' }
+        - { fact: 'has:kubernetes' }
+        - { fact: 'has:terraform' }
+        - { fact: 'ai:llm-sdk' }
+    check: { kind: manual }
+    evidence: 'Cloud billing alerts, per-service cost attribution, or LLM token spend tracking.'
+    why: 'The bill is the one metric that always surprises people, usually quarterly.'
+    remediation: 'Tag resources by service; set budget alerts at 50/80/100%; review the top five line items monthly.'
+    references: ['FinOps', 'AWS-Well-Architected:Cost']

@@ -1,0 +1,166 @@
+id: stacks/node-typescript
+title: Node.js / TypeScript
+section: S15
+section_title: Platform-Specific
+description: 'Activated when JavaScript or TypeScript is detected.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'lang:typescript', op: 'absent' }
+    - { fact: 'lang:javascript', op: 'absent' }
+    - { fact: 'pm:node', op: 'absent' }
+
+rules:
+  - id: NODE-001
+    title: Node runtime version is pinned
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    check:
+      kind: grep_present
+      pattern: '(node-version-file|node-version:|"engines"|"volta"|"packageManager"|\.nvmrc)'
+      include:
+        [
+          'package.json',
+          '.nvmrc',
+          '.node-version',
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+        ]
+      flags: i
+    why: '"Works on my Node" is a real bug class — native modules, syntax support, and crypto defaults all shift between majors.'
+    remediation: 'Add .nvmrc plus "engines": { "node": ">=20" } and node-version-file: .nvmrc in CI.'
+    references: ['Node-Release-Schedule']
+
+  - id: NODE-002
+    title: TypeScript strict mode is on
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'lang:typescript' }
+    check:
+      kind: grep_present
+      pattern: '"strict"\s*:\s*true|"extends"\s*:\s*(.*strict|@tsconfig/strict)'
+      include: ['tsconfig.json', 'tsconfig.*.json']
+      flags: i
+    why: 'TypeScript without strict is TypeScript with the safety features switched off.'
+    remediation: 'Set "strict": true. If the migration is large, enable one flag at a time (strictNullChecks first).'
+    references: ['TS-Handbook']
+
+  - id: NODE-003
+    title: Unhandled promise rejections are handled
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(unhandledRejection|uncaughtException|process\.on\(\s*[''"]unhandled)'
+      include: ['**/*.{ts,js,mjs,cjs}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/node_modules/**']
+      flags: i
+    why: 'An unhandled rejection takes the process down in Node 15+, silently dropping in-flight requests.'
+    remediation: 'Register process handlers for unhandledRejection/uncaughtException that log and exit non-zero so the orchestrator restarts cleanly.'
+    references: ['CWE-248', 'Node-Docs']
+
+  - id: NODE-004
+    title: No private registry credentials committed
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(//[^/]*npm[^/]*/:[_-]?authToken|_auth\s*=|NPM_TOKEN\s*=\s*[A-Za-z0-9_-]{16,})'
+      include:
+        [
+          '.npmrc',
+          '**/.npmrc',
+          '.yarnrc*',
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          'Dockerfile*',
+        ]
+      flags: i
+    why: 'A committed registry token is publish access to your package (and everything it can reach).'
+    remediation: 'Use ${{ secrets.NPM_TOKEN }} in CI and `npm config set` at runtime. Rotate anything already exposed.'
+
+  - id: NODE-005
+    title: No deprecated Node APIs in use
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: grep_deprecated
+      pattern: '(new Buffer\s*\(|url\.parse\s*\(|crypto\.createCipher\s*\(|domain\.create|require\(\s*[''"]sys[''"]|new (?:punycode|querystring))'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs}']
+      exclude: ['**/*.test.*', '**/node_modules/**']
+    why: 'Deprecated APIs are usually deprecated because they are unsafe (createCipher) or broken (url.parse).'
+    remediation: 'Buffer.from/alloc, new URL(), crypto.createCipheriv, punycode/. Replace as you touch the file.'
+    references: ['Node-Deprecations']
+
+  - id: NODE-006
+    title: Environment variables are validated at startup
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(envalid|t3-oss/env|@t3-oss/env|zod.*\.parse\(\s*process\.env|cleanEnv|convict|dotenv-safe|env\.safeParse)'
+      include: ['**/*.{ts,js,mjs,cjs}']
+      exclude: ['**/*.test.*', '**/node_modules/**']
+      flags: i
+    why: 'A missing env var discovered at request time is a 500 in production; at startup it is a failed deploy.'
+    remediation: 'Parse process.env against a schema at boot and exit with a clear message on failure.'
+    references: ['12-Factor:Config']
+
+  - id: NODE-007
+    title: Libraries declare sideEffects / exports for tree-shaking
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: performance
+    applies_when: { fact: 'project:library' }
+    check:
+      kind: grep_present
+      pattern: '"sideEffects"\s*:|"exports"\s*:'
+      include: ['package.json']
+    why: 'Without it, bundlers ship your whole library to consumers who use one function.'
+    remediation: 'Add "sideEffects": false and an "exports" map in package.json.'
+    references: ['Webpack-Tree-Shaking']
+
+  - id: NODE-008
+    title: Module system is consistent
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: maintainability
+    applies_when: { fact: 'lang:typescript' }
+    check: { kind: manual }
+    evidence: 'Either ESM throughout ("type": "module" + .js extensions in imports) or CJS throughout — not both.'
+    why: 'Mixed ESM/CJS is the source of the most confusing Node errors in existence.'
+    remediation: 'Pick one; add "type" to package.json; configure tsconfig module/moduleResolution to match.'
+    references: ['Node-ESM']
+
+  - id: NODE-009
+    title: A fast, isolated runtime is used for tests
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: operations
+    applies_when: { fact: 'has:tests' }
+    check:
+      kind: grep_present
+      pattern: '(vitest|jest|node --test|node:test|ava|tap)'
+      include: ['package.json']
+      flags: i
+    why: 'Slow tests do not get run. Unrun tests are decoration.'
+    remediation: 'Vitest or node:test; keep the unit suite under ~30 seconds so it runs on every save.'
+    references: ['DORA']

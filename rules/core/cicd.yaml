@@ -1,0 +1,212 @@
+id: core/cicd
+title: CI/CD, Infrastructure & Observability
+section: S8
+section_title: CI/CD, Infrastructure & Observability
+description: >
+  How code becomes running software, and how you find out when it breaks.
+  Heavily informed by the OpenSSF Scorecard and DORA's delivery metrics.
+version: '1.0'
+
+rules:
+  - id: CICD-001
+    title: A CI pipeline exists
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: HIGH
+    class: operations
+    check:
+      kind: any_file
+      patterns:
+        - '.github/workflows/*.yml'
+        - '.github/workflows/*.yaml'
+        - '.gitlab-ci.yml'
+        - 'Jenkinsfile'
+        - '.circleci/config.yml'
+        - '.buildkite/**'
+        - 'azure-pipelines.yml'
+        - '.drone.yml'
+        - 'bitbucket-pipelines.yml'
+    why: 'Manual release steps work exactly until the person who knows them is on holiday.'
+    remediation: 'Add a minimal pipeline first: install → lint → test → build. Expand from there.'
+    references: ['OpenSSF-Scorecard:CI-Tests', 'DORA']
+
+  - id: CICD-002
+    title: CI runs lint, test, and build
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when: { fact: 'has:ci' }
+    check: { kind: manual }
+    evidence: 'The workflow file: which of lint / typecheck / test / build run on pull_request?'
+    why: 'A pipeline that only builds is a compiler with a dashboard.'
+    remediation: 'Add steps in fail-fast order: lint (5s) → typecheck → unit → build → integration.'
+    references: ['OpenSSF-Scorecard:CI-Tests', 'DORA']
+
+  - id: CICD-003
+    title: Deployment is automated
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: HIGH
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check: { kind: manual }
+    evidence: 'The path from merged commit to production: is there a human typing commands into a server?'
+    why: 'Manual deploys are unrepeatable, unauditable, and always happen at the worst possible time.'
+    remediation: 'Automate deploy from a tagged commit or main-branch push with an approval step if governance requires one.'
+    references: ['DORA:Deployment-Frequency', 'NIST-SSDF-PO.5']
+
+  - id: CICD-004
+    title: A rollback path exists and has been exercised
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: HIGH
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check: { kind: manual }
+    evidence: 'Documented rollback command/action, and the date it was last actually used (successfully).'
+    why: 'An untested rollback is a second outage with extra panic.'
+    remediation: 'Make rollback a one-command operation; rehearse it; record the last successful rollback date.'
+    references: ['DORA:Time-to-Restore', 'NIST-SSDF-RV.3']
+
+  - id: CICD-005
+    title: Separate environments exist
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check: { kind: manual }
+    evidence: 'dev / staging / production configuration, and confirmation that dev cannot reach production data.'
+    why: 'Testing in production is a slogan, not a strategy.'
+    remediation: 'At minimum: local + staging + production, with separate credentials and datasets per environment.'
+    references: ['NIST-SSDF-PO.5', 'ASVS-14.1.3']
+
+  - id: CICD-006
+    title: Infrastructure is defined as code
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: any_file
+      patterns:
+        [
+          '**/*.tf',
+          '**/*.tfvars',
+          'pulumi/**',
+          '**/Pulumi.*.yaml',
+          'cdk.json',
+          '**/*.cdk.ts',
+          'ansible/**',
+          '**/playbook*.yml',
+          'k8s/**/*.yaml',
+          'manifests/**/*.yaml',
+          'charts/**/Chart.yaml',
+          'docker-compose*.yml',
+          'compose.yaml',
+          'serverless.yml',
+          'Dockerfile*',
+        ]
+    why: 'Infrastructure that only exists in a console cannot be reviewed, diffed, or rebuilt after an incident.'
+    remediation: 'Move environments into Terraform/Pulumi/CDK (or at least declarative compose + helm manifests).'
+    references: ['NIST-SSDF-PO.5']
+
+  - id: CICD-007
+    title: Health check endpoints exist
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(/(health|healthz|readyz|livez|ready|live|status|ping)[''"`\s]|healthCheck|health_check|app\.get\(\s*[''"]/health)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php,yml,yaml}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/node_modules/**']
+      flags: i
+    why: 'Without /health and /ready, orchestrators cannot tell a booting service from a dead one.'
+    remediation: 'Expose /health (liveness) and /ready (dependencies reachable); wire them into the orchestrator and the LB.'
+    references: ['K8s-Probes', 'OpenSSF-Scorecard']
+
+  - id: CICD-008
+    title: Error tracking / APM is configured
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: grep_present
+      pattern: '(sentry|opentelemetry|datadog|newrelic|new-relic|rollbar|bugsnag|honeycomb|grafana|prometheus|betterstack|axiom)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,yml,yaml,json,toml}']
+      exclude: ['**/node_modules/**', '**/*.test.*']
+      flags: i
+    why: 'Your users will find the bugs. The only question is whether they tell you.'
+    remediation: 'Add Sentry (or equivalent) with source maps and release tracking; alert on new error types.'
+    references: ['DORA:Monitoring', 'OpenTelemetry']
+
+  - id: CICD-009
+    title: Alerting is configured for critical failures
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Alert rules, their thresholds, and who gets paged. Bonus: the last time one fired and what happened.'
+    why: 'Monitoring without alerting is a dashboard nobody opens until after the outage.'
+    remediation: 'Alert on symptoms users feel (error rate, latency, saturation), not on every CPU blip.'
+    references: ['Google-SRE:Monitoring', 'DORA']
+
+  - id: CICD-010
+    title: Backups exist AND restores have been tested
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: HIGH
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'has:database' }
+        - { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Backup schedule, retention, encryption at rest, and — critically — the date of the last successful restore drill.'
+    why: 'Nobody has ever been fired for having backups. Plenty of teams have died from never testing the restore.'
+    remediation: 'Automate backups, encrypt them, store them off-site, and run a restore drill quarterly with a recorded RTO.'
+    references: ['NIST-SSDF-RV.3', 'CIS-Control-11']
+
+  - id: CICD-011
+    title: A disaster recovery plan exists
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: MEDIUM
+    class: operations
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Documented RTO/RPO, the failover procedure, and who is authorised to declare a disaster.'
+    why: 'At 3am, the plan is the only thing between you and ad-hoc database surgery.'
+    remediation: 'Write a one-page DR runbook: trigger, failover steps, rollback, comms template, and owner.'
+    references: ['NIST-SSDF-RV.3', 'AWS-Well-Architected:Reliability']
+
+  - id: CICD-012
+    title: Observability covers the golden signals
+    section: S8
+    section_title: CI/CD, Infrastructure & Observability
+    severity: LOW
+    class: operations
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'A dashboard or metric set covering latency, traffic, errors, and saturation for the primary service.'
+    why: 'Four signals answer "is it broken, how bad, and where" in under five minutes.'
+    remediation: 'Instrument RED/USE metrics; put them on one dashboard linked from the runbook.'
+    references: ['Google-SRE:Golden-Signals']

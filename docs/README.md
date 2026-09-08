@@ -1,0 +1,27 @@
+# USAT documentation
+
+| Doc                                       | What's in it                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`USAT.md`](../USAT.md)                   | **The template itself** — all 16 sections, the severity model, the agent behaviour rules |
+| [Getting started](getting-started.md)     | Install, first audit, reading the report                                                 |
+| [Concepts](concepts.md)                   | Severity × status, scoring maths, confidence, applicability                              |
+| [Configuration](configuration.md)         | `.usat.yaml` reference                                                                   |
+| [Rule packs](rule-packs.md)               | Every check kind, with examples — start here to contribute a pack                        |
+| [Detectors](detectors.md)                 | The fact catalogue and how to add signals                                                |
+| [Maturity profiles](maturity-profiles.md) | Lifecycle stages, dampening, expected bands                                              |
+| [Agent integration](agent-integration.md) | Driving USAT from Claude, Cursor, Codex, Copilot                                         |
+| [CI integration](ci-integration.md)       | GitHub Actions, GitLab CI, quality gates, drift detection                                |
+| [Standards mapping](standards-mapping.md) | USAT ↔ ASVS 5.0, SSDF, SLSA, Scorecard, ISO 5055, WCAG, CRA, OWASP LLM/ASI               |
+| [Architecture](ARCHITECTURE.md)           | How the engine is put together, and what it deliberately does not do                     |
+| [API reference](reference/api.md)         | Programmatic use: `runAudit`, `detect`, `Project`, scoring, diffing                      |
+| [ADRs](adr/)                              | The five decisions behind the design, and what each one cost                             |
+
+## Reading order
+
+- **Auditing a project?** → [Getting started](getting-started.md) → [Concepts](concepts.md)
+- **Wiring up CI?** → [CI integration](ci-integration.md)
+- **Using an agent?** → [Agent integration](agent-integration.md)
+- **Contributing a rule pack?** → [Rule packs](rule-packs.md) → [Detectors](detectors.md)
+- **Comparing to a standard?** → [Standards mapping](standards-mapping.md)
+- **Embedding USAT in a tool?** → [API reference](reference/api.md)
+- **Wondering why it is built this way?** → [Architecture](ARCHITECTURE.md) → [ADRs](adr/)

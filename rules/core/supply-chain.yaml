@@ -1,0 +1,348 @@
+id: core/supply-chain
+title: Supply Chain & Build Provenance
+section: S3
+section_title: Supply Chain & Build Provenance
+description: >
+  Promoted to its own section in USAT. You can write perfect code and still
+  ship someone else's backdoor: these controls cover the path from a
+  contributor's editor to the artifact your users run.
+  Aligned with SLSA v1.2, NIST SSDF (SP 800-218), and the OpenSSF Scorecard.
+version: '1.0'
+
+rules:
+  - id: SUP-001
+    title: A lockfile is committed
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: HIGH
+    class: supply-chain
+    check:
+      kind: any_file
+      patterns:
+        - 'package-lock.json'
+        - 'yarn.lock'
+        - 'pnpm-lock.yaml'
+        - 'bun.lockb'
+        - 'bun.lock'
+        - 'poetry.lock'
+        - 'uv.lock'
+        - 'pdm.lock'
+        - 'Pipfile.lock'
+        - 'Cargo.lock'
+        - 'go.sum'
+        - 'composer.lock'
+        - 'Gemfile.lock'
+        - 'flake.lock'
+    why: 'Without a lockfile every install resolves fresh, so your build is not reproducible and transitive hijacks go unnoticed.'
+    remediation: 'Commit the lockfile for your package manager and install with the frozen/immutable flag in CI.'
+    references: ['SLSA-Source', 'OpenSSF-Scorecard:Pinned-Dependencies', 'NIST-SSDF-PS.3.2']
+
+  - id: SUP-002
+    title: CI installs with a frozen lockfile
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(npm ci|npm install --frozen|--frozen-lockfile|--immutable|pip install --require-hashes|pipenv sync|cargo build --locked|--locked)'
+      include: ['**/*.{yml,yaml,sh,bash,toml,Makefile,mk,justfile,just}']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: '`npm install` in CI silently upgrades you. A frozen install fails loudly instead.'
+    remediation: 'Use `npm ci` (or `--frozen-lockfile` / `--immutable` / `--locked`) everywhere in CI.'
+    references: ['NIST-SSDF-PS.3.2', 'SLSA-Build-L1']
+
+  - id: SUP-003
+    title: Dependency versions are pinned, not floating
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: grep_absent
+      pattern: ':\s*[''"]?(\*|latest|x|\^0\.0|>=?0\.0\.0)[''"]?\s*[,}]'
+      include:
+        ['package.json', 'bower.json', 'composer.json', 'pyproject.toml', 'requirements*.txt']
+      exclude: []
+      flags: i
+    why: '`*` and `latest` mean a compromised publish lands in your build with no code review.'
+    remediation: 'Pin exact versions for applications. Ranges are acceptable for published libraries with a lockfile.'
+    references: ['OpenSSF-Scorecard:Pinned-Dependencies', 'NIST-SSDF-PS.3.2']
+
+  - id: SUP-004
+    title: Automated dependency updates are configured
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: any_file
+      patterns:
+        [
+          '.github/dependabot.yml',
+          '.gitlab/dependabot.yml',
+          'renovate.json',
+          'renovate.json5',
+          '.github/renovate.json',
+          '.renovaterc',
+          '.renovaterc.json',
+        ]
+    why: 'The only thing worse than updating dependencies is updating them two years late, all at once.'
+    remediation: 'Enable Dependabot or Renovate with grouped PRs and a weekly schedule.'
+    references: ['OpenSSF-Scorecard:Dependency-Update-Tool', 'NIST-SSDF-PW.4']
+
+  - id: SUP-005
+    title: Dependency vulnerability scanning runs in CI
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: HIGH
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(npm audit|pnpm audit|yarn audit|pip-audit|osv-scanner|snyk (test|monitor)|trivy (fs|repo)|grype|dependency-check|govulncheck|cargo audit|bundler-audit)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Jenkinsfile',
+          '.circleci/config.yml',
+          'azure-pipelines.yml',
+        ]
+      flags: i
+    why: 'Most breaches in modern stacks arrive through a transitive dependency, not your own code.'
+    remediation: 'Add a scanner step that fails on HIGH/CRITICAL advisories; wire it to your advisory source (OSV/GHSA).'
+    references: ['OpenSSF-Scorecard:Vulnerabilities', 'NIST-SSDF-RV.1.1', 'SLSA']
+
+  - id: SUP-006
+    title: SAST runs in CI
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(codeql|semgrep|snyk code|sonar|bandit|gosec|brakeman|clippy-sarif|eslint-plugin-security|spotbugs|detekt)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Jenkinsfile',
+          '.circleci/config.yml',
+        ]
+      flags: i
+    why: 'Static analysis catches the bug class a reviewer skips at 5pm on a Friday.'
+    remediation: 'Add CodeQL or Semgrep with a ruleset tuned to your stack; block on new high-confidence findings only.'
+    references: ['OpenSSF-Scorecard:SAST', 'NIST-SSDF-RV.1.1']
+
+  - id: SUP-007
+    title: Secret scanning runs in CI
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(gitleaks|trufflehog|detect-secrets|secretlint|git-secrets|secret scanning)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          '.pre-commit-config.yaml',
+        ]
+      flags: i
+    why: 'A pre-commit secret scan is the cheapest control in this entire template.'
+    remediation: 'Add gitleaks as a pre-commit hook and a CI job on pull_request.'
+    references: ['OpenSSF-Scorecard:Binary-Artifacts', 'NIST-SSDF-PO.3']
+
+  - id: SUP-008
+    title: CI workflows avoid script-injection patterns
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: HIGH
+    class: supply-chain
+    applies_when: { fact: 'ci:github-actions' }
+    check:
+      kind: grep_absent
+      pattern: '\$\{\{\s*github\.event\.(pull_request|issue|comment|discussion|review)\.[^}]*\}\}'
+      include: ['.github/workflows/*.yml', '.github/workflows/*.yaml']
+    why: 'Interpolating untrusted event data into a `run:` block is arbitrary code execution on your runner — and on your secrets.'
+    remediation: 'Pass event data through `env:` and reference it as a shell variable instead of ${{ }} inside run.'
+    references: ['OpenSSF-Scorecard:Dangerous-Workflow', 'CWE-94']
+
+  - id: SUP-009
+    title: Workflows declare least-privilege token permissions
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'ci:github-actions' }
+    check:
+      kind: grep_present
+      pattern: '^\s*permissions\s*:\s*(\s*$|read-all$)|^\s{2,}(contents|id-token|pull-requests)\s*:\s*(read|write)\s*$'
+      include: ['.github/workflows/*.yml', '.github/workflows/*.yaml']
+    why: 'A default GITHUB_TOKEN with write-all turns any compromised action into a supply-chain incident.'
+    remediation: 'Set `permissions: contents: read` at the top of each workflow and grant write only where needed.'
+    references: ['OpenSSF-Scorecard:Token-Permissions', 'SLSA-Build-L2']
+    tags: [github-actions]
+
+  - id: SUP-010
+    title: Third-party actions are pinned to a version or SHA
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'ci:github-actions' }
+    check:
+      kind: grep_absent
+      pattern: 'uses:\s*[^@\s]+@(main|master|latest)\s*$'
+      include: ['.github/workflows/*.yml', '.github/workflows/*.yaml']
+      flags: i
+    why: '`@main` on a third-party action means their next commit runs with your secrets.'
+    remediation: 'Pin to a full commit SHA; enable Dependabot for github-actions to keep them current.'
+    references: ['OpenSSF-Scorecard:Pinned-Dependencies']
+
+  - id: SUP-011
+    title: No secrets in CI configuration
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: CRITICAL
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_absent
+      pattern: '(password|passwd|token|secret|api[_-]?key|access[_-]?key)\s*[:=]\s*[''"]?[A-Za-z0-9/+_-]{16,}'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Jenkinsfile',
+          '.circleci/config.yml',
+          'azure-pipelines.yml',
+          '.travis.yml',
+        ]
+      flags: i
+    why: 'Values in workflow files are visible to every contributor and preserved in every fork.'
+    remediation: 'Move to repository/environment secrets and reference them as ${{ secrets.NAME }}.'
+    references: ['CWE-798', 'OpenSSF-Scorecard:Dangerous-Workflow']
+
+  - id: SUP-012
+    title: Default branch is protected
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: HIGH
+    class: supply-chain
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check: { kind: manual }
+    why: >-
+      Without protection, anyone with push access can rewrite history, skip review, and ship untested code straight to main.
+    evidence: 'Branch protection settings: required review, required status checks, no force-push, no bypass for admins.'
+    remediation: 'Require ≥1 review, dismiss stale approvals, require CI to pass, and block force-push on the default branch.'
+    references: ['OpenSSF-Scorecard:Branch-Protection', 'SLSA-Source-L2', 'NIST-SSDF-PO.2']
+
+  - id: SUP-013
+    title: Commits are signed or attested
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: LOW
+    class: supply-chain
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check:
+      kind: grep_present
+      pattern: '(actions/attest|sigstore|slsa-framework|gpg-sign|commit\.gpgsign|ssh-sign|gh attestation)'
+      include: ['.github/workflows/*.yml', '.github/workflows/*.yaml', '.git/config', '.gitconfig']
+      flags: i
+    why: 'Unsigned history means anyone with push access can forge a commit attributed to someone else.'
+    remediation: 'Enable commit signing, then add build provenance attestation to your release workflow.'
+    references: ['SLSA-Build-L2', 'OpenSSF-Scorecard:Signed-Releases']
+
+  - id: SUP-014
+    title: An SBOM is generated for releases
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: LOW
+    class: supply-chain
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check:
+      kind: grep_present
+      pattern: '(cyclonedx|spdx|sbom|anchore/sbom-action|syft)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          'Makefile',
+          'justfile',
+          'Taskfile.yml',
+        ]
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'When the next Log4Shell drops, the first question is "are we affected?" An SBOM is the answer in seconds.'
+    remediation: 'Generate a CycloneDX or SPDX SBOM in CI and publish it with the release.'
+    references: ['SLSA', 'NIST-SSDF-PS.3.2', 'EU-CRA-Annex-I']
+
+  - id: SUP-015
+    title: Release artifacts carry provenance attestation
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: FUTURE
+    class: supply-chain
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    why: >-
+      When an artifact is compromised, provenance is the only thing that answers "was this built by us, from this source?"
+    evidence: 'Release workflow producing a SLSA/in-toto attestation, verified at deploy time by consumers.'
+    remediation: 'Enable GitHub Artifact Attestations (SLSA Build L2 by default) or npm trusted publishing; verify with slsa-verifier.'
+    references: ['SLSA-Build-L2', 'SLSA-v1.2']
+
+  - id: SUP-016
+    title: Container images are scanned before publish
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:containers' }
+    check:
+      kind: grep_present
+      pattern: '(trivy|grype|snyk container|docker scan|anchore|cosign)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Dockerfile*',
+          'Makefile',
+          'justfile',
+        ]
+      flags: i
+    why: 'Base images ship CVEs. Scanning at build time is the last cheap moment to catch them.'
+    remediation: 'Add trivy/grype to the image pipeline; fail on HIGH/CRITICAL; sign images with cosign.'
+    references: ['SLSA-Build-L2', 'NIST-SSDF-RV.1.1']
+
+  - id: SUP-017
+    title: Build pipeline is reproducible from source
+    section: S3
+    section_title: Supply Chain & Build Provenance
+    severity: FUTURE
+    class: supply-chain
+    depths: [deep]
+    check: { kind: manual }
+    why: >-
+      A build that cannot be reproduced cannot be verified, and an unverifiable build is an unverifiable supply chain.
+    evidence: 'A clean-machine build from a fresh clone produces a byte-identical (or digest-stable) artifact.'
+    remediation: 'Pin toolchains, vendor dependencies, remove timestamps, and document the build environment.'
+    references: ['SLSA-Build-L3', 'Reproducible-Builds']

@@ -1,0 +1,92 @@
+name: 'USAT Audit'
+description: >
+  Audit any repository with USAT — the Universal Software Audit Template.
+  Auto-detects the stack, grades against a maturity-appropriate bar, and writes a
+  Markdown report with a prioritised roadmap.
+
+author: 'Er-Sajan-PLG'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  path:
+    description: 'Path to audit'
+    required: false
+    default: '.'
+  depth:
+    description: 'Audit depth: quick | standard | deep'
+    required: false
+    default: 'standard'
+  profile:
+    description: 'Maturity profile: auto | prototype | mvp | beta | production | legacy'
+    required: false
+    default: 'auto'
+  out:
+    description: 'Report path'
+    required: false
+    default: 'AUDIT.md'
+  fail-on:
+    description: 'Exit 1 on findings at or above: critical | high | medium | low | none'
+    required: false
+    default: 'none'
+  version:
+    description: 'USAT version to run (pin this in production pipelines)'
+    required: false
+    default: 'latest'
+  allow-commands:
+    description: 'Allow rules that shell out (npm audit, depcheck, dpdm)'
+    required: false
+    default: 'false'
+  summary:
+    description: 'Append the report to $GITHUB_STEP_SUMMARY'
+    required: false
+    default: 'true'
+
+outputs:
+  report-path:
+    description: 'Path to the generated report'
+    value: ${{ steps.audit.outputs.report-path }}
+  score:
+    description: 'Overall health score (0-100)'
+    value: ${{ steps.audit.outputs.score }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run USAT
+      id: audit
+      shell: bash
+      run: |
+        set -euo pipefail
+        PKG="usat"
+        if [ "${{ inputs.version }}" != "latest" ]; then
+          PKG="usat@${{ inputs.version }}"
+        fi
+
+        ARGS=(audit "${{ inputs.path }}"
+              --depth "${{ inputs.depth }}"
+              --profile "${{ inputs.profile }}"
+              --out "${{ inputs.out }}"
+              --fail-on "${{ inputs.fail-on }}")
+
+        if [ "${{ inputs.allow-commands }}" = "true" ]; then
+          ARGS+=(--allow-commands)
+        fi
+
+        set +e
+        npx --yes "$PKG" "${ARGS[@]}"
+        CODE=$?
+        set -e
+
+        echo "report-path=${{ inputs.out }}" >> "$GITHUB_OUTPUT"
+
+        SCORE=$(grep -m1 -oP '(?<=Overall Health Score: \*\*)[0-9.]+' "${{ inputs.out }}" || echo "unknown")
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+        exit $CODE
+
+    - name: Publish to job summary
+      if: inputs.summary == 'true' && always()
+      shell: bash
+      run: cat "${{ inputs.out }}" >> "$GITHUB_STEP_SUMMARY"

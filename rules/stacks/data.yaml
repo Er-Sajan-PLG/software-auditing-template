@@ -1,0 +1,165 @@
+id: stacks/data
+title: Data & Database
+section: S6
+section_title: Data & Database
+description: 'Activated when a database, ORM, or migrations directory is detected.'
+version: '1.0'
+skip_when: { fact: 'has:database', op: 'absent' }
+
+rules:
+  - id: DATA-001
+    title: A migration system is in place
+    section: S6
+    section_title: Data & Database
+    severity: HIGH
+    class: correctness
+    check:
+      kind: any_file
+      patterns:
+        [
+          'migrations/**',
+          'prisma/migrations/**',
+          'alembic/**',
+          'db/migrate/**',
+          '**/migrations/*.sql',
+          'knexfile.*',
+          'flyway/**',
+          'liquibase/**',
+          'atlas.hcl',
+          'drizzle/**',
+        ]
+    why: 'Schema changes applied by hand cannot be reviewed, repeated, or rolled back.'
+    remediation: 'Adopt the migration tool for your ORM; never alter production schema manually.'
+    references: ['NIST-SSDF-PO.5']
+
+  - id: DATA-002
+    title: Foreign keys / relations are defined
+    section: S6
+    section_title: Data & Database
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_present
+      pattern: '(references\s*\(|FOREIGN KEY|foreignKey|@ManyToOne|@Relation|belongs_to|has_many|ForeignKey\(|onDelete)'
+      include: ['**/*.{sql,prisma,py,ts,js,go,rs,java,kt,rb,php}']
+      exclude: ['**/node_modules/**', '**/tests/**']
+      flags: i
+    why: 'Relations enforced only in application code are relations that drift out of sync the first time someone writes a script.'
+    remediation: 'Declare constraints at the DB level; add a periodic orphan-row check if you cannot.'
+    references: ['ASVS-5.3.4']
+
+  - id: DATA-003
+    title: Indexes exist on queried columns
+    section: S6
+    section_title: Data & Database
+    severity: MEDIUM
+    class: performance
+    check: { kind: manual }
+    evidence: 'The five heaviest queries and their EXPLAIN plans. Any sequential scan on a large table needs a justification.'
+    why: 'Most "the database is slow" incidents are one missing index on one column.'
+    remediation: 'Index every foreign key and every column in a WHERE/ORDER BY on a large table; verify with EXPLAIN.'
+    references: ['Use-The-Index-Luke']
+
+  - id: DATA-004
+    title: No N+1 query patterns
+    section: S6
+    section_title: Data & Database
+    severity: HIGH
+    class: performance
+    check: { kind: manual }
+    evidence: 'Query logs for the main list endpoints: is there one query per row, or one query with a join/include?'
+    why: 'An endpoint that works with 10 rows falls over at 10,000 — usually in production, rarely in staging.'
+    remediation: 'Eager-load relations (include/join/prefetch_related); add query counting assertions to tests.'
+    references: ['ORM-N+1']
+
+  - id: DATA-005
+    title: List queries are paginated
+    section: S6
+    section_title: Data & Database
+    severity: HIGH
+    class: performance
+    check:
+      kind: grep_present
+      pattern: '(\.limit\s*\(|take\s*:\s*|LIMIT\s+\d|first\s*:\s*|pageSize|per_page|cursor\s*:\s*|page_size|Top\s+\d+)'
+      include: ['**/*.{ts,tsx,js,py,go,rs,java,kt,rb,php,graphql,sql}']
+      exclude: ['**/node_modules/**', '**/migrations/**', '**/*.test.*']
+      flags: i
+    why: 'An unbounded SELECT is a denial-of-service you wrote yourself, usually accidentally.'
+    remediation: 'Enforce a default and maximum page size on every list endpoint; prefer cursor pagination.'
+    references: ['CWE-770', 'ASVS-4.3.2']
+
+  - id: DATA-006
+    title: Connection pooling is configured
+    section: S6
+    section_title: Data & Database
+    severity: MEDIUM
+    class: performance
+    check:
+      kind: grep_present
+      pattern: '(pool|pool_size|max_?connections|connection_limit|MaximumPoolSize|poolSize|HikariCP|db_pool)'
+      include: ['**/*.{ts,js,py,go,rs,java,kt,rb,php,yml,yaml,toml,env,example,prisma}']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'Without a pool, every request opens a connection and the database runs out at the worst possible moment.'
+    remediation: 'Configure a pool sized to (cores × 2) + spindle count as a starting point; add a pgbouncer if needed.'
+    references: ['Postgres-Pooling']
+
+  - id: DATA-007
+    title: Multi-step writes are transactional
+    section: S6
+    section_title: Data & Database
+    severity: HIGH
+    class: correctness
+    check:
+      kind: grep_present
+      pattern: '(\$transaction|beginTransaction|BEGIN\s*;|withTransaction|atomic\s*\(|session\.with_transaction|db\.transaction)'
+      include: ['**/*.{ts,js,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/node_modules/**', '**/migrations/**', '**/*.test.*']
+      flags: i
+    why: 'A half-applied write is worse than a failed one: the data looks fine until someone reconciles it.'
+    remediation: 'Wrap related writes in a transaction; make the operation idempotent so retries are safe.'
+    references: ['ASVS-5.3.4']
+
+  - id: DATA-008
+    title: No SELECT * in hot paths
+    section: S6
+    section_title: Data & Database
+    severity: LOW
+    class: performance
+    check:
+      kind: grep_wrong
+      pattern: 'SELECT\s+\*\s+FROM'
+      include: ['**/*.{sql,ts,js,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/node_modules/**', '**/migrations/**', '**/tests/**']
+    why: 'SELECT * breaks when the schema changes, and pulls columns nobody needs across the network.'
+    remediation: 'Select the columns you use.'
+    references: ['Use-The-Index-Luke']
+
+  - id: DATA-009
+    title: Delete strategy is defined
+    section: S6
+    section_title: Data & Database
+    severity: LOW
+    class: compliance
+    check: { kind: manual }
+    evidence: 'Whether records are hard-deleted or soft-deleted, and how that interacts with retention and erasure requests.'
+    why: '"Delete the account" needs a defined answer before a regulator or a customer asks for it.'
+    remediation: 'Pick one per entity type; document it; make sure erasure requests honour the choice everywhere.'
+    references: ['GDPR-Art.17']
+
+  - id: DATA-010
+    title: Row-level access is enforced in the data layer
+    section: S6
+    section_title: Data & Database
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'db:postgres' }
+        - { fact: 'orm:prisma' }
+        - { fact: 'orm:sqlalchemy' }
+    check: { kind: manual }
+    evidence: 'Whether tenant/user scoping is applied by the query layer itself (RLS, a scoped repository) or by remembering to add a WHERE clause.'
+    why: 'Scoping that depends on remembering is scoping that will be forgotten exactly once, catastrophically.'
+    remediation: 'Use Postgres RLS or a repository pattern that requires the tenant scope; test cross-tenant reads explicitly.'
+    references: ['ASVS-4.2.1', 'OWASP-A01:2021']

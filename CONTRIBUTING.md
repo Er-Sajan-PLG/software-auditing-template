@@ -1,77 +1,126 @@
-# Contributing to Software Auditing Template
+# Contributing to USAT
 
-Thank you for your interest in contributing! This document provides guidelines for contributing to this project.
+Thanks for helping make software audits less terrible.
 
-## Getting Started
+The fastest high-value contribution is **a rule pack**: one YAML file, no
+TypeScript, no build step. If you have ever run an audit checklist and thought
+"nobody ever checks _this_", that is a rule pack waiting to happen.
 
-1. Fork the repository
-2. Clone your fork locally
-3. Create a new branch for your feature or fix
-4. Make your changes
-5. Run tests and linting
-6. Submit a Pull Request
+## Ways to contribute
 
-## Development Setup
+| Contribution                            | Difficulty | Where                                           |
+| --------------------------------------- | ---------- | ----------------------------------------------- |
+| A new rule in an existing pack          | Easy       | `rules/core/*.yaml`, `rules/stacks/*.yaml`      |
+| A whole new stack pack                  | Easy       | `rules/stacks/<name>.yaml` + `rules/index.yaml` |
+| A detector for a technology USAT misses | Easy       | `rules/detectors.yaml`                          |
+| A false positive you actually hit       | Easy       | open an issue with the reproducer               |
+| Fixing a rule that over-fires           | Medium     | the pack + a test in `tests/`                   |
+| Engine work                             | Medium     | `src/`                                          |
+| Docs and standards mapping              | Easy       | `docs/`, `USAT.md`                              |
 
-### Node.js
+## Development setup
 
 ```bash
+git clone https://github.com/Er-Sajan-PLG/software-auditing-template
+cd software-auditing-template
 npm install
-npm run lint
-npm test
+
+npm test                 # vitest
+npm run lint             # eslint
+npm run typecheck        # tsc --noEmit
+npm run format           # prettier --write
 ```
 
-### Python
+Run the CLI from source:
 
 ```bash
-pip install -e ".[dev]"
-ruff check .
-pytest
+npm run usat -- detect .
+npm run usat -- audit . --depth deep
+npm run usat -- rules --section S2
+npm run usat -- explain SEC-001
 ```
 
-## Branch Naming
+Or build and run the compiled output:
 
-- Feature branches: `feat/description`
-- Bug fix branches: `fix/description`
-- Documentation branches: `docs/description`
-- Refactoring branches: `refactor/description`
-
-## Commit Messages
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-type(scope): description
-
-[optional body]
-
-[optional footer]
+```bash
+npm run build && node dist/cli.js audit .
 ```
 
-Types:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `refactor`: Code refactoring
-- `test`: Adding tests
-- `chore`: Maintenance tasks
+## Adding a rule
 
-## Pull Request Process
+Read [`docs/rule-packs.md`](docs/rule-packs.md) for the full schema. The short
+version:
 
-1. Ensure your branch is up to date with `main`
-2. Run all tests and linting
-3. Fill out the PR template
-4. Request review from maintainers
-5. Address any feedback
-6. Merge after approval
+```yaml
+  - id: WEB-010
+    title: Fonts are served with font-display: swap
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: performance
+    applies_when: { fact: 'platform:web' }
+    check:
+      kind: grep_present
+      pattern: 'font-display\s*:\s*swap'
+      include: ['**/*.{css,scss,sass,less}']
+    why: 'A blocking font swap is a flash of invisible text on every cold load.'
+    remediation: 'Add font-display: swap to every @font-face block.'
+    references: ['Web-Vitals:CLS']
+```
 
-## Code Style
+**Every rule needs:**
 
-- Follow the existing code style in the project
-- Use TypeScript for new TypeScript files
-- Use type hints for new Python files
-- Write tests for new functionality
+- `id` — prefix matches the pack (`SEC-`, `WEB-`, `PY-`, `AI-`…)
+- `title` — the _desired state_, not the defect
+- `section` and `class`
+- `check` — one of the 15 kinds in [`docs/rule-packs.md`](docs/rule-packs.md)
+- `why` — one sentence, or the rule does not earn its place
+- `remediation` — something a person can actually do
+- `evidence` — **required** for `manual` checks; this is the prompt a reviewer works from
 
-## Reporting Issues
+CI enforces most of this (see `tests/e2e.test.ts`).
 
-Please use the GitHub issue tracker to report bugs or request features.
+## Testing a rule
+
+A rule that fires on its own documentation is worse than no rule. Test against two
+projects:
+
+```bash
+npm run usat -- audit ~/code/project-with-the-problem
+npm run usat -- audit ~/code/project-without-it
+```
+
+The second run must stay clean. Then add a case to `tests/`:
+
+```ts
+it('does not flag an env-var reference as a hardcoded credential', () => {
+  const root = build({ 'src/config.ts': 'export const apiKey = process.env.API_KEY;\n' });
+  const { report } = auditAt(root);
+  expect(report.findings.find((f) => f.ruleId === 'SEC-001')!.status).toBe('PASS');
+});
+```
+
+## Branches and commits
+
+- Branches: `feat/…`, `fix/…`, `docs/…`, `rules/…`, `refactor/…`
+- Commits: [Conventional Commits](https://www.conventionalcommits.org/) —
+  `feat(rules): add Bun runtime checks`, `fix(detect): requirements.txt is a not prose file`
+
+## Pull requests
+
+1. Branch from `master`.
+2. Run `npm test && npm run lint && npm run typecheck && npm run format:check`.
+3. Fill in the PR template — especially the **false-positive check**.
+4. If the change affects the report structure, paste a before/after excerpt.
+
+## This repo audits itself
+
+`.github/workflows/self-audit.yml` runs USAT on USAT on every PR. If it fails, either
+the tool regressed or the repo picked up a real finding. If the finding is a deliberate
+decision, add it to `.usat.yaml` **with a reason** — that is exactly what the
+suppression mechanism is for.
+
+## Code of conduct
+
+See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). In particular: criticise the code, not
+the person who wrote it.

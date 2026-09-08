@@ -1,0 +1,131 @@
+id: core/release
+title: Release & Change Management
+section: S9
+section_title: Release & Change Management
+description: >
+  How a merged commit becomes a version someone else depends on. This section
+  is what separates "we deploy" from "we ship".
+version: '1.0'
+
+rules:
+  - id: REL-001
+    title: Versioning is semantic and consistent
+    section: S9
+    section_title: Release & Change Management
+    severity: MEDIUM
+    class: maintainability
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check: { kind: manual }
+    evidence: 'Current version, and whether MAJOR/MINOR/PATCH changes match SemVer in practice.'
+    why: 'Consumers (including your future self) need to know whether upgrading is safe.'
+    remediation: 'Adopt SemVer; automate version bumps from Conventional Commits (Changesets, semantic-release).'
+    references: ['SemVer', 'OpenSSF-Scorecard:Signed-Releases']
+
+  - id: REL-002
+    title: Releases are tagged in version control
+    section: S9
+    section_title: Release & Change Management
+    severity: MEDIUM
+    class: operations
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check: { kind: manual }
+    evidence: '`git tag --list` output, or the release automation config that creates tags.'
+    why: 'Without tags, "what is running in production?" has no answer you can look up.'
+    remediation: 'Tag every release (v1.2.3) and deploy from the tag, not from a branch tip.'
+    references: ['SLSA-Source', 'OpenSSF-Scorecard:Signed-Releases']
+
+  - id: REL-003
+    title: Release notes are published
+    section: S9
+    section_title: Release & Change Management
+    severity: LOW
+    class: documentation
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: grep_present
+      pattern: '(semantic-release|release-drafter|changesets|changeset version|generate-notes|release_notes|changelog)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.github/release.yml',
+          'package.json',
+          '.changeset/config.json',
+          'Makefile',
+        ]
+      flags: i
+    why: 'A tag with no notes makes every upgrade an archaeology project for your users.'
+    remediation: 'Generate notes from commit scope; hand-edit the breaking-changes section.'
+    references: ['Keep-a-Changelog']
+
+  - id: REL-004
+    title: Risky changes sit behind a feature flag
+    section: S9
+    section_title: Release & Change Management
+    severity: LOW
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check:
+      kind: grep_present
+      pattern: '(launchdarkly|unleash|flagsmith|growthbook|posthog|openfeature|isFeatureEnabled|featureFlag|useFlag|flipper)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb}']
+      exclude: ['**/*.test.*', '**/node_modules/**']
+      flags: i
+    why: 'Deploy and release are different verbs. Flags let you deploy on Tuesday and release on Thursday.'
+    remediation: 'Wrap new behaviour in a flag with a default-off rollout and a documented kill switch.'
+    references: ['DORA', 'Progressive-Delivery']
+
+  - id: REL-005
+    title: Database migrations run forward and are reversible
+    section: S9
+    section_title: Release & Change Management
+    severity: HIGH
+    class: correctness
+    applies_when: { fact: 'has:database' }
+    check: { kind: manual }
+    evidence: 'Migration tool in use, and for the last destructive migration: the expand/contract or down-migration plan.'
+    why: 'A migration you cannot reverse is a one-way door taken during a deploy, usually at the worst moment.'
+    remediation: 'Use expand/contract: add column → backfill → switch reads → drop later. Keep down-migrations tested for everything else.'
+    references: ['NIST-SSDF-PO.5']
+
+  - id: REL-006
+    title: Migrations are separated from application deploys
+    section: S9
+    section_title: Release & Change Management
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'has:database' }
+    check: { kind: manual }
+    evidence: 'Deploy order: does the schema change ship before the code that requires it?'
+    why: 'Deploying code and schema simultaneously means the old code briefly runs against the new schema.'
+    remediation: 'Run migrations as a separate, first step; keep every change backward-compatible with the currently deployed version.'
+    references: ['Expand-Contract']
+
+  - id: REL-007
+    title: There is a documented incident/runbook path
+    section: S9
+    section_title: Release & Change Management
+    severity: MEDIUM
+    class: operations
+    applies_when: { fact: 'maturity:production' }
+    check:
+      kind: any_file
+      patterns:
+        [
+          '**/RUNBOOK*',
+          '**/runbook*',
+          'docs/runbooks/**',
+          'runbooks/**',
+          'docs/on-call*',
+          'docs/incident*',
+          'INCIDENT.md',
+        ]
+    why: 'The middle of an incident is the worst possible time to discover nobody wrote down how to restart the queue.'
+    remediation: 'One runbook per service: how to check health, restart, roll back, escalate, and who owns it.'
+    references: ['NIST-SSDF-RV.2', 'Google-SRE']

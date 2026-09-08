@@ -1,0 +1,150 @@
+id: stacks/jvm
+title: Java / Kotlin / JVM
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Java, Kotlin, or Scala is detected.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'lang:java', op: 'absent' }
+    - { fact: 'lang:kotlin', op: 'absent' }
+    - { fact: 'lang:scala', op: 'absent' }
+
+rules:
+  - id: JVM-001
+    title: Dependency versions are managed centrally
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: grep_present
+      pattern: '(dependencyManagement|<dependencyManagement>|versions?\.toml|catalog|constraints\s*\{|dependencyResolutionManagement)'
+      include:
+        [
+          'pom.xml',
+          'build.gradle*',
+          'settings.gradle*',
+          'build.gradle.kts',
+          'gradle/libs.versions.toml',
+        ]
+      flags: i
+    why: 'Without a BOM or version catalog, five modules drift into five versions of the same library.'
+    remediation: 'Maven: dependencyManagement. Gradle: a version catalog in gradle/libs.versions.toml.'
+    references: ['Maven-BOM', 'Gradle-Version-Catalogs']
+
+  - id: JVM-002
+    title: No hardcoded credentials in configuration
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(password|passwd|secret|token|api[_-]?key)\s*[:=]\s*[''"]?(?!\$\{|#\{|\{\{)[A-Za-z0-9/+_-]{8,}'
+      include:
+        ['**/*.{properties,yml,yaml,xml,conf}', '**/application*.yml', '**/application*.properties']
+      exclude: ['**/src/test/**', '**/test/**']
+      flags: i
+    why: 'application.properties is committed. Anything in it is public.'
+    remediation: 'Externalise to environment variables or a secret manager; reference with ${ENV_VAR}.'
+    references: ['CWE-798', 'ASVS-14.3.2']
+
+  - id: JVM-003
+    title: Exception handling does not swallow stack traces
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_wrong
+      pattern: '(catch\s*\(\s*\w+\s+\w+\s*\)\s*\{\s*\}|printStackTrace\s*\(\s*\)|e\.printStackTrace)'
+      include: ['**/*.{java,kt,scala}']
+      exclude: ['**/src/test/**', '**/test/**']
+    why: 'printStackTrace writes to stderr, which usually goes nowhere useful, and an empty catch loses the error entirely.'
+    remediation: 'Log with a logger at the right level, including the context; rethrow or handle.'
+    references: ['CWE-390', 'ASVS-7.4.1']
+
+  - id: JVM-004
+    title: Parameterised SQL / JPA criteria instead of concatenation
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    applies_when: { fact: 'has:database' }
+    check:
+      kind: grep_absent
+      pattern: '(createQuery\(\s*[''"][^''"]*[''"]\s*\+|createNativeQuery\(\s*.*\+|Statement\.execute(Query)?\s*\(\s*.*\+|\+?\s*[''"]\s*(SELECT|INSERT|UPDATE|DELETE)[^''"]*[''"]\s*\+)'
+      include: ['**/*.{java,kt}']
+      exclude: ['**/src/test/**', '**/test/**']
+      flags: i
+    why: 'String-concatenated JPQL is exactly as injectable as raw SQL.'
+    remediation: 'Use named parameters (:name) or the Criteria API. Never build a query string from input.'
+    references: ['CWE-89', 'ASVS-5.3.4']
+
+  - id: JVM-005
+    title: Nullability is explicit
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: correctness
+    applies_when: { fact: 'lang:kotlin' }
+    check: { kind: manual }
+    evidence: 'Count of `!!` force-unwraps and platform types crossing into Kotlin from Java.'
+    why: 'Every !! is a NullPointerException with the compiler silenced.'
+    remediation: 'Prefer ?: with a default, requireNotNull with a message, or make the Java API annotated.'
+    references: ['Kotlin-Null-Safety']
+
+  - id: JVM-006
+    title: Static analysis runs in CI
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(spotbugs|pmd|checkstyle|errorprone|detekt|ktlint|sonar|snyk)'
+      include:
+        [
+          'pom.xml',
+          'build.gradle*',
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+        ]
+      flags: i
+    why: 'SpotBugs and Error Prone find real bugs, not just style nits, and they are free.'
+    remediation: 'Add SpotBugs/ErrorProne (Java) or detekt/ktlint (Kotlin) and fail on new high-priority findings.'
+    references: ['OpenSSF-Scorecard:SAST']
+
+  - id: JVM-007
+    title: Insecure deserialisation is avoided
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(ObjectInputStream|readObject\s*\(|XMLDecoder|enableDefaultTyping|activateDefaultTyping|readValue\s*\(\s*.*,\s*Object\.class)'
+      include: ['**/*.{java,kt}']
+      exclude: ['**/src/test/**', '**/test/**']
+    why: 'Java deserialisation gadget chains are one of the most reliable RCE vectors in existence.'
+    remediation: 'Use JSON with an explicit schema and no polymorphic default typing; validate before binding.'
+    references: ['CWE-502', 'ASVS-5.5.1']
+
+  - id: JVM-008
+    title: JVM/container memory limits are respected
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: performance
+    applies_when: { fact: 'has:containers' }
+    check:
+      kind: grep_present
+      pattern: '(MaxRAMPercentage|UseContainerSupport|XX:\+UseContainerSupport|Xmx)'
+      include:
+        ['Dockerfile*', '**/*.sh', 'docker-compose*.yml', '**/*.{yaml,yml}', 'JAVA_TOOL_OPTIONS']
+    why: 'Without it the JVM sizes its heap from the host, not the cgroup, and gets OOM-killed.'
+    remediation: 'Set -XX:MaxRAMPercentage=75 (and leave the rest for off-heap).'
+    references: ['JVM-Container-Support']

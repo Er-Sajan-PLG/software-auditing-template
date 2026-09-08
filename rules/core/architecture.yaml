@@ -1,0 +1,190 @@
+id: core/architecture
+title: Architecture & Design
+section: S4
+section_title: Architecture & Design
+description: >
+  Structure, boundaries, and the decisions behind them. Mostly judgement —
+  USAT automates the parts that show up as files and flags the rest for
+  review rather than pretending a regex can measure coupling.
+version: '1.0'
+
+rules:
+  - id: ARCH-001
+    title: Architecture is documented
+    section: S4
+    section_title: Architecture & Design
+    severity: MEDIUM
+    class: documentation
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: any_file
+      patterns:
+        [
+          'ARCHITECTURE.md',
+          'docs/ARCHITECTURE.md',
+          'docs/architecture/**',
+          'docs/design/**',
+          'docs/overview.md',
+        ]
+    why: 'Undocumented architecture is whatever the last person to touch it believed.'
+    remediation: 'One page: components, data flow, external dependencies, and the three decisions a newcomer would question.'
+    references: ['arc42', 'C4-Model']
+
+  - id: ARCH-002
+    title: Architecture decisions are recorded (ADRs)
+    section: S4
+    section_title: Architecture & Design
+    severity: LOW
+    class: documentation
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check:
+      kind: any_file
+      patterns:
+        ['**/adr-*.md', '**/ADR-*.md', 'docs/adrs/**', 'docs/adr/**', 'docs/decisions/**', 'adr/**']
+    why: 'Six months from now nobody will remember why Postgres won over Mongo, and someone will relitigate it.'
+    remediation: 'Keep short ADRs in docs/adrs: context, decision, consequences. One markdown file per decision.'
+    references: ['ADR-Nygard']
+
+  - id: ARCH-003
+    title: No god files
+    section: S4
+    section_title: Architecture & Design
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: file_lines_max
+      patterns:
+        [
+          'src/**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php,cs}',
+          'app/**/*.{ts,tsx,js,jsx,py,go,rs,java,kt}',
+          'lib/**/*.{ts,tsx,js,jsx,py,go,rs}',
+          'pkg/**/*.go',
+          'internal/**/*.go',
+        ]
+      max_lines: 800
+    why: 'A file nobody can hold in their head is a file nobody changes safely.'
+    remediation: 'Split by responsibility: extract the data access, the policy, or the formatting into its own module.'
+    references: ['Anti-pattern:God-Object', 'ISO-5055']
+
+  - id: ARCH-004
+    title: Layers are separated (transport / domain / data)
+    section: S4
+    section_title: Architecture & Design
+    severity: MEDIUM
+    class: maintainability
+    applies_when:
+      any:
+        - { fact: 'platform:server' }
+        - { fact: 'project:api' }
+        - { fact: 'has:database' }
+    check: { kind: manual }
+    why: >-
+      Business logic mixed into HTTP handlers cannot be tested, reused, or moved — and every new transport duplicates it.
+    evidence: 'Directory layout or file:line showing HTTP handlers delegating to a domain/service layer rather than querying the DB inline.'
+    remediation: 'Handlers parse and authorise; services hold business rules; repositories own persistence. No SQL in a controller.'
+    references: ['Clean-Architecture', 'Hexagonal-Architecture']
+
+  - id: ARCH-005
+    title: No circular dependencies between modules
+    section: S4
+    section_title: Architecture & Design
+    severity: HIGH
+    class: maintainability
+    depths: [deep]
+    check:
+      kind: command
+      run: '! (command -v npx >/dev/null && npx --yes dpdm@latest --exit-code circular:1 "src/**/*.ts" 2>/dev/null | grep -qi circular)'
+      expect_exit: 0
+    why: 'Cycles make modules untestable in isolation and turn every build order into a guess.'
+    evidence: 'Output of dpdm / madge --circular / dependency-cruiser, or a manual import-graph review.'
+    remediation: 'Break the cycle with an interface, an event, or by extracting the shared type into a leaf module.'
+    references: ['Anti-pattern:Circular-Dependency']
+
+  - id: ARCH-006
+    title: Module boundaries are enforced by tooling
+    section: S4
+    section_title: Architecture & Design
+    severity: LOW
+    class: maintainability
+    applies_when: { fact: 'project:monorepo' }
+    check:
+      kind: grep_present
+      pattern: '(enforce-module-boundaries|no-restricted-imports|dependency-cruiser|import/no-cycle|@nx/enforce-module-boundaries|boundaries/)'
+      include:
+        [
+          '**/.eslintrc*',
+          'eslint.config.*',
+          '.dependency-cruiser.*',
+          'nx.json',
+          'project.json',
+          '**/tsconfig*.json',
+        ]
+      flags: i
+    why: 'Boundaries that are not enforced decay within one sprint of the first deadline.'
+    remediation: 'Add nx enforce-module-boundaries or eslint no-restricted-imports between packages/layers.'
+    references: ['Nx', 'dependency-cruiser']
+
+  - id: ARCH-007
+    title: Configuration is externalised
+    section: S4
+    section_title: Architecture & Design
+    severity: MEDIUM
+    class: operations
+    check:
+      kind: grep_absent
+      pattern: '(process\.env\.[A-Z_]+\s*\|\|\s*[''"](?:prod|production|https?://)|\b(?:DATABASE_URL|API_URL|REDIS_URL)\s*[:=]\s*[''"](?:postgres|mysql|mongodb|redis|https?)://(?!localhost|127\.0\.0\.1))'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'A hardcoded production URL means the only way to run staging is to edit source.'
+    remediation: 'Read every environment-specific value from configuration; keep defaults that are safe for local dev.'
+    references: ['12-Factor:Config', 'ASVS-14.1.3']
+
+  - id: ARCH-008
+    title: Side effects are isolated and testable
+    section: S4
+    section_title: Architecture & Design
+    severity: LOW
+    class: maintainability
+    check: { kind: manual }
+    why: >-
+      Side effects called inline cannot be tested without the network, the clock, or the database. That is why tests get slow and flaky.
+    evidence: 'Examples of I/O (network, disk, clock, randomness) being injected or wrapped rather than called inline from business logic.'
+    remediation: 'Inject the clock, the HTTP client, and the repository; keep pure functions pure.'
+    references: ['Functional-Core-Imperative-Shell']
+
+  - id: ARCH-009
+    title: Single points of failure are identified
+    section: S4
+    section_title: Architecture & Design
+    severity: MEDIUM
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check: { kind: manual }
+    why: >-
+      Availability incidents are almost always an SPOF somebody already knew about. Writing it down is what turns it into a project.
+    evidence: 'A list of SPOFs (single DB, single region, single queue, single vendor) and the mitigation for each.'
+    remediation: 'For each SPOF: replica, failover, or an explicitly accepted risk with a documented recovery time.'
+    references: ['AWS-Well-Architected:Reliability']
+
+  - id: ARCH-010
+    title: Async work is offloaded to a queue
+    section: S4
+    section_title: Architecture & Design
+    severity: LOW
+    class: performance
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(bullmq|bull|amqplib|kafkajs|sqs|nats|temporal|celery|rq|sidekiq|taskiq|dramatiq|asynq)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,rb}']
+      exclude: ['**/*.test.*']
+      flags: i
+    why: 'Anything slow inside a request handler is a timeout waiting for a busy day.'
+    remediation: 'Move email, image processing, webhooks, and report generation onto a queue with retries and a DLQ.'
+    references: ['12-Factor:Processes']

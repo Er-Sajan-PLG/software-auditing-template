@@ -1,0 +1,132 @@
+id: core/dependencies
+title: Dependencies & Third-Party
+section: S10
+section_title: Dependencies & Third-Party
+description: >
+  Every dependency is a bet on someone else's maintenance discipline.
+  USAT scores the observable parts and hands the rest to review.
+version: '1.0'
+
+rules:
+  - id: DEP-001
+    title: Dependencies are declared in a manifest
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: any_file
+      patterns:
+        [
+          'package.json',
+          'pyproject.toml',
+          'requirements*.txt',
+          'Cargo.toml',
+          'go.mod',
+          'pom.xml',
+          'build.gradle*',
+          'composer.json',
+          'Gemfile',
+          'Package.swift',
+          'pubspec.yaml',
+          'mix.exs',
+        ]
+    why: 'Undeclared dependencies mean the build works on one machine and nowhere else.'
+    remediation: 'Declare every import in the manifest; pin transitive risk with a lockfile.'
+    references: ['NIST-SSDF-PS.3.2']
+
+  - id: DEP-002
+    title: No known-HIGH/CRITICAL vulnerabilities in dependencies
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: HIGH
+    class: supply-chain
+    check:
+      kind: command
+      run: '! (npm audit --production --audit-level=high 2>/dev/null | grep -qiE "critical|high")'
+      expect_exit: 0
+    evidence: '`npm audit` / `pip-audit` / `osv-scanner` / `trivy fs` output dated today.'
+    why: 'Most modern compromises arrive through a transitive dependency, not your own code.'
+    remediation: 'Patch or replace the flagged package; if no fix exists, pin an unaffected version or drop the dependency.'
+    references: ['OpenSSF-Scorecard:Vulnerabilities', 'NIST-SSDF-RV.1.1']
+
+  - id: DEP-003
+    title: Dependencies are actively maintained
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: MEDIUM
+    class: supply-chain
+    depths: [deep]
+    check: { kind: manual }
+    evidence: 'For the top 10 direct dependencies: last release date, open-issue trend, and bus factor.'
+    why: 'An unmaintained dependency is a future incident you have already scheduled.'
+    remediation: 'Replace anything with no release in 24+ months, or fork it deliberately and own the fork.'
+    references: ['OpenSSF-Scorecard:Maintained', 'OpenSSF-Criticality-Score']
+
+  - id: DEP-004
+    title: No obviously redundant dependencies
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: LOW
+    class: maintainability
+    check: { kind: manual }
+    evidence: 'Two libraries doing the same job (e.g. both axios and node-fetch; both moment and date-fns).'
+    why: 'Two HTTP clients means two sets of CVEs, two upgrade paths, and an argument every PR.'
+    remediation: 'Pick one per concern and migrate; add a lint rule banning the loser.'
+    references: ['OpenSSF-Scorecard']
+
+  - id: DEP-005
+    title: Unused dependencies are pruned
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: LOW
+    class: maintainability
+    applies_when: { fact: 'pm:npm' }
+    check:
+      kind: command
+      run: '! (npx --yes depcheck@latest --json 2>/dev/null | grep -qE "\"unused\": \\[[^]]+\\]")'
+      expect_exit: 0
+    why: >-
+      Unused dependencies still install, still scan, and still produce CVEs. They are pure liability with no benefit.
+    evidence: 'depcheck / knip / pip-extra-reqs output.'
+    remediation: 'Remove unused packages; they still count against your CVE surface and install time.'
+    references: ['NIST-SSDF-PS.3.2']
+
+  - id: DEP-006
+    title: Licenses are compatible with the project license
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: MEDIUM
+    class: compliance
+    check: { kind: manual }
+    evidence: 'An SPDX license inventory of direct dependencies and any GPL/AGPL entries in a permissively-licensed or commercial project.'
+    why: 'One AGPL transitive dependency can force disclosure of your entire source.'
+    remediation: 'Generate an SBOM, run a license policy check in CI, and review anything copyleft before shipping.'
+    references: ['SPDX', 'OpenSSF-Scorecard:License', 'EU-CRA']
+
+  - id: DEP-007
+    title: External services have documented failure modes
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: MEDIUM
+    class: operations
+    applies_when:
+      not: { fact: 'maturity:prototype' }
+    check: { kind: manual }
+    evidence: 'For each third-party API you call: timeout, retry policy, and what the user sees when it is down.'
+    why: 'Your uptime is the product of every service you depend on, unless you degrade gracefully.'
+    remediation: 'Set explicit timeouts, bounded retries with jitter, circuit breakers, and a fallback path per integration.'
+    references: ['NIST-SSDF-PW.4', 'Release-It']
+
+  - id: DEP-008
+    title: Webhook payloads are signature-verified
+    section: S10
+    section_title: Dependencies & Third-Party
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'has:payments' }
+    check: { kind: manual }
+    evidence: 'The webhook handler: file:line where the provider signature (HMAC) is verified before the payload is trusted.'
+    why: 'An unverified webhook endpoint is an unauthenticated API that writes to your database.'
+    remediation: 'Verify the provider HMAC over the raw body with a constant-time comparison before processing.'
+    references: ['CWE-345', 'ASVS-13.2.2']

@@ -1,0 +1,124 @@
+id: stacks/containers
+title: Containers & Runtime
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Docker, compose, or Kubernetes manifests are detected.'
+version: '1.0'
+skip_when: { fact: 'has:containers', op: 'absent' }
+
+rules:
+  - id: CTNR-001
+    title: Container does not run as root
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_present
+      pattern: '(USER\s+(?!root\b)\w+|--chown=|runAsNonRoot\s*:\s*true|securityContext)'
+      include: ['Dockerfile*', '**/Dockerfile*', '**/*.{yaml,yml}', 'docker-compose*.yml']
+      exclude: ['**/node_modules/**']
+    why: 'A root process inside the container is one kernel exploit away from root on the host.'
+    remediation: 'Add `USER node` (or a dedicated non-root uid) and `securityContext.runAsNonRoot: true` in Kubernetes.'
+    references: ['CWE-250', 'CIS-Docker-4.1', 'ASVS-14.1.3']
+
+  - id: CTNR-002
+    title: Multi-stage builds are used
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    check:
+      kind: grep_present
+      pattern: 'FROM\s+\S+\s+AS\s+\w+'
+      include: ['Dockerfile*', '**/Dockerfile*']
+      flags: i
+    why: 'Without multi-stage, your production image ships the compiler, the test suite, and your .git directory.'
+    remediation: 'Build in one stage, copy only the artifact into a slim runtime stage.'
+    references: ['Docker-Multi-Stage']
+
+  - id: CTNR-003
+    title: Base image is minimal and pinned
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: grep_absent
+      pattern: 'FROM\s+\S+:latest\s*$|FROM\s+\w+\s*$'
+      include: ['Dockerfile*', '**/Dockerfile*']
+      flags: i
+    why: ':latest means the image changes under you with no commit, and full distro images carry hundreds of CVEs.'
+    remediation: 'Pin a digest or an exact tag; prefer alpine, distroless, or chainguard images.'
+    references: ['OpenSSF-Scorecard:Pinned-Dependencies', 'CIS-Docker-4.2']
+
+  - id: CTNR-004
+    title: A .dockerignore exists
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: any_file
+      patterns: ['.dockerignore']
+    why: 'Without it, the build context copies node_modules, .git, and — frequently — .env into the build.'
+    remediation: 'Add .dockerignore excluding .git, node_modules, .env, secrets, and local build output.'
+    references: ['CIS-Docker']
+
+  - id: CTNR-005
+    title: No secrets baked into the image
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(ARG\s+(SECRET|TOKEN|PASSWORD|KEY)|ENV\s+(SECRET|TOKEN|PASSWORD|API_KEY|AWS_SECRET)\s*=|COPY\s+\.env)'
+      include: ['Dockerfile*', '**/Dockerfile*', 'docker-compose*.yml', 'compose.yaml']
+      flags: i
+    why: 'ENV and ARG values are visible in `docker history` to anyone who pulls the image.'
+    remediation: 'Inject secrets at runtime (env from the orchestrator, mounted files, or a secret manager).'
+    references: ['CWE-798', 'CIS-Docker-4.10']
+
+  - id: CTNR-006
+    title: HEALTHCHECK is defined
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    check:
+      kind: grep_present
+      pattern: '(HEALTHCHECK|livenessProbe|readinessProbe)'
+      include: ['Dockerfile*', '**/Dockerfile*', 'docker-compose*.yml', '**/*.{yaml,yml}']
+    why: 'The orchestrator cannot restart a container it does not know is sick.'
+    remediation: 'Add HEALTHCHECK (Docker) or liveness/readiness probes (Kubernetes) hitting your /health endpoint.'
+    references: ['K8s-Probes', 'CIS-Docker-4.6']
+
+  - id: CTNR-007
+    title: Kubernetes workloads declare resource limits
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    applies_when: { fact: 'has:kubernetes' }
+    check:
+      kind: grep_present
+      pattern: 'resources\s*:\s*(\s*$|[\s\S]{0,80}(limits|requests)\s*:)'
+      include: ['**/*.{yaml,yml}']
+      exclude: ['**/node_modules/**']
+    why: 'One pod with no limits can starve every other pod on the node.'
+    remediation: 'Set requests and limits on CPU and memory for every container; add a LimitRange as a backstop.'
+    references: ['K8s-Resource-Management', 'CIS-K8s']
+
+  - id: CTNR-008
+    title: Images are scanned and signed
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Trivy/Grype in the pipeline and cosign signatures verified at admission (or a documented plan to add both).'
+    why: 'Unsigned images mean anything that can push to the registry can run in your cluster.'
+    remediation: 'Scan on push, sign with cosign, and enforce verification with a policy controller.'
+    references: ['SLSA-Build-L2', 'Sigstore-Cosign']

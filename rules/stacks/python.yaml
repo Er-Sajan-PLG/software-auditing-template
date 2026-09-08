@@ -1,0 +1,175 @@
+id: stacks/python
+title: Python
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Python is detected.'
+version: '1.0'
+skip_when: { fact: 'lang:python', op: 'absent' }
+
+rules:
+  - id: PY-001
+    title: Dependencies are declared in a modern manifest
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: any_file
+      patterns:
+        [
+          'pyproject.toml',
+          'requirements.txt',
+          'requirements/*.txt',
+          'Pipfile',
+          'environment.yml',
+          'setup.py',
+        ]
+    why: 'Python projects with no manifest cannot be installed reproducibly by anyone, including CI.'
+    remediation: 'Use pyproject.toml with Poetry/uv, or pin requirements.txt with pip-compile and hashes.'
+    references: ['PEP-621', 'PyPA']
+
+  - id: PY-002
+    title: Python version is pinned
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    check:
+      kind: grep_present
+      pattern: '(python-version|python_version|requires-python|PYTHON_VERSION|\.python-version)'
+      include:
+        [
+          'pyproject.toml',
+          'setup.py',
+          'setup.cfg',
+          '.python-version',
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Dockerfile*',
+          'runtime.txt',
+        ]
+      flags: i
+    why: 'Python 2→3 style breakage is rare, but 3.9→3.12 removes stdlib modules you may rely on.'
+    remediation: 'Set requires-python in pyproject.toml and pin the same version in CI and the container.'
+    references: ['endoflife.date/python']
+
+  - id: PY-003
+    title: Dependencies are pinned to exact versions
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    check:
+      kind: grep_present
+      pattern: '^[a-zA-Z0-9._-]+\s*==\s*[0-9]'
+      include: ['requirements*.txt', 'requirements/*.txt']
+    why: 'Unpinned requirements mean the build changes without a commit.'
+    remediation: 'pip-compile with hashes, or Poetry/uv lockfile. Pin exact versions for applications.'
+    references: ['OpenSSF-Scorecard:Pinned-Dependencies']
+
+  - id: PY-004
+    title: No bare except clauses
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_wrong
+      pattern: 'except\s*:\s*$|except\s+BaseException\s*:'
+      include: ['**/*.py']
+      exclude: ['**/tests/**', '**/test_*.py', '**/*_test.py']
+    why: 'A bare except swallows KeyboardInterrupt and SystemExit, and every real error with them.'
+    remediation: 'Catch the specific exceptions you can handle; let the rest propagate.'
+    references: ['PEP-8', 'CWE-396']
+
+  - id: PY-005
+    title: No mutable default arguments
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_wrong
+      pattern: 'def\s+\w+\s*\([^)]*=\s*(\[\]|\{\}|set\(\)|list\(\)|dict\(\))'
+      include: ['**/*.py']
+      exclude: ['**/tests/**']
+    why: 'The default is evaluated once at definition time, so every call shares the same list. This bug survives code review remarkably often.'
+    remediation: 'Default to None and assign inside the function: `def f(x=None): x = x or []`.'
+    references: ['Python-Gotchas']
+
+  - id: PY-006
+    title: No unsafe deserialisation
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(pickle\.(loads?|load)|marshal\.load|yaml\.load\s*\((?!.*Safe)|torch\.load\s*\((?!.*weights_only)|eval\s*\(\s*(input|request))'
+      include: ['**/*.py']
+      exclude: ['**/tests/**']
+    why: 'pickle.load on untrusted input is remote code execution by design. yaml.load without SafeLoader is the same class of bug.'
+    remediation: 'Use json, yaml.safe_load, or torch.load(weights_only=True). Never deserialise untrusted pickle.'
+    references: ['CWE-502', 'ASVS-5.5.1']
+
+  - id: PY-007
+    title: Subprocess calls do not use shell=True
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_absent
+      pattern: 'shell\s*=\s*True'
+      include: ['**/*.py']
+      exclude: ['**/tests/**', '**/scripts/**']
+    why: 'shell=True with any interpolated input is command injection.'
+    remediation: 'Pass an argument list: subprocess.run(["ls", "-l"], check=True).'
+    references: ['CWE-78']
+
+  - id: PY-008
+    title: Debug mode is not enabled outside local development
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(DEBUG\s*=\s*True|debug\s*=\s*True|app\.run\(\s*[^)]*debug\s*=\s*True|FLASK_DEBUG\s*=\s*1)'
+      include: ['**/*.py', '**/*.env*', 'docker-compose*.yml', 'Dockerfile*']
+      exclude: ['**/tests/**', '**/settings/*test*', '**/test_settings*']
+      flags: i
+    why: 'Django/Flask debug mode exposes a REPL-backed traceback page — full RCE to anyone who can reach it.'
+    remediation: 'Drive DEBUG from the environment and default it to False. Assert it is False in the production settings module.'
+    references: ['CWE-489', 'ASVS-14.3.3']
+
+  - id: PY-009
+    title: Type hints are used on public functions
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: maintainability
+    check:
+      kind: grep_present
+      pattern: 'def\s+\w+\s*\([^)]*:\s*\w+[^)]*\)\s*(->|:)'
+      include: ['**/*.py']
+      exclude: ['**/tests/**', '**/migrations/**']
+    why: 'Hints are documentation the type checker enforces, and they make an editor useful.'
+    remediation: 'Annotate public functions first; enable mypy/pyright on the modules that matter.'
+    references: ['PEP-484']
+
+  - id: PY-010
+    title: A linter/formatter is configured for Python
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: grep_present
+      pattern: '(\[tool\.ruff\]|\[tool\.black\]|\[tool\.pylint\]|\[tool\.flake8\]|ruff|flake8|pylint)'
+      include: ['pyproject.toml', 'setup.cfg', '.flake8', '.ruff.toml', '.pre-commit-config.yaml']
+      flags: i
+    why: 'Ruff runs in milliseconds and catches the errors reviewers consistently miss.'
+    remediation: 'Add ruff with a sensible rule set and wire it into pre-commit and CI.'
+    references: ['PyPA']
