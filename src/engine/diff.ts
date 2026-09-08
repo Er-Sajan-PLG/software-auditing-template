@@ -28,6 +28,40 @@ export function diffReports(beforeRaw: string, afterRaw: string): string {
   const a = after.overall ?? 0;
   const delta = Math.round((a - b) * 10) / 10;
 
+  renderDiffHeader(p, before, after, b, a, delta);
+
+  const buckets = classifyAllRules(before.rules ?? {}, after.rules ?? {});
+
+  const list = (title: string, items: string[]) => {
+    p(`## ${title} (${items.length})`);
+    p();
+    if (items.length === 0) p('None. ✅');
+    else for (const i of items) p(`- ${i}`);
+    p();
+  };
+
+  list('✅ Fixed', buckets.fixed);
+  list('🔺 Regressed', buckets.regressed);
+  list('🟡 Changed (still open)', buckets.improved);
+  list('🆕 Newly applicable', buckets.newRules);
+  if (buckets.goneRules.length > 0) list('➖ No longer applicable', buckets.goneRules);
+
+  p('---');
+  p();
+  p(renderDiffVerdict(delta));
+  p();
+
+  return out.join('\n');
+}
+
+function renderDiffHeader(
+  p: (s?: string) => void,
+  before: TrailerData,
+  after: TrailerData,
+  b: number,
+  a: number,
+  delta: number,
+): void {
   p('# 🔁 USAT Audit Diff');
   p();
   p('| | Before | After | Δ |');
@@ -43,69 +77,73 @@ export function diffReports(beforeRaw: string, afterRaw: string): string {
   p();
   p(`*Before: ${before.generated_at ?? 'unknown'} · After: ${after.generated_at ?? 'unknown'}*`);
   p();
+}
 
-  const bRules = before.rules ?? {};
-  const aRules = after.rules ?? {};
-  const ids = [...new Set([...Object.keys(bRules), ...Object.keys(aRules)])].sort();
+interface DiffBuckets {
+  fixed: string[];
+  regressed: string[];
+  improved: string[];
+  newRules: string[];
+  goneRules: string[];
+}
 
-  const fixed: string[] = [];
-  const regressed: string[] = [];
-  const improved: string[] = [];
-  const newRules: string[] = [];
-  const goneRules: string[] = [];
+type TrailerRule = { status: string; severity: string; section: string };
 
-  const PASSING = new Set(['PASS']);
-  const OPEN = new Set(['FAIL', 'WRONG', 'MISSING', 'DEPRECATED', 'EXPERIMENTAL']);
-
-  for (const id of ids) {
-    const x = bRules[id];
-    const y = aRules[id];
-    if (!x) {
-      newRules.push(`${id} — now applicable (${y!.status})`);
-      continue;
-    }
-    if (!y) {
-      goneRules.push(id);
-      continue;
-    }
-    if (x.status === y.status) continue;
-    const wasOpen = OPEN.has(x.status as Status);
-    const isOpen = OPEN.has(y.status as Status);
-    if (wasOpen && PASSING.has(y.status)) {
-      fixed.push(`${id} — ${x.status} → PASS`);
-    } else if (!wasOpen && isOpen) {
-      regressed.push(`${id} — ${x.status} → ${y.status}`);
-    } else if (wasOpen && isOpen) {
-      improved.push(`${id} — ${x.status} → ${y.status}`);
-    }
-  }
-
-  const list = (title: string, items: string[]) => {
-    p(`## ${title} (${items.length})`);
-    p();
-    if (items.length === 0) p('None. ✅');
-    else for (const i of items) p(`- ${i}`);
-    p();
+function classifyAllRules(
+  bRules: Record<string, TrailerRule>,
+  aRules: Record<string, TrailerRule>,
+): DiffBuckets {
+  const buckets: DiffBuckets = {
+    fixed: [],
+    regressed: [],
+    improved: [],
+    newRules: [],
+    goneRules: [],
   };
+  const ids = [...new Set([...Object.keys(bRules), ...Object.keys(aRules)])].sort();
+  for (const id of ids) {
+    classifyRuleChange(id, bRules[id], aRules[id], buckets);
+  }
+  return buckets;
+}
 
-  list('✅ Fixed', fixed);
-  list('🔺 Regressed', regressed);
-  list('🟡 Changed (still open)', improved);
-  list('🆕 Newly applicable', newRules);
-  if (goneRules.length > 0) list('➖ No longer applicable', goneRules);
+const PASSING = new Set(['PASS']);
+const OPEN = new Set(['FAIL', 'WRONG', 'MISSING', 'DEPRECATED', 'EXPERIMENTAL']);
 
-  p('---');
-  p();
-  p(
-    delta > 0
-      ? `**Net movement: +${delta} points.** Keep going — the fixed list is the progress report.`
-      : delta < 0
-        ? `**Net movement: ${delta} points.** New rules became applicable, or something regressed. Start with 🔺 Regressed.`
-        : '**No net movement.** Either nothing changed, or fixes were offset by newly applicable rules.',
-  );
-  p();
+function classifyRuleChange(
+  id: string,
+  x: TrailerRule | undefined,
+  y: TrailerRule | undefined,
+  buckets: DiffBuckets,
+): void {
+  if (!x) {
+    buckets.newRules.push(`${id} — now applicable (${y!.status})`);
+    return;
+  }
+  if (!y) {
+    buckets.goneRules.push(id);
+    return;
+  }
+  if (x.status === y.status) return;
+  const wasOpen = OPEN.has(x.status as Status);
+  const isOpen = OPEN.has(y.status as Status);
+  if (wasOpen && PASSING.has(y.status)) {
+    buckets.fixed.push(`${id} — ${x.status} → PASS`);
+  } else if (!wasOpen && isOpen) {
+    buckets.regressed.push(`${id} — ${x.status} → ${y.status}`);
+  } else if (wasOpen && isOpen) {
+    buckets.improved.push(`${id} — ${x.status} → ${y.status}`);
+  }
+}
 
-  return out.join('\n');
+function renderDiffVerdict(delta: number): string {
+  if (delta > 0) {
+    return `**Net movement: +${delta} points.** Keep going — the fixed list is the progress report.`;
+  }
+  if (delta < 0) {
+    return `**Net movement: ${delta} points.** New rules became applicable, or something regressed. Start with 🔺 Regressed.`;
+  }
+  return '**No net movement.** Either nothing changed, or fixes were offset by newly applicable rules.';
 }
 
 function sign(n: number): string {

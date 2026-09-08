@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AuditReport, Depth, Maturity, Severity } from './types.js';
+import type { AuditReport, Depth, Maturity, Rule, Severity } from './types.js';
 import { runAudit } from './engine/audit.js';
 import { loadRulePacks } from './engine/loader.js';
 import { loadDetectorFile } from './detect/index.js';
@@ -73,23 +73,22 @@ function list(args: Args, key: string): string[] {
 
 /* -------------------------------------------------------------------- main -- */
 
+const COMMANDS: Record<string, (args: Args) => number> = {
+  audit: cmdAudit,
+  detect: cmdDetect,
+  rules: cmdRules,
+  explain: cmdExplain,
+  diff: cmdDiff,
+  init: cmdInit,
+};
+
 export function main(argv: string[]): number {
   const args = parseArgs(argv);
   const cmd = (args._[0] ?? 'audit') as string;
 
+  const run = COMMANDS[cmd];
+  if (run) return run(args);
   switch (cmd) {
-    case 'audit':
-      return cmdAudit(args);
-    case 'detect':
-      return cmdDetect(args);
-    case 'rules':
-      return cmdRules(args);
-    case 'explain':
-      return cmdExplain(args);
-    case 'diff':
-      return cmdDiff(args);
-    case 'init':
-      return cmdInit(args);
     case 'version':
     case '--version':
       console.log(`usat ${VERSION}`);
@@ -108,32 +107,52 @@ export function main(argv: string[]): number {
 
 /* ------------------------------------------------------------------ audit -- */
 
+interface AuditCliOptions {
+  target: string;
+  rulesDir: string;
+  depth: Depth;
+  profileArg: string;
+  out: string;
+  failOn: string;
+  quiet: boolean;
+}
+
+function readAuditOptions(args: Args): AuditCliOptions {
+  return {
+    target: (args._[1] as string | undefined) ?? '.',
+    rulesDir: path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR),
+    depth: (str(args, 'depth', 'standard') as Depth) ?? 'standard',
+    profileArg: str(args, 'profile', 'auto') ?? 'auto',
+    out: str(args, 'out', 'AUDIT.md') ?? 'AUDIT.md',
+    failOn: (str(args, 'fail-on', 'none') ?? 'none').toLowerCase(),
+    quiet: bool(args, 'quiet'),
+  };
+}
+
+function validateAuditOptions(o: AuditCliOptions): string | null {
+  if (!DEPTHS.includes(o.depth)) return `--depth must be one of ${DEPTHS.join('|')}`;
+  if (o.profileArg !== 'auto' && !MATURITIES.includes(o.profileArg as Maturity)) {
+    return `--profile must be auto or one of ${MATURITIES.join('|')}`;
+  }
+  return null;
+}
+
 function cmdAudit(args: Args): number {
-  const target = (args._[1] as string | undefined) ?? '.';
-  const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
-  const depth = (str(args, 'depth', 'standard') as Depth) ?? 'standard';
-  const profileArg = str(args, 'profile', 'auto') ?? 'auto';
-  const out = str(args, 'out', 'AUDIT.md') ?? 'AUDIT.md';
-  const failOn = (str(args, 'fail-on', 'none') ?? 'none').toLowerCase();
-  const quiet = bool(args, 'quiet');
-
-  if (!DEPTHS.includes(depth)) {
-    console.error(`--depth must be one of ${DEPTHS.join('|')}`);
-    return 2;
-  }
-  if (profileArg !== 'auto' && !MATURITIES.includes(profileArg as Maturity)) {
-    console.error(`--profile must be auto or one of ${MATURITIES.join('|')}`);
+  const o = readAuditOptions(args);
+  const invalid = validateAuditOptions(o);
+  if (invalid) {
+    console.error(invalid);
     return 2;
   }
 
-  if (!fs.existsSync(target)) {
-    console.error(`Target path does not exist: ${target}`);
+  if (!fs.existsSync(o.target)) {
+    console.error(`Target path does not exist: ${o.target}`);
     return 2;
   }
 
   let config;
   try {
-    config = loadConfig(target, str(args, 'config'));
+    config = loadConfig(o.target, str(args, 'config'));
   } catch (err) {
     console.error((err as Error).message);
     return 2;
@@ -141,10 +160,10 @@ function cmdAudit(args: Args): number {
   if (config.facts) config.facts = [...config.facts, ...list(args, 'fact')];
 
   const { report, warnings, profile } = runAudit({
-    target,
-    rulesDir,
-    depth,
-    profile: profileArg as Maturity | 'auto',
+    target: o.target,
+    rulesDir: o.rulesDir,
+    depth: o.depth,
+    profile: o.profileArg as Maturity | 'auto',
     config,
     allowCommands: bool(args, 'allow-commands'),
     usatVersion: VERSION,
@@ -155,14 +174,14 @@ function cmdAudit(args: Args): number {
   for (const w of warnings) console.error(`warning: ${w}`);
 
   const markdown = renderMarkdown(report, profile);
-  fs.writeFileSync(out, markdown, 'utf8');
+  fs.writeFileSync(o.out, markdown, 'utf8');
 
-  if (!quiet) {
+  if (!o.quiet) {
     console.log(summaryLine(report));
-    console.log(`  report → ${out}`);
+    console.log(`  report → ${o.out}`);
   }
 
-  return evaluateGate(report, failOn, quiet);
+  return evaluateGate(report, o.failOn, o.quiet);
 }
 
 function summaryLine(report: AuditReport): string {
@@ -193,14 +212,7 @@ function cmdDetect(args: Args): number {
     ...list(args, 'fact'),
     ...(config.facts ?? []),
   ]);
-  const grouped = new Map<string, string[]>();
-  for (const f of detection.facts.flags) {
-    const [ns, value] = f.split(':');
-    const key = value === undefined ? 'other' : ns!;
-    const list2 = grouped.get(key) ?? [];
-    list2.push(value === undefined ? f : value);
-    grouped.set(key, list2);
-  }
+  const grouped = groupFlagsByNamespace(detection.facts.flags);
   console.log(`# Detection: ${path.resolve(target)}`);
   console.log();
   console.log(`maturity: ${detection.maturity}`);
@@ -214,6 +226,18 @@ function cmdDetect(args: Args): number {
   console.log('maturity signals:');
   for (const s of detection.maturitySignals) console.log(`  ${s}`);
   return 0;
+}
+
+function groupFlagsByNamespace(flags: Iterable<string>): Map<string, string[]> {
+  const grouped = new Map<string, string[]>();
+  for (const f of flags) {
+    const [ns, value] = f.split(':');
+    const key = value === undefined ? 'other' : ns!;
+    const list2 = grouped.get(key) ?? [];
+    list2.push(value === undefined ? f : value);
+    grouped.set(key, list2);
+  }
+  return grouped;
 }
 
 /* ------------------------------------------------------------------ rules -- */
@@ -252,24 +276,32 @@ function cmdExplain(args: Args): number {
   for (const pack of packs) {
     const rule = pack.rules.find((r) => r.id.toLowerCase() === id.toLowerCase());
     if (!rule) continue;
-    console.log(`# ${rule.id} — ${rule.title}`);
-    console.log();
-    console.log(`pack      : ${pack.id}`);
-    console.log(`section   : ${rule.section} ${rule.sectionTitle ?? ''}`);
-    console.log(`severity  : ${rule.severity} (when violated)`);
-    console.log(`class     : ${rule.ruleClass}`);
-    console.log(`weight    : ${rule.weight ?? 'default'}`);
-    console.log(`depths    : ${rule.depths?.join(', ') ?? 'all'}`);
-    console.log(`check     : ${JSON.stringify(rule.check)}`);
-    if (rule.appliesWhen) console.log(`applies   : ${JSON.stringify(rule.appliesWhen)}`);
-    if (rule.why) console.log(`\nwhy:\n  ${rule.why}`);
-    if (rule.evidence) console.log(`\nevidence:\n  ${rule.evidence}`);
-    if (rule.remediation) console.log(`\nfix:\n  ${rule.remediation}`);
-    if (rule.references?.length) console.log(`\nreferences:\n  ${rule.references.join('\n  ')}`);
+    printRuleDetail(pack.id, rule);
     return 0;
   }
   console.error(`Rule not found: ${id}`);
   return 1;
+}
+
+function printRuleDetail(packId: string, rule: Rule): void {
+  console.log(`# ${rule.id} — ${rule.title}`);
+  console.log();
+  console.log(`pack      : ${packId}`);
+  console.log(`section   : ${rule.section} ${rule.sectionTitle ?? ''}`);
+  console.log(`severity  : ${rule.severity} (when violated)`);
+  console.log(`class     : ${rule.ruleClass}`);
+  console.log(`weight    : ${rule.weight ?? 'default'}`);
+  console.log(`depths    : ${rule.depths?.join(', ') ?? 'all'}`);
+  console.log(`check     : ${JSON.stringify(rule.check)}`);
+  printRuleOptional(rule);
+}
+
+function printRuleOptional(rule: Rule): void {
+  if (rule.appliesWhen) console.log(`applies   : ${JSON.stringify(rule.appliesWhen)}`);
+  if (rule.why) console.log(`\nwhy:\n  ${rule.why}`);
+  if (rule.evidence) console.log(`\nevidence:\n  ${rule.evidence}`);
+  if (rule.remediation) console.log(`\nfix:\n  ${rule.remediation}`);
+  if (rule.references?.length) console.log(`\nreferences:\n  ${rule.references.join('\n  ')}`);
 }
 
 /* ------------------------------------------------------------------- diff -- */

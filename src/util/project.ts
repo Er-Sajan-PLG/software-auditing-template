@@ -239,23 +239,27 @@ export class Project {
         continue;
       }
       for (const entry of entries) {
-        const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
-        const isDirectory = entry.isDirectory();
-        const relWithSlash = isDirectory ? `${rel}/` : rel;
-        if (rel === '.git') continue;
-        if (matchesAny(relWithSlash, this.ignores) || matchesAny(rel, this.ignores)) continue;
-        if (gitignore.some((g) => matchGitignore(g, rel, isDirectory))) continue;
-
-        if (isDirectory) {
-          this.dirCache.add(rel);
-          stack.push(rel);
-        } else if (entry.isFile()) {
-          this.dirCache.add(relDir);
-          this.files.push(rel);
-        }
+        this.visitEntry(entry, relDir, gitignore, stack);
       }
     }
     this.files.sort();
+  }
+
+  private visitEntry(entry: fs.Dirent, relDir: string, gitignore: string[], stack: string[]): void {
+    const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
+    const isDirectory = entry.isDirectory();
+    const relWithSlash = isDirectory ? `${rel}/` : rel;
+    if (rel === '.git') return;
+    if (matchesAny(relWithSlash, this.ignores) || matchesAny(rel, this.ignores)) return;
+    if (gitignore.some((g) => matchGitignore(g, rel, isDirectory))) return;
+
+    if (isDirectory) {
+      this.dirCache.add(rel);
+      stack.push(rel);
+    } else if (entry.isFile()) {
+      this.dirCache.add(relDir);
+      this.files.push(rel);
+    }
   }
 
   /* -------------------------------------------------------------- queries -- */
@@ -333,30 +337,37 @@ export class Project {
    * empty every indexed file is scanned.
    */
   grep(pattern: string, include: string[], exclude: string[] = [], flags = ''): GrepHit[] {
-    let re: RegExp;
-    try {
-      re = new RegExp(pattern, flags.includes('i') ? 'i' : '');
-    } catch {
-      return []; // invalid pattern in a rule pack — degrade, never crash
-    }
+    const re = compileGrepPattern(pattern, flags);
+    if (!re) return [];
     const targets = include.length > 0 ? this.glob(include) : this.files;
     const hits: GrepHit[] = [];
     for (const file of targets) {
-      if (exclude.length > 0 && matchesAny(file, exclude)) continue;
-      if (matchesAny(file, GREP_SKIP)) continue;
-      const text = this.read(file);
-      if (text === null) continue;
-      const lines = text.split(/\r?\n/);
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]!;
-        if (re.test(line)) {
-          hits.push({ file, line: i + 1, excerpt: truncate(line.trim(), 220) });
-          if (hits.length >= 500) return hits; // bounded output
-        }
-        if (!flags.includes('m')) re.lastIndex = 0;
-      }
+      this.grepFile(re, file, exclude, flags, hits);
+      if (hits.length >= 500) return hits; // bounded output
     }
     return hits;
+  }
+
+  private grepFile(
+    re: RegExp,
+    file: string,
+    exclude: string[],
+    flags: string,
+    hits: GrepHit[],
+  ): void {
+    if (exclude.length > 0 && matchesAny(file, exclude)) return;
+    if (matchesAny(file, GREP_SKIP)) return;
+    const text = this.read(file);
+    if (text === null) return;
+    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!;
+      if (re.test(line)) {
+        hits.push({ file, line: i + 1, excerpt: truncate(line.trim(), 220) });
+        if (hits.length >= 500) return;
+      }
+      if (!flags.includes('m')) re.lastIndex = 0;
+    }
   }
 
   /* ------------------------------------------------------------------ git -- */
@@ -407,45 +418,61 @@ export class Project {
     if (!isRepo) {
       return { commits: 0, contributors: 0, tags: 0, branches: 0, isRepo: false };
     }
-    const run = (args: string[]): string | null => {
-      try {
-        return execFileSync('git', args, {
-          cwd: this.root,
-          encoding: 'utf8',
-          timeout: 10_000,
-          stdio: ['ignore', 'pipe', 'ignore'],
-        }).trim();
-      } catch {
-        return null;
-      }
-    };
+    return { ...this.gitIdentity(), ...this.gitStats(), isRepo: true };
+  }
 
-    const commit = run(['rev-parse', 'HEAD'])?.slice(0, 40) || undefined;
-    const ref = run(['rev-parse', '--abbrev-ref', 'HEAD']) || undefined;
-    const repoUrl = run(['remote', 'get-url', 'origin']) || undefined;
-    const commits = toInt(run(['rev-list', '--count', 'HEAD']));
-    const contributors = run(['shortlog', '-sn', '--all', 'HEAD'])
+  private gitRun(args: string[]): string | null {
+    try {
+      return execFileSync('git', args, {
+        cwd: this.root,
+        encoding: 'utf8',
+        timeout: 10_000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+    } catch {
+      return null;
+    }
+  }
+
+  private gitIdentity(): { commit?: string; ref?: string; repoUrl?: string } {
+    const commit = this.gitRun(['rev-parse', 'HEAD'])?.slice(0, 40) || undefined;
+    const ref = this.gitRun(['rev-parse', '--abbrev-ref', 'HEAD']) || undefined;
+    const repoUrl = this.gitRun(['remote', 'get-url', 'origin']) || undefined;
+    return { commit, ref, repoUrl };
+  }
+
+  private gitStats(): {
+    commits: number;
+    contributors: number;
+    tags: number;
+    branches: number;
+    daysSinceLastCommit?: number;
+  } {
+    const contributors = this.gitRun(['shortlog', '-sn', '--all', 'HEAD'])
       ?.split('\n')
       .filter(Boolean).length;
-    const tags = run(['tag', '--list'])?.split('\n').filter(Boolean).length ?? 0;
-    const branches = run(['branch', '--list'])?.split('\n').filter(Boolean).length ?? 0;
-    const lastTs = run(['log', '-1', '--format=%ct']);
+    const tags = this.gitRun(['tag', '--list'])?.split('\n').filter(Boolean).length ?? 0;
+    const branches = this.gitRun(['branch', '--list'])?.split('\n').filter(Boolean).length ?? 0;
+    const lastTs = this.gitRun(['log', '-1', '--format=%ct']);
     const daysSinceLastCommit =
       lastTs && /^\d+$/.test(lastTs)
         ? Math.floor((Date.now() / 1000 - Number(lastTs)) / 86400)
         : undefined;
-
     return {
-      commit,
-      ref,
-      repoUrl,
-      commits,
+      commits: toInt(this.gitRun(['rev-list', '--count', 'HEAD'])),
       contributors: contributors ?? 0,
       tags,
       branches,
       daysSinceLastCommit,
-      isRepo: true,
     };
+  }
+}
+
+function compileGrepPattern(pattern: string, flags: string): RegExp | null {
+  try {
+    return new RegExp(pattern, flags.includes('i') ? 'i' : '');
+  } catch {
+    return null; // invalid pattern in a rule pack — degrade, never crash
   }
 }
 
@@ -479,8 +506,22 @@ function toInt(s: string | null): number {
  * semantics are intentionally out of scope for an audit index.
  */
 function matchGitignore(pattern: string, rel: string, isDirectory: boolean): boolean {
+  const n = normalizeGitignorePattern(pattern);
+  if (!n) return false;
+  if (n.dirOnly && !isDirectory) return false;
+
+  const hit =
+    matchesGlob(rel, n.glob) ||
+    matchesGlob(`${rel}/**`, n.glob) ||
+    matchesGlob(rel, `${n.glob}/**`);
+  return n.negated ? false : hit;
+}
+
+function normalizeGitignorePattern(
+  pattern: string,
+): { glob: string; negated: boolean; dirOnly: boolean } | null {
   let p = pattern.trim();
-  if (!p || p.startsWith('#')) return false;
+  if (!p || p.startsWith('#')) return null;
   let negated = false;
   if (p.startsWith('!')) {
     negated = true;
@@ -488,16 +529,12 @@ function matchGitignore(pattern: string, rel: string, isDirectory: boolean): boo
   }
   const dirOnly = p.endsWith('/');
   if (dirOnly) p = p.slice(0, -1);
-  if (dirOnly && !isDirectory) return false;
 
   const anchored = p.includes('/');
   let glob = p;
   if (glob.startsWith('/')) glob = glob.slice(1);
   if (!anchored) glob = `**/${glob}`;
-
-  const hit =
-    matchesGlob(rel, glob) || matchesGlob(`${rel}/**`, glob) || matchesGlob(rel, `${glob}/**`);
-  return negated ? false : hit;
+  return { glob, negated, dirOnly };
 }
 
 function readGitignore(file: string): string[] {
@@ -519,53 +556,81 @@ function looksLikeText(rel: string): boolean {
   return TEXT_EXT.has(base.slice(dot).toLowerCase());
 }
 
+interface JsonStripState {
+  out: string;
+  inString: boolean;
+  inLineComment: boolean;
+  inBlockComment: boolean;
+}
+
 /** package.json / tsconfig.json style comments + trailing commas. */
 export function stripJsonComments(text: string): string {
-  let out = '';
-  let inString = false;
-  let inLineComment = false;
-  let inBlockComment = false;
+  const st: JsonStripState = {
+    out: '',
+    inString: false,
+    inLineComment: false,
+    inBlockComment: false,
+  };
   for (let i = 0; i < text.length; i++) {
-    const c = text[i]!;
-    const n = text[i + 1];
-    if (inLineComment) {
-      if (c === '\n') {
-        inLineComment = false;
-        out += c;
-      }
-      continue;
-    }
-    if (inBlockComment) {
-      if (c === '*' && n === '/') {
-        inBlockComment = false;
-        i++;
-      }
-      continue;
-    }
-    if (inString) {
-      out += c;
-      if (c === '\\') {
-        out += n ?? '';
-        i++;
-      } else if (c === '"') inString = false;
-      continue;
-    }
-    if (c === '"') {
-      inString = true;
-      out += c;
-      continue;
-    }
-    if (c === '/' && n === '/') {
-      inLineComment = true;
-      i++;
-      continue;
-    }
-    if (c === '/' && n === '*') {
-      inBlockComment = true;
-      i++;
-      continue;
-    }
-    out += c;
+    i = stripJsonChar(text, i, st);
   }
-  return out.replace(/,(\s*[}\]])/g, '$1');
+  return st.out.replace(/,(\s*[}\]])/g, '$1');
+}
+
+function stripJsonChar(text: string, i: number, st: JsonStripState): number {
+  const c = text[i]!;
+  const n = text[i + 1];
+  if (st.inLineComment) return endLineComment(c, i, st);
+  if (st.inBlockComment) return endBlockComment(c, n, i, st);
+  if (st.inString) return copyStringChar(c, n, i, st);
+  return startJsonToken(c, n, i, st);
+}
+
+function endLineComment(c: string, i: number, st: JsonStripState): number {
+  if (c === '\n') {
+    st.inLineComment = false;
+    st.out += c;
+  }
+  return i;
+}
+
+function endBlockComment(
+  c: string | undefined,
+  n: string | undefined,
+  i: number,
+  st: JsonStripState,
+): number {
+  if (c === '*' && n === '/') {
+    st.inBlockComment = false;
+    return i + 1;
+  }
+  return i;
+}
+
+function copyStringChar(c: string, n: string | undefined, i: number, st: JsonStripState): number {
+  st.out += c;
+  if (c === '\\') {
+    st.out += n ?? '';
+    return i + 1;
+  }
+  if (c === '"') st.inString = false;
+  return i;
+}
+
+function startJsonToken(c: string, n: string | undefined, i: number, st: JsonStripState): number {
+  if (c === '"') {
+    st.inString = true;
+    st.out += c;
+    return i;
+  }
+  if (c === '/' && n === '/') {
+    st.inLineComment = true;
+    return i + 1;
+  }
+  if (c === '/' && n === '*') {
+    st.inBlockComment = true;
+    return i + 1;
+  }
+  st.out += c;
+  return i;
 }

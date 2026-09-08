@@ -10,63 +10,61 @@ export function globToRegExp(glob: string): RegExp {
   const cached = GLOB_CACHE.get(glob);
   if (cached) return cached;
 
-  let re = '^';
-  let i = 0;
-  while (i < glob.length) {
-    const c = glob[i]!;
-    if (c === '*') {
-      if (glob[i + 1] === '*') {
-        // `**`
-        if (glob[i + 2] === '/') {
-          re += '(?:.*/)?';
-          i += 3;
-        } else {
-          re += '.*';
-          i += 2;
-        }
-      } else {
-        re += '[^/]*';
-        i += 1;
-      }
-      continue;
-    }
-    if (c === '?') {
-      re += '[^/]';
-      i += 1;
-      continue;
-    }
-    if (c === '{') {
-      const end = findClosing(glob, i, '{', '}');
-      if (end === -1) {
-        re += '\\{';
-        i += 1;
-        continue;
-      }
-      re += '(?:' + glob.slice(i + 1, end).replace(/,/g, '|') + ')';
-      i = end + 1;
-      continue;
-    }
-    if (c === '[') {
-      const end = findClosing(glob, i, '[', ']');
-      if (end === -1) {
-        re += '\\[';
-        i += 1;
-        continue;
-      }
-      let body = glob.slice(i + 1, end);
-      if (body.startsWith('!')) body = '^' + body.slice(1);
-      re += '[' + body + ']';
-      i = end + 1;
-      continue;
-    }
-    re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    i += 1;
-  }
-  re += '$';
-
-  const compiled = new RegExp(re);
+  const compiled = new RegExp(`^${translateGlob(glob)}$`);
   GLOB_CACHE.set(glob, compiled);
   return compiled;
+}
+
+interface GlobStep {
+  text: string;
+  next: number;
+}
+
+function translateGlob(glob: string): string {
+  let re = '';
+  let i = 0;
+  while (i < glob.length) {
+    const step =
+      matchStar(glob, i) ?? matchQuestion(glob, i) ?? matchBrace(glob, i) ?? matchBracket(glob, i);
+    if (step) {
+      re += step.text;
+      i = step.next;
+      continue;
+    }
+    re += glob[i]!.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    i += 1;
+  }
+  return re;
+}
+
+function matchStar(glob: string, i: number): GlobStep | null {
+  if (glob[i] !== '*') return null;
+  if (glob[i + 1] === '*') {
+    // `**`
+    if (glob[i + 2] === '/') return { text: '(?:.*/)?', next: i + 3 };
+    return { text: '.*', next: i + 2 };
+  }
+  return { text: '[^/]*', next: i + 1 };
+}
+
+function matchQuestion(glob: string, i: number): GlobStep | null {
+  return glob[i] === '?' ? { text: '[^/]', next: i + 1 } : null;
+}
+
+function matchBrace(glob: string, i: number): GlobStep | null {
+  if (glob[i] !== '{') return null;
+  const end = findClosing(glob, i, '{', '}');
+  if (end === -1) return { text: '\\{', next: i + 1 };
+  return { text: `(?:${glob.slice(i + 1, end).replace(/,/g, '|')})`, next: end + 1 };
+}
+
+function matchBracket(glob: string, i: number): GlobStep | null {
+  if (glob[i] !== '[') return null;
+  const end = findClosing(glob, i, '[', ']');
+  if (end === -1) return { text: '\\[', next: i + 1 };
+  let body = glob.slice(i + 1, end);
+  if (body.startsWith('!')) body = '^' + body.slice(1);
+  return { text: `[${body}]`, next: end + 1 };
 }
 
 function findClosing(s: string, start: number, open: string, close: string): number {
