@@ -1,0 +1,71 @@
+name: Rule request
+description: Suggest a new check for USAT
+title: '[RULE] short description'
+labels: ['rule-request', 'rules']
+body:
+  - type: textarea
+    id: check
+    attributes:
+      label: What should USAT check for?
+      description: One sentence, phrased as the desired state ("Tokens expire", not "Missing expiry").
+    validations:
+      required: true
+
+  - type: dropdown
+    id: section
+    attributes:
+      label: Which section?
+      options:
+        - S1 Repository & Project Structure
+        - S2 Security
+        - S3 Supply Chain & Build Provenance
+        - S4 Architecture & Design
+        - S5 Code Quality
+        - S6 Data & Database
+        - S7 Testing & Quality Assurance
+        - S8 CI/CD, Infrastructure & Observability
+        - S9 Release & Change Management
+        - S10 Dependencies & Third-Party
+        - S11 Performance & Resilience
+        - S12 Documentation & Knowledge
+        - S13 Accessibility, i18n & Compliance
+        - S14 AI / LLM-Era Risks
+        - S15 Platform-Specific
+        - S16 Future Readiness
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity if violated
+      options: [CRITICAL, HIGH, MEDIUM, LOW, FUTURE]
+    validations:
+      required: true
+
+  - type: textarea
+    id: detectable
+    attributes:
+      label: Can it be detected automatically?
+      description: >
+        If yes, describe the file/pattern that proves it. If not, say what a
+        reviewer would need to look at (then it becomes a `manual` rule in the
+        judgement queue).
+    validations:
+      required: true
+
+  - type: input
+    id: references
+    attributes:
+      label: Standards references
+      description: 'e.g. CWE-89, ASVS-5.3.4, SLSA-Build-L2, OWASP-LLM01:2026'
+    validations:
+      required: false
+
+  - type: textarea
+    id: false-positive
+    attributes:
+      label: When would this rule be wrong?
+      description: Legitimate code that would trip it. Be honest — this is what makes a rule usable.
+    validations:
+      required: false

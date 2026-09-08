@@ -1,32 +1,85 @@
 {
-  "name": "software-auditing-template",
-  "version": "0.1.0",
-  "description": "Software Auditing Template - A framework for automated software audits",
-  "main": "src/index.js",
+  "name": "usat",
+  "version": "1.0.0",
+  "description": "Universal Software Audit Template — an open-source, self-adapting audit framework for any project, any stack, any stage",
+  "license": "MIT",
   "type": "module",
-  "scripts": {
-    "lint": "eslint src/ tests/",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "build": "tsc",
-    "prepare": "husky install"
+  "bin": {
+    "usat": "./dist/cli.js"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./rules": "./rules/index.yaml"
+  },
+  "files": [
+    "dist",
+    "rules",
+    "templates",
+    "schema",
+    "docs",
+    "USAT.md",
+    "AGENTS.md",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "audit",
     "software-audit",
     "security-audit",
-    "code-review"
+    "code-audit",
+    "code-review",
+    "openssf",
+    "owasp-asvs",
+    "slsa",
+    "sast",
+    "agent",
+    "llm",
+    "template",
+    "tech-debt",
+    "quality-gate"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "eslint": "^8.56.0",
-    "vitest": "^1.2.0",
-    "typescript": "^5.3.0",
-    "@types/node": "^20.11.0",
-    "husky": "^9.0.0"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Er-Sajan-PLG/software-auditing-template.git"
   },
+  "bugs": {
+    "url": "https://github.com/Er-Sajan-PLG/software-auditing-template/issues"
+  },
+  "homepage": "https://github.com/Er-Sajan-PLG/software-auditing-template#readme",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "usat": "node --experimental-strip-types src/cli.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "self-audit": "npm run build && node dist/cli.js audit . --out AUDIT.md",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^3.2.7",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.2.7"
   }
 }

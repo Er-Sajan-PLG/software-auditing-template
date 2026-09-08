@@ -1,0 +1,129 @@
+id: stacks/rust
+title: Rust
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Rust is detected.'
+version: '1.0'
+skip_when: { fact: 'lang:rust', op: 'absent' }
+
+rules:
+  - id: RS-001
+    title: Cargo.toml declares edition and metadata
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: grep_present
+      pattern: 'edition\s*=\s*"20(18|21|24)"'
+      include: ['Cargo.toml']
+    why: 'Editions change semantics (especially 2018 module paths and 2024 closure capture). Without one you get 2015.'
+    remediation: 'Set `edition = "2021"` (or newer) and make sure CI builds with it.'
+    references: ['Rust-Editions']
+
+  - id: RS-002
+    title: No unwrap/expect in non-test code
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_wrong
+      pattern: '\.(unwrap|expect)\s*\(\s*\)|\.unwrap\(\)'
+      include: ['**/*.rs']
+      exclude: ['**/tests/**', '**/benches/**', '**/examples/**']
+    why: 'unwrap() is a panic wearing a convenience costume. Fine in tests, a crash in production.'
+    remediation: 'Propagate with ? and a typed error, or handle the None case explicitly.'
+    references: ['Rust-Error-Handling']
+
+  - id: RS-003
+    title: unsafe blocks are justified and minimal
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(unsafe\s*\{|#!\[allow\(unsafe_code\)\]|#\[allow\(unsafe_code\)\])'
+      include: ['**/*.rs']
+      exclude: ['**/tests/**']
+    why: 'unsafe is where Rust stops protecting you. Every block needs a comment stating the invariant it upholds.'
+    remediation: 'Wrap in a safe abstraction with a documented invariant; add a // SAFETY: comment per block.'
+    references: ['Rust-Nomicon', 'CWE-119']
+
+  - id: RS-004
+    title: Clippy runs in CI
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(cargo clippy|clippy)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Makefile',
+          'justfile',
+          'Taskfile.yml',
+        ]
+      flags: i
+    why: 'Clippy catches the idiomatic mistakes a compiler cannot: needless clones, wrong locks, incorrect casts.'
+    remediation: 'Add `cargo clippy -- -D warnings` to CI.'
+    references: ['Clippy']
+
+  - id: RS-005
+    title: No todo!/unimplemented! in shipped paths
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_wrong
+      pattern: '(todo!\s*\(|unimplemented!\s*\(|unreachable!\s*\()'
+      include: ['src/**/*.rs']
+      exclude: ['**/tests/**']
+    why: 'unreachable! that turns out to be reachable is an abort at runtime.'
+    remediation: 'Return a Result for the unfinished paths, or finish them before release.'
+    references: ['Rust-API-Guidelines']
+
+  - id: RS-006
+    title: Dependency audit runs in CI (cargo-audit / deny)
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(cargo-audit|cargo audit|cargo-deny|cargo deny|rustsec)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Makefile',
+          'justfile',
+        ]
+      flags: i
+    why: 'The RustSec advisory DB is the Rust equivalent of npm audit, and it is one CI step away.'
+    remediation: 'Add cargo-audit (advisories) and cargo-deny (licenses/bans) to CI.'
+    references: ['RustSec', 'SLSA']
+
+  - id: RS-007
+    title: Release builds are optimised and stripped
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: performance
+    applies_when: { fact: 'project:cli' }
+    check:
+      kind: grep_present
+      pattern: '(strip\s*=\s*(true|"symbols"|"debuginfo")|opt-level\s*=\s*("?[23s]"?|"z")|lto\s*=\s*)'
+      include: ['Cargo.toml']
+    why: 'The default release profile leaves debug symbols in the binary — 5–10× larger for no benefit.'
+    remediation: 'Add a [profile.release] with lto = true, strip = true, and opt-level = "z" or 3.'
+    references: ['Cargo-Profiles']

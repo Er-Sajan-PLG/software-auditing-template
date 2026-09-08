@@ -1,0 +1,157 @@
+id: stacks/compliance
+title: Accessibility, i18n & Compliance
+section: S13
+section_title: Accessibility, i18n & Compliance
+description: >
+  Accessibility, internationalisation, and regulatory obligations. Most of
+  these are judgement calls — USAT records what it can and asks for evidence
+  on the rest.
+version: '1.0'
+skip_when: { fact: 'maturity:prototype' }
+
+rules:
+  - id: COMP-001
+    title: Interactive elements are keyboard accessible
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: MEDIUM
+    class: compliance
+    applies_when:
+      any:
+        - { fact: 'platform:web' }
+        - { fact: 'platform:mobile' }
+    check: { kind: manual }
+    evidence: 'Tab through the main flow: can you reach and operate everything? Is focus always visible?'
+    why: 'Keyboard access is table stakes for screen readers, motor impairments, and power users alike.'
+    remediation: 'Use native controls; never remove focus outlines without a replacement; test with keyboard only.'
+    references: ['WCAG-2.1.1', 'WCAG-2.4.7', 'EN-301-549']
+
+  - id: COMP-002
+    title: Form inputs have associated labels
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: MEDIUM
+    class: compliance
+    applies_when: { fact: 'platform:web' }
+    check: { kind: manual }
+    evidence: 'Every input has a <label for>, aria-label, or aria-labelledby — and placeholder alone does not count.'
+    why: 'Unlabelled inputs are unusable with a screen reader and are the most common WCAG failure.'
+    remediation: 'Associate label elements; add eslint-plugin-jsx-a11y to catch regressions.'
+    references: ['WCAG-3.3.2', 'WCAG-1.3.1']
+
+  - id: COMP-003
+    title: Colour contrast meets WCAG AA
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: MEDIUM
+    class: compliance
+    applies_when: { fact: 'platform:web' }
+    check: { kind: manual }
+    evidence: 'Contrast ratio for body text (≥4.5:1) and large text (≥3:1), including placeholder and disabled states.'
+    why: 'Low contrast is the most common accessibility defect and the easiest to fix.'
+    remediation: 'Run axe/Lighthouse; fix the reported contrast failures; check dark mode too.'
+    references: ['WCAG-1.4.3']
+
+  - id: COMP-004
+    title: Content is not hardcoded to one locale
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: MEDIUM
+    class: compliance
+    applies_when:
+      any:
+        - { fact: 'platform:web' }
+        - { fact: 'platform:mobile' }
+    check:
+      kind: grep_present
+      pattern: '(i18n|i18next|react-intl|vue-i18n|lingui|next-intl|Localizable|NSLocalizedString|intl\.|translations?/)'
+      include: ['**/*.{ts,tsx,js,jsx,vue,svelte,swift,kt,java,json,yaml,yml}']
+      exclude: ['**/node_modules/**', '**/Pods/**']
+      flags: i
+    why: 'Retrofitting i18n after launch means touching every string in the codebase.'
+    remediation: 'Extract user-facing strings now, even if you ship one language.'
+    references: ['WCAG-3.1.1', 'i18n-Best-Practices']
+
+  - id: COMP-005
+    title: Dates, numbers, and currencies are locale-aware
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: LOW
+    class: compliance
+    applies_when: { fact: 'practice:i18n' }
+    check: { kind: manual }
+    evidence: 'Formatting via Intl/ICU rather than string concatenation or a hardcoded MM/DD/YYYY.'
+    why: '13/01/2026 is a valid date in most of the world and a bug report in the US.'
+    remediation: 'Use Intl.DateTimeFormat / Intl.NumberFormat everywhere; store timestamps in UTC.'
+    references: ['WCAG-3.1.2', 'ICU']
+
+  - id: COMP-006
+    title: A privacy policy and terms exist and match reality
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: MEDIUM
+    class: compliance
+    applies_when:
+      any:
+        - { fact: 'has:pii' }
+        - { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Links to the live policy, and a check that it names the data you actually collect and the processors you actually use.'
+    why: 'A policy that does not match the code is worse than no policy: it is a documented misrepresentation.'
+    remediation: 'Generate the data inventory from your code, then write the policy to match it.'
+    references: ['GDPR-Art.13', 'CCPA']
+
+  - id: COMP-007
+    title: Data subject rights are implemented
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: HIGH
+    class: compliance
+    applies_when: { fact: 'has:pii' }
+    check: { kind: manual }
+    evidence: 'Working flows for access (export), erasure, and correction — and the response time SLA.'
+    why: 'GDPR/CCPA give you 30 days. Without a built flow, each request is an ad-hoc database operation.'
+    remediation: 'Build export and delete endpoints behind authentication; log the request and the completion.'
+    references: ['GDPR-Art.15', 'GDPR-Art.17', 'CCPA']
+
+  - id: COMP-008
+    title: Card data is kept out of scope
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: HIGH
+    class: compliance
+    applies_when: { fact: 'has:payments' }
+    check: { kind: manual }
+    evidence: 'Whether PAN/CVV ever touches your servers, or whether you use a hosted field / tokenisation (SAQ A/A-EP).'
+    why: 'Storing card data drags your entire infrastructure into PCI-DSS scope. Tokenisation removes it.'
+    remediation: 'Use provider-hosted fields or a tokenisation proxy; never log or store full card numbers.'
+    references: ['PCI-DSS-4.0', 'ASVS-8.3.1']
+
+  - id: COMP-009
+    title: Cookie / consent notice is compliant
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: MEDIUM
+    class: compliance
+    applies_when: { fact: 'platform:web' }
+    check: { kind: manual }
+    evidence: 'Consent is opt-in for non-essential cookies, is as easy to refuse as to accept, and is recorded.'
+    why: '"By using this site you agree" has not been valid consent in the EU since 2018.'
+    remediation: 'Add a consent manager that defaults to rejected and stores the choice per user.'
+    references: ['ePrivacy', 'GDPR-Art.7']
+
+  - id: COMP-010
+    title: Source files carry an SPDX license identifier
+    section: S13
+    section_title: Accessibility, i18n & Compliance
+    severity: LOW
+    class: compliance
+    applies_when: { fact: 'project:library' }
+    check:
+      kind: grep_present
+      pattern: '(SPDX-License-Identifier|@license)'
+      include: ['**/*.{ts,js,py,go,rs,java,kt,c,h,css}']
+      exclude: ['**/node_modules/**']
+    why: 'Machine-readable licensing is what lets consumers automate compliance — and it costs one line per file.'
+    remediation: 'Add `// SPDX-License-Identifier: MIT` headers; enforce with a lint rule (REUSE).'
+    references: ['SPDX', 'REUSE-Spec']

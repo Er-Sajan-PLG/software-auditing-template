@@ -1,0 +1,15 @@
+# Gitleaks configuration.
+#
+# `examples/demo-app` is a deliberately vulnerable sample project: it exists so
+# that examples/sample-report.md can show what a bad audit report looks like.
+# The credentials in it are fake by construction (the string "not_real" is in
+# the value), but they are shaped exactly like real ones, which is the point —
+# a scanner that cannot see them is a scanner that would miss the real thing.
+#
+# Please do not "fix" the demo app by removing the defects; that is the product.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deliberately vulnerable demo app used to generate examples/sample-report.md"
+paths = ['''examples/demo-app/.*''']

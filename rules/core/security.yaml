@@ -1,0 +1,446 @@
+id: core/security
+title: Security
+section: S2
+section_title: Security
+description: >
+  Universal security baseline. Severity is never dampened here below CRITICAL,
+  and security-class rules carry the heaviest multiplier in the score.
+  USAT is not a penetration test — it finds the doors that were left open.
+version: '1.0'
+
+rules:
+  # ---------------------------------------------------------------- secrets
+  - id: SEC-001
+    title: No hardcoded credentials in source
+    section: S2
+    section_title: Security
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(api[_-]?key|apikey|secret|password|passwd|access[_-]?token|private[_-]?key|client[_-]?secret)\s*[:=]\s*[''"`][A-Za-z0-9._/+_-]{12,}[''"`]'
+      include:
+        [
+          '**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,swift,rb,php,c,cpp,cs,scala,ex,exs,dart,sh,yml,yaml,toml,ini,conf,env}',
+        ]
+      exclude:
+        [
+          '**/*.test.*',
+          '**/*.spec.*',
+          '**/test/**',
+          '**/tests/**',
+          '**/fixtures/**',
+          '**/*.example',
+          '**/*.md',
+          '**/docs/**',
+        ]
+      flags: i
+    why: 'Hardcoded credentials leak through every clone, fork, and CI log. Rotation after exposure is mandatory, not optional.'
+    remediation: 'Move to environment variables backed by a secret manager; rotate anything that was ever committed.'
+    references: ['CWE-798', 'ASVS-2.10.4', 'OWASP-A02:2021']
+
+  - id: SEC-002
+    title: Sensitive data is not written to logs
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(console\.(log|info|debug|warn|error)|print\(|logger\.(info|debug|warn|error)|log\.(Info|Debug|Warn|Error))\s*\(.*(password|passwd|secret|token|api[_-]?key|authorization|ssn|credit[_-]?card)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**']
+      flags: i
+    why: 'Logs are replicated, shipped, indexed, and retained longer than the data itself. A password in a log is a password in five systems.'
+    remediation: 'Log identifiers, not values. Add a redaction filter on the logging pipeline for known sensitive keys.'
+    references: ['CWE-532', 'ASVS-7.1.1', 'OWASP-A09:2021']
+
+  # ------------------------------------------------------------ transport
+  - id: SEC-003
+    title: No plaintext HTTP endpoints in configuration
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'platform:server' }
+        - { fact: 'platform:web' }
+        - { fact: 'has:containers' }
+    check:
+      kind: grep_absent
+      pattern: 'https?://(?!localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])[a-z0-9.-]+'
+      include:
+        ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php,yml,yaml,json,toml,env,conf,nginx}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/README*', '**/*.md', '**/docs/**']
+      flags: i
+    why: 'An http:// URL to a real host means credentials and user data cross the network in the clear.'
+    remediation: 'Move every non-localhost URL to https://. Terminate TLS at the edge and keep it on internally too.'
+    references: ['CWE-319', 'ASVS-9.1.1']
+
+  - id: SEC-004
+    title: TLS verification is not disabled
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(rejectUnauthorized\s*:\s*false|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*[''"]?0|verify\s*=\s*False|InsecureSkipVerify\s*:\s*true|curl\s+.*-k\b|GIT_SSL_NO_VERIFY)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php,sh,yml,yaml,json}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**']
+      flags: i
+    why: 'Disabling certificate verification turns every TLS connection into plaintext with extra steps.'
+    remediation: 'Fix the certificate chain instead. If a proxy needs a custom CA, install that CA — do not disable verification.'
+    references: ['CWE-295', 'ASVS-9.2.3']
+
+  # -------------------------------------------------------------- injection
+  - id: SEC-005
+    title: SQL is not built by string concatenation
+    section: S2
+    section_title: Security
+    severity: CRITICAL
+    class: security
+    applies_when: { fact: 'has:database' }
+    check:
+      kind: grep_wrong
+      pattern: '(SELECT|INSERT INTO|UPDATE|DELETE FROM)\s+.*(\+\s*\w+|\$\{[^}]*\}|%s\b|"\s*\+|\.format\(|f[''"])'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/migrations/**', '**/*.sql']
+      flags: i
+    why: 'String-built SQL is the oldest and most reliable way to lose a database. Parameterise or use a query builder.'
+    remediation: 'Use parameterised queries ($1, ?, :name) or the ORM query API. Never interpolate user input into SQL text.'
+    references: ['CWE-89', 'ASVS-5.3.4', 'OWASP-A03:2021']
+
+  - id: SEC-006
+    title: No unsafe dynamic code execution
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '\b(eval\s*\(|new Function\s*\(|execSync\s*\(.*\$\{|exec\s*\(.*(req\.|params|body|input)|setTimeout\s*\(\s*[''"`])'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,php,rs}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**', '**/scripts/**']
+    why: 'eval and friends turn untrusted strings into executable code. Almost every RCE starts here.'
+    remediation: 'Replace with explicit parsing, a lookup table, or a sandboxed expression evaluator with a capability allowlist.'
+    references: ['CWE-95', 'ASVS-5.2.4']
+
+  - id: SEC-007
+    title: Shell commands are not built from user input
+    section: S2
+    section_title: Security
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(execSync|exec|spawn|system|subprocess\.(run|call|Popen)|os\.system|Runtime\.getRuntime\(\)\.exec)\s*\(.*(\$\{|%s|\+\s*\w+|f[''"]|\.format\()'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php,sh}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/scripts/**']
+    why: 'Command injection with user-controlled input is full remote code execution, usually unauthenticated.'
+    remediation: 'Use execFile with an argument array (no shell), or a library call. If unavoidable, allowlist the inputs.'
+    references: ['CWE-78', 'ASVS-5.3.8']
+
+  - id: SEC-008
+    title: User input is validated at a trust boundary
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_present
+      pattern: '(zod|joi|yup|valibot|superstruct|pydantic|marshmallow|cerberus|class-validator|go-playground/validator|validator\.js|ajv)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'Validation that lives in the UI is a suggestion. Server-side schema validation is the actual control.'
+    remediation: 'Define schemas at the edge (HTTP handler, queue consumer, CLI arg parser) and parse before use.'
+    references: ['CWE-20', 'ASVS-5.1.1', 'OWASP-A03:2021']
+
+  - id: SEC-009
+    title: Output is encoded rather than interpolated as HTML
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'platform:web' }
+        - { fact: 'fw:react' }
+        - { fact: 'fw:vue' }
+        - { fact: 'fw:svelte' }
+        - { fact: 'fw:next' }
+    check:
+      kind: grep_absent
+      pattern: '(dangerouslySetInnerHTML|innerHTML\s*=|v-html|\$\{.*\}\s*.*<script|document\.write\s*\()'
+      include: ['**/*.{ts,tsx,js,jsx,vue,svelte,html,php,rb}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+    why: 'Rendering untrusted strings as HTML is stored XSS. Frameworks do not save you if you opt out.'
+    remediation: 'Render as text. If HTML is genuinely required, sanitise with DOMPurify/server-side sanitiser first.'
+    references: ['CWE-79', 'ASVS-5.3.1', 'OWASP-A03:2021']
+
+  - id: SEC-010
+    title: Path traversal is prevented on filesystem access
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(fs\.(read|write|createReadStream|createWriteStream)|open\(|os\.path\.join|path\.join)\s*\(.*(req\.|params\.|query\.|body\.|input|\$\{)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/scripts/**', '**/tools/**']
+    why: '`../../etc/passwd` is still the single most reliable bug class in file-serving code.'
+    remediation: 'Resolve the path, then verify it is inside the intended base directory before touching the disk.'
+    references: ['CWE-22', 'ASVS-12.5.1']
+
+  # ------------------------------------------------------------------ auth
+  - id: SEC-011
+    title: Passwords use a modern adaptive hash
+    section: S2
+    section_title: Security
+    severity: CRITICAL
+    class: security
+    applies_when: { fact: 'has:crypto' }
+    check:
+      kind: grep_absent
+      pattern: '(createHash\s*\(\s*[''"]?(md5|sha1|sha256)|hashlib\.(md5|sha1|sha256)\s*\(|MessageDigest\.getInstance\(\s*[''"]?(MD5|SHA-1|SHA-256)|Digest::(MD5|SHA1)\b)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'A fast hash is a slow password check and a fast offline cracking job. GPUs do billions of SHA-256 per second.'
+    remediation: 'Use bcrypt (cost ≥12), scrypt, or argon2id. Never a plain digest, never reversible encryption.'
+    references: ['CWE-916', 'ASVS-2.4.1', 'OWASP-Password-Storage-Cheat-Sheet']
+
+  - id: SEC-012
+    title: Tokens and sessions expire
+    section: S2
+    section_title: Security
+    severity: MEDIUM
+    class: security
+    applies_when:
+      any:
+        - { fact: 'auth:jwt' }
+        - { fact: 'auth:session' }
+    check:
+      kind: grep_present
+      pattern: '(expiresIn|expire|maxAge|ttl|EXPIR|expires_at|refresh[_-]?token)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'A token that never expires is a permanent credential the moment it leaks.'
+    remediation: 'Short-lived access tokens (≤15 min) plus refresh tokens with rotation and server-side revocation.'
+    references: ['ASVS-3.3.1', 'ASVS-3.3.4']
+
+  - id: SEC-013
+    title: JWTs are not accepted with alg:none or unverified
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'auth:jwt' }
+    check:
+      kind: grep_absent
+      pattern: '(algorithms?\s*:\s*\[?\s*[''"]none|alg\s*:\s*[''"]none|jwt\.decode\s*\((?!.*verify)|verify\s*:\s*false|jwt\.verify\s*\(\s*[^,)]+\s*,\s*[''"]?)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'alg:none and unverified decode let anyone mint a token for any user.'
+    remediation: 'Always verify with an explicit algorithm allowlist: jwt.verify(token, secret, { algorithms: ["RS256"] }).'
+    references: ['CWE-347', 'ASVS-3.2.3']
+
+  - id: SEC-014
+    title: Failed authentication is rate limited
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'auth:jwt' }
+        - { fact: 'auth:session' }
+        - { fact: 'auth:oauth' }
+        - { fact: 'auth:apikey' }
+    check:
+      kind: grep_present
+      pattern: '(rate[_-]?limit|rateLimit|throttle|slowapi|express-rate-limit|@nestjs/throttler|tower.*limit|429)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,yml,yaml,conf,nginx}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'Without throttling, credential stuffing is just a for-loop with a wordlist.'
+    remediation: 'Rate-limit by IP and by account on all auth endpoints; add progressive backoff and lockout after N failures.'
+    references: ['CWE-307', 'ASVS-2.2.1']
+
+  - id: SEC-015
+    title: Authorization is enforced per request, not per route
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'auth:jwt' }
+        - { fact: 'auth:session' }
+        - { fact: 'auth:oauth' }
+        - { fact: 'has:database' }
+    check: { kind: manual }
+    why: >
+      Checking "is logged in" is not checking "may access THIS record". IDOR is
+      the most common authorization bug and no linter finds it.
+    evidence: 'For each data endpoint: file:line showing the ownership/permission check on the requested resource ID.'
+    remediation: "Centralise authorisation in middleware or a policy layer; test with a second user attempting to read the first user's records."
+    references: ['CWE-639', 'ASVS-4.2.1', 'OWASP-A01:2021']
+
+  - id: SEC-016
+    title: Secrets come from a manager in production
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    why: >-
+      Env files and CI variables are readable by everyone who can deploy. A secret manager adds rotation, audit, and revocation.
+    evidence: 'Deployment configuration showing secret injection (Vault, AWS/GCP Secrets Manager, Doppler, platform secrets).'
+    remediation: 'Move runtime secrets out of env files into a managed secret store with audit logging and rotation.'
+    references: ['ASVS-14.3.3', 'NIST-SSDF-PO.3']
+
+  # ------------------------------------------------------------- transports
+  - id: SEC-017
+    title: CORS is not a wildcard
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'project:api' }
+        - { fact: 'platform:server' }
+    check:
+      kind: grep_absent
+      pattern: '(?:"|\s)(Access-Control-Allow-Origin|origin)\s*[:=]\s*[''"]?\*[''"]?|cors\s*\(\s*\{\s*origin\s*:\s*[''"]\*'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,yml,yaml,json,conf,nginx}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: '`Access-Control-Allow-Origin: *` lets any site read authenticated responses from your API.'
+    remediation: 'Allowlist exact origins; only use * for genuinely public, unauthenticated assets.'
+    references: ['CWE-942', 'ASVS-14.5.3']
+
+  - id: SEC-018
+    title: Security headers are set
+    section: S2
+    section_title: Security
+    severity: MEDIUM
+    class: security
+    applies_when:
+      any:
+        - { fact: 'platform:web' }
+        - { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(helmet|Content-Security-Policy|Strict-Transport-Security|X-Frame-Options|X-Content-Type-Options|Referrer-Policy|Permissions-Policy)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,yml,yaml,json,conf,nginx,toml}']
+      flags: i
+    why: 'Four headers turn whole classes of browser attack off. They cost about six lines.'
+    remediation: 'Use helmet (Node) or equivalent; add HSTS (max-age ≥31536000; includeSubDomains), X-Content-Type-Options: nosniff, Referrer-Policy, and a CSP.'
+    references: ['ASVS-14.4.3', 'OWASP-Secure-Headers']
+
+  - id: SEC-019
+    title: CSRF protection for cookie-based sessions
+    section: S2
+    section_title: Security
+    severity: MEDIUM
+    class: security
+    applies_when: { fact: 'auth:session' }
+    check: { kind: manual }
+    why: >-
+      Without SameSite and a token, any site on the internet can submit forms as your logged-in users.
+    evidence: 'SameSite cookie attribute plus a CSRF token or double-submit check on every state-changing request.'
+    remediation: 'Set cookies SameSite=Lax (or Strict) and require a CSRF token on all non-GET requests.'
+    references: ['CWE-352', 'ASVS-4.2.2']
+
+  - id: SEC-020
+    title: Errors do not leak internals to clients
+    section: S2
+    section_title: Security
+    severity: MEDIUM
+    class: security
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_wrong
+      pattern: '(res\.(send|json|status)\s*\(.*\berr\.(stack|message)|\.stack\b.*(res|response)\.(send|json)|app\.use\(\s*\(err, req, res.*res\.send\(\s*err\.stack)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'Stack traces hand an attacker your file layout, framework versions, and sometimes connection strings.'
+    remediation: 'Return a generic error plus a correlation ID; log the detail server-side only.'
+    references: ['CWE-209', 'ASVS-7.4.1']
+
+  - id: SEC-021
+    title: Cryptographic randomness for tokens and IDs
+    section: S2
+    section_title: Security
+    severity: MEDIUM
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: 'Math\.random\s*\(\s*\)|random\.random\s*\(\s*\)|rand\.Intn\s*\(|new Random\s*\(\s*\)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt}']
+      exclude:
+        [
+          '**/*.test.*',
+          '**/*.spec.*',
+          '**/test/**',
+          '**/tests/**',
+          '**/benchmarks/**',
+          '**/__mocks__/**',
+        ]
+    why: 'Math.random and friends are predictable. Session tokens built from them are guessable.'
+    remediation: 'Use crypto.randomBytes / secrets.token_urlsafe / crypto/rand / SecureRandom for anything security-relevant.'
+    references: ['CWE-338', 'ASVS-6.3.1']
+
+  - id: SEC-022
+    title: Uploads are validated for type, size, and content
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'has:file-upload' }
+    check: { kind: manual }
+    why: >-
+      An upload endpoint that trusts the client's Content-Type is a remote code execution endpoint with extra steps.
+    evidence: 'Upload handler: allowed MIME allowlist, max size, and where the file is written (outside the web root).'
+    remediation: 'Allowlist extensions AND sniff content; cap size; store outside the served directory; serve from a separate origin.'
+    references: ['CWE-434', 'ASVS-12.5.2']
+
+  - id: SEC-023
+    title: PII is identified and protected at rest
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: compliance
+    applies_when: { fact: 'has:pii' }
+    check: { kind: manual }
+    why: >-
+      You cannot protect data you have not inventoried. And regulators start from the inventory, not the intent.
+    evidence: 'Data inventory listing PII fields, their storage location, encryption status, and retention period.'
+    remediation: 'Encrypt PII columns/tables at rest, restrict access by role, and set a retention/erasure schedule.'
+    references: ['GDPR-Art.32', 'ASVS-8.1.1', 'CWE-311']
+
+  - id: SEC-024
+    title: Secrets and PII are redacted in logs and telemetry
+    section: S2
+    section_title: Security
+    severity: MEDIUM
+    class: compliance
+    applies_when:
+      any:
+        - { fact: 'has:pii' }
+        - { fact: 'auth:jwt' }
+    check: { kind: manual }
+    why: >-
+      Logs outlive the systems that wrote them, get shipped to vendors, and are usually the least protected copy of your data.
+    evidence: 'Sample log lines showing that tokens, emails, and identifiers are masked or hashed.'
+    remediation: 'Add a serialiser that redacts a denylist of keys before writing; never log whole request bodies.'
+    references: ['CWE-532', 'GDPR-Art.5']

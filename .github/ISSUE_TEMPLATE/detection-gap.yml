@@ -1,0 +1,36 @@
+name: Detection gap
+description: USAT failed to notice a language, framework, or platform
+title: '[DETECT] USAT missed <technology>'
+labels: ['detection', 'rules']
+body:
+  - type: input
+    id: tech
+    attributes:
+      label: What was not detected?
+      placeholder: Bun, Svelte 5, Deno, Bazel…
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What in the project proves it is in use?
+      description: 'A file path, a manifest key, or an import. e.g. `bun.lockb`, `dependencies.svelte`.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: What rules should have activated because of it?
+      description: Which packs/checks were skipped as a result?
+    validations:
+      required: false
+
+  - type: textarea
+    id: counter
+    attributes:
+      label: What would cause a false detection?
+      description: Where else does that same file or pattern legitimately appear?
+    validations:
+      required: false

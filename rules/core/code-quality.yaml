@@ -1,0 +1,261 @@
+id: core/code-quality
+title: Code Quality
+section: S5
+section_title: Code Quality
+description: >
+  Linting, typing, error handling, and logging hygiene. These are the rules
+  an agent should be able to settle without asking a human — most of them are
+  answered by looking for a config file.
+version: '1.0'
+
+rules:
+  - id: CQ-001
+    title: A linter is configured
+    section: S5
+    section_title: Code Quality
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: any_file
+      patterns:
+        - '.eslintrc*'
+        - 'eslint.config.*'
+        - 'biome.json*'
+        - '.ruff.toml'
+        - 'ruff.toml'
+        - '.flake8'
+        - 'setup.cfg'
+        - '.pylintrc'
+        - 'pyproject.toml'
+        - '.golangci*'
+        - 'clippy.toml'
+        - '.rustfmt.toml'
+        - 'rustfmt.toml'
+        - '.rubocop.yml'
+        - 'phpcs.xml*'
+        - 'detekt.yml'
+        - '.swiftlint.yml'
+    why: 'Style arguments in review are a tax on every pull request. Automate them and argue about design instead.'
+    remediation: 'Add the standard linter for your stack, start with its recommended config, fix what it finds.'
+    references: ['NIST-SSDF-PW.7']
+
+  - id: CQ-002
+    title: A formatter is configured
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: style
+    check:
+      kind: any_file
+      patterns:
+        [
+          '.prettierrc*',
+          'prettier.config.*',
+          'biome.json*',
+          '.editorconfig',
+          '.rustfmt.toml',
+          'rustfmt.toml',
+          '.clang-format',
+          'pyproject.toml',
+          '.gofmt*',
+        ]
+    why: 'Formatting diffs hide real changes. Let a tool own it.'
+    remediation: 'Prettier/Black/gofmt/rustfmt — pick the default config and stop discussing it.'
+    references: ['NIST-SSDF-PW.7']
+
+  - id: CQ-003
+    title: Type checking is enabled and strict
+    section: S5
+    section_title: Code Quality
+    severity: MEDIUM
+    class: correctness
+    applies_when:
+      any:
+        - { fact: 'lang:typescript' }
+        - { fact: 'lang:python' }
+    check:
+      kind: grep_present
+      pattern: '("strict"\s*:\s*true|strict\s*=\s*true|\[tool\.mypy\]|\[tool\.pyright\]|noImplicitAny|disallow_untyped_defs)'
+      include:
+        [
+          'tsconfig.json',
+          'tsconfig.*.json',
+          'pyproject.toml',
+          'setup.cfg',
+          'mypy.ini',
+          '.mypy.ini',
+          'pyrightconfig.json',
+        ]
+      flags: i
+    why: 'Types are the cheapest tests you will ever write. Lenient mode is types with the batteries removed.'
+    remediation: 'TypeScript: "strict": true. Python: mypy or pyright with strict settings on new modules.'
+    references: ['ISO-5055']
+
+  - id: CQ-004
+    title: Type escapes are not used as a default
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: maintainability
+    applies_when: { fact: 'lang:typescript' }
+    check:
+      kind: grep_absent
+      pattern: '(@ts-ignore|@ts-expect-error|:\s*any\b|\bas any\b|as unknown as)'
+      include: ['**/*.{ts,tsx}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/*.d.ts']
+    why: 'Every `any` is a place the type system was told to stop helping. A few are fine; a pattern is a problem.'
+    remediation: 'Type the boundary properly, or narrow with a type guard. Delete stale @ts-ignore comments.'
+    references: ['ISO-5055']
+
+  - id: CQ-005
+    title: Errors are handled, not swallowed
+    section: S5
+    section_title: Code Quality
+    severity: HIGH
+    class: correctness
+    check:
+      kind: grep_absent
+      pattern: '(catch\s*\(\s*\w*\s*\)\s*\{\s*\}|except\s*:\s*(pass|\.\.\.)\s*$|catch\s*\{\s*\}|rescue\s*\n\s*end)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php,cs}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'An empty catch block converts a failure into a mystery. The bug report you get six weeks later will be useless.'
+    remediation: 'Log with context and either handle it or re-throw. If it is genuinely ignorable, say why in a comment.'
+    references: ['CWE-390', 'ASVS-7.4.1']
+
+  - id: CQ-006
+    title: There is a central error handler
+    section: S5
+    section_title: Code Quality
+    severity: MEDIUM
+    class: correctness
+    applies_when:
+      any:
+        - { fact: 'platform:server' }
+        - { fact: 'platform:web' }
+    check:
+      kind: grep_present
+      pattern: '(ErrorBoundary|errorHandler|error_handler|@ControllerAdvice|ExceptionHandler|app\.use\(\s*\(\s*err|onerror|useErrorBoundary|Sentry\.(captureException|init))'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+    why: 'Without a top-level handler, an unhandled rejection is a white screen or a dropped request.'
+    remediation: 'Add a framework-level error handler and an ErrorBoundary (React); report to your error tracker.'
+    references: ['ASVS-7.4.1']
+
+  - id: CQ-007
+    title: Logging is structured and levelled
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: operations
+    applies_when:
+      any:
+        - { fact: 'platform:server' }
+        - { fact: 'project:cli' }
+    check:
+      kind: manual
+    why: >-
+      Unstructured logs cannot be queried, alerted on, or correlated. At 3am, grep is not a strategy.
+    evidence: 'Sample log output: JSON or key=value, with DEBUG/INFO/WARN/ERROR used consistently.'
+    remediation: 'Emit JSON logs with a timestamp, level, message, and structured fields. Never log a bare concatenated string.'
+    references: ['OpenTelemetry-Logs', 'ASVS-7.1.1']
+
+  - id: CQ-008
+    title: Requests carry a correlation/trace ID
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: operations
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(correlation[_-]?id|request[_-]?id|trace[_-]?id|x-request-id|traceId|requestId|traceContext)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'Without a request ID, debugging a production incident means grepping 40 million lines and praying.'
+    remediation: 'Generate an ID per request, put it in every log line and in the response header.'
+    references: ['OpenTelemetry', 'W3C-Trace-Context']
+
+  - id: CQ-009
+    title: Debug statements are not left in production paths
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: style
+    applies_when:
+      not: { fact: 'project:cli' }
+    check:
+      kind: grep_absent
+      pattern: '(console\.(log|debug|info)\s*\(|print\s*\(\s*[''"]DEBUG|pdb\.set_trace|debugger\s*;|var_dump\s*\()'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,php,rb,go,rs,java,kt}']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/scripts/**', '**/tools/**', '**/debug/**']
+    why: 'Stray debug output is noise at best and a data leak at worst.'
+    remediation: 'Use the project logger, or delete the line. Add a lint rule to keep it out.'
+    references: ['CWE-532']
+
+  - id: CQ-010
+    title: TODO/FIXME debt is tracked, not just annotated
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: maintainability
+    check:
+      kind: grep_wrong
+      pattern: '(TODO|FIXME|XXX|HACK|WORKAROUND)\b'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php,cs,yml,yaml}']
+      exclude: ['**/*.md', '**/docs/**', '**/node_modules/**']
+    why: 'A TODO with no owner and no ticket is a lie the codebase tells itself.'
+    remediation: 'Convert each one to a tracked issue with a link in the comment, or delete it if it no longer applies.'
+
+  - id: CQ-011
+    title: Functions do one thing
+    section: S5
+    section_title: Code Quality
+    severity: LOW
+    class: maintainability
+    depths: [deep]
+    check: { kind: manual }
+    why: >-
+      A function that needs "and" to describe is two functions. Long functions hide branches nobody tests.
+    evidence: 'Three representative functions over ~60 lines: can each be described in one sentence?'
+    remediation: 'Extract until each function reads as a single step at the current level of abstraction.'
+    references: ['Clean-Code', 'ISO-5055']
+
+  - id: CQ-012
+    title: Duplicated logic has been consolidated
+    section: S5
+    section_title: Code Quality
+    severity: MEDIUM
+    class: maintainability
+    depths: [deep]
+    check: { kind: manual }
+    evidence: 'Output of a duplication checker (jscpd, PMD CPD, sonar) — and the top three duplicates by size.'
+    why: 'Every copy is a place a bug fix will not reach.'
+    remediation: 'Extract the shared logic; accept duplication only when the two copies are expected to diverge.'
+    references: ['ISO-5055', 'Anti-pattern:Shotgun-Surgery']
+
+  - id: CQ-013
+    title: Complexity is measured
+    section: S5
+    section_title: Code Quality
+    severity: FUTURE
+    class: maintainability
+    depths: [deep]
+    check:
+      kind: grep_present
+      pattern: '(complexity|cyclomatic|radon|gocyclo|cognitive)'
+      include:
+        [
+          '**/.eslintrc*',
+          'eslint.config.*',
+          'pyproject.toml',
+          '.ruff.toml',
+          'setup.cfg',
+          '.golangci*',
+          'sonar-project.properties',
+        ]
+      flags: i
+    why: 'You cannot argue about complexity without a number.'
+    remediation: 'Enable an eslint complexity rule (≤10) or radon/gocyclo; report rather than hard-fail at first.'
+    references: ['ISO-5055']

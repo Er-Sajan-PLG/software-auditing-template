@@ -1,0 +1,41 @@
+# =============================================================================
+# USAT rule pack registry  (schema: usat-rules-index-v1)
+# -----------------------------------------------------------------------------
+# Each entry is a path (relative to this file) or { file, enabled }.
+# Packs self-select via `skip_when` / per-rule `applies_when`, so the list below
+# is just "what exists" — USAT decides "what applies" at audit time.
+# =============================================================================
+
+schema: usat-rules-index-v1
+
+packs:
+  # ---- universal: every project gets these ---------------------------------
+  - core/repo.yaml
+  - core/security.yaml
+  - core/supply-chain.yaml
+  - core/architecture.yaml
+  - core/code-quality.yaml
+  - core/testing.yaml
+  - core/cicd.yaml
+  - core/release.yaml
+  - core/dependencies.yaml
+  - core/documentation.yaml
+  - core/future-readiness.yaml
+
+  # ---- conditional: activated by detection ---------------------------------
+  - stacks/node-typescript.yaml
+  - stacks/python.yaml
+  - stacks/go.yaml
+  - stacks/rust.yaml
+  - stacks/jvm.yaml
+  - stacks/web-frontend.yaml
+  - stacks/mobile.yaml
+  - stacks/containers.yaml
+  - stacks/iac.yaml
+  - stacks/solidity.yaml
+  - stacks/ml-ai.yaml
+  - stacks/cli.yaml
+  - stacks/data.yaml
+  - stacks/api-backend.yaml
+  - stacks/compliance.yaml
+  - stacks/ai-era.yaml

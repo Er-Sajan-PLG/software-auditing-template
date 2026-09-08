@@ -1,0 +1,2226 @@
+# =============================================================================
+# USAT — Auto-detection signal registry  (schema: usat-detectors-v1)
+# -----------------------------------------------------------------------------
+# Every rule pack declares `applies_when` over the FACTS produced here, so
+# USAT "adapts to the project" purely by data. Add a signal, and every pack
+# that cares about it starts applying — no code change required.
+#
+# Fact namespaces
+#   lang:*       programming language present
+#   pm:*         package manager
+#   fw:*         framework / library
+#   project:*    project archetype
+#   platform:*   runtime platform
+#   db:*         datastore
+#   orm:*        data-access layer
+#   auth:*       authentication mechanism
+#   test:*       test tooling
+#   ci:*         CI provider
+#   infra:*      infrastructure tooling
+#   api:*        API style
+#   obs:*        observability
+#   ai:*         AI/LLM stack
+#   has:*        cross-cutting capability
+#   doc:*        documentation artefact
+#   practice:*   team practice
+#   maturity:*   lifecycle stage (computed)
+#
+# Match primitives (inside `match`)
+#   any_file:   [glob]                      at least one file matches
+#   file_exists:[path/glob]                 path present
+#   dir_exists: [path]                      directory present
+#   content:    {include: [glob], pattern}  regex found in matching files
+#   manifest:   {file, key, contains?}      dotted key resolves in JSON/TOML/YAML
+#   metric:     {name, min|max}             numeric fact comparison
+#   any_of / all_of                         boolean composition
+#   implies:    [fact]                      derived: all listed facts must hold
+# =============================================================================
+
+detectors:
+  # ------------------------------------------------------------------ language
+  - {
+      fact: 'lang:typescript',
+      category: language,
+      title: TypeScript,
+      match: { any_file: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'] },
+    }
+  - {
+      fact: 'lang:javascript',
+      category: language,
+      title: JavaScript,
+      match: { any_file: ['**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'] },
+    }
+  - {
+      fact: 'lang:python',
+      category: language,
+      title: Python,
+      match: { any_file: ['**/*.py', '**/*.pyi'] },
+    }
+  - { fact: 'lang:go', category: language, title: Go, match: { any_file: ['**/*.go'] } }
+  - { fact: 'lang:rust', category: language, title: Rust, match: { any_file: ['**/*.rs'] } }
+  - { fact: 'lang:java', category: language, title: Java, match: { any_file: ['**/*.java'] } }
+  - {
+      fact: 'lang:kotlin',
+      category: language,
+      title: Kotlin,
+      match: { any_file: ['**/*.kt', '**/*.kts'] },
+    }
+  - { fact: 'lang:swift', category: language, title: Swift, match: { any_file: ['**/*.swift'] } }
+  - { fact: 'lang:ruby', category: language, title: Ruby, match: { any_file: ['**/*.rb'] } }
+  - { fact: 'lang:php', category: language, title: PHP, match: { any_file: ['**/*.php'] } }
+  - { fact: 'lang:csharp', category: language, title: 'C#', match: { any_file: ['**/*.cs'] } }
+  - {
+      fact: 'lang:cpp',
+      category: language,
+      title: 'C/C++',
+      match: { any_file: ['**/*.c', '**/*.h', '**/*.cc', '**/*.cpp', '**/*.hpp'] },
+    }
+  - { fact: 'lang:scala', category: language, title: Scala, match: { any_file: ['**/*.scala'] } }
+  - { fact: 'lang:dart', category: language, title: Dart, match: { any_file: ['**/*.dart'] } }
+  - {
+      fact: 'lang:elixir',
+      category: language,
+      title: Elixir,
+      match: { any_file: ['**/*.ex', '**/*.exs'] },
+    }
+  - { fact: 'lang:lua', category: language, title: Lua, match: { any_file: ['**/*.lua'] } }
+  - { fact: 'lang:zig', category: language, title: Zig, match: { any_file: ['**/*.zig'] } }
+  - {
+      fact: 'lang:solidity',
+      category: language,
+      title: Solidity,
+      match: { any_file: ['**/*.sol'] },
+    }
+  - {
+      fact: 'lang:shell',
+      category: language,
+      title: Shell,
+      match: { any_file: ['**/*.sh', '**/*.bash'] },
+    }
+  - { fact: 'lang:haskell', category: language, title: Haskell, match: { any_file: ['**/*.hs'] } }
+
+  # ------------------------------------------------------------ package manager
+  - {
+      fact: 'pm:node',
+      category: pm,
+      title: 'Node (package.json)',
+      match: { file_exists: ['package.json'] },
+    }
+  - { fact: 'pm:npm', category: pm, title: npm, match: { file_exists: ['package-lock.json'] } }
+  - {
+      fact: 'pm:pnpm',
+      category: pm,
+      title: pnpm,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['pnpm-lock.yaml', 'pnpm-workspace.yaml'] },
+              { content: { include: ['package.json'], pattern: '"packageManager"\\s*:\\s*"pnpm' } },
+            ],
+        },
+    }
+  - {
+      fact: 'pm:yarn',
+      category: pm,
+      title: Yarn,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['yarn.lock', '.yarnrc.yml'] },
+              { content: { include: ['package.json'], pattern: '"packageManager"\\s*:\\s*"yarn' } },
+            ],
+        },
+    }
+  - {
+      fact: 'pm:bun',
+      category: pm,
+      title: Bun,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['bun.lockb', 'bun.lock'] },
+              { content: { include: ['package.json'], pattern: '"packageManager"\\s*:\\s*"bun' } },
+            ],
+        },
+    }
+  - {
+      fact: 'pm:pip',
+      category: pm,
+      title: pip,
+      match: { file_exists: ['requirements.txt', 'requirements-dev.txt'] },
+    }
+  - {
+      fact: 'pm:poetry',
+      category: pm,
+      title: Poetry,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['poetry.lock'] },
+              { content: { include: ['pyproject.toml'], pattern: '\\[tool\\.poetry\\]' } },
+            ],
+        },
+    }
+  - {
+      fact: 'pm:uv',
+      category: pm,
+      title: uv,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['uv.lock'] },
+              { content: { include: ['pyproject.toml'], pattern: '\\[tool\\.uv\\]' } },
+            ],
+        },
+    }
+  - { fact: 'pm:pipenv', category: pm, title: Pipenv, match: { file_exists: ['Pipfile'] } }
+  - { fact: 'pm:cargo', category: pm, title: Cargo, match: { file_exists: ['Cargo.toml'] } }
+  - { fact: 'pm:go-mod', category: pm, title: 'Go modules', match: { file_exists: ['go.mod'] } }
+  - { fact: 'pm:maven', category: pm, title: Maven, match: { file_exists: ['pom.xml'] } }
+  - {
+      fact: 'pm:gradle',
+      category: pm,
+      title: Gradle,
+      match:
+        {
+          any_file: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts'],
+        },
+    }
+  - {
+      fact: 'pm:composer',
+      category: pm,
+      title: Composer,
+      match: { file_exists: ['composer.json'] },
+    }
+  - {
+      fact: 'pm:nuget',
+      category: pm,
+      title: NuGet,
+      match: { any_file: ['*.csproj', '*.fsproj', 'packages.config'] },
+    }
+  - {
+      fact: 'pm:swiftpm',
+      category: pm,
+      title: 'SwiftPM',
+      match: { file_exists: ['Package.swift'] },
+    }
+  - { fact: 'pm:pub', category: pm, title: Pub, match: { file_exists: ['pubspec.yaml'] } }
+  - { fact: 'pm:mix', category: pm, title: Mix, match: { file_exists: ['mix.exs'] } }
+  - { fact: 'pm:foundry', category: pm, title: Foundry, match: { file_exists: ['foundry.toml'] } }
+  - { fact: 'pm:hardhat', category: pm, title: Hardhat, match: { any_file: ['hardhat.config.*'] } }
+
+  # --------------------------------------------------------------- web frontend
+  - {
+      fact: 'fw:react',
+      category: framework,
+      title: React,
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'dependencies.react' } },
+              { manifest: { file: 'package.json', key: 'devDependencies.react' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:vue',
+      category: framework,
+      title: Vue,
+      match: { manifest: { file: 'package.json', key: 'dependencies.vue' } },
+    }
+  - {
+      fact: 'fw:angular',
+      category: framework,
+      title: Angular,
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'dependencies.@angular/core' } },
+              { file_exists: ['angular.json'] },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:svelte',
+      category: framework,
+      title: Svelte,
+      match: { manifest: { file: 'package.json', key: 'dependencies.svelte' } },
+    }
+  - {
+      fact: 'fw:solid',
+      category: framework,
+      title: 'SolidJS',
+      match: { manifest: { file: 'package.json', key: 'dependencies.solid-js' } },
+    }
+  - {
+      fact: 'fw:next',
+      category: framework,
+      title: 'Next.js',
+      match:
+        {
+          any_of:
+            [
+              {
+                file_exists:
+                  ['next.config.js', 'next.config.mjs', 'next.config.ts', 'next.config.cjs'],
+              },
+              { manifest: { file: 'package.json', key: 'dependencies.next' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:nuxt',
+      category: framework,
+      title: Nuxt,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['nuxt.config.ts', 'nuxt.config.js'] },
+              { manifest: { file: 'package.json', key: 'dependencies.nuxt' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:remix',
+      category: framework,
+      title: Remix,
+      match: { manifest: { file: 'package.json', key: 'dependencies.@remix-run/node' } },
+    }
+  - {
+      fact: 'fw:sveltekit',
+      category: framework,
+      title: 'SvelteKit',
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['svelte.config.js'] },
+              { manifest: { file: 'package.json', key: 'dependencies.@sveltejs/kit' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:astro',
+      category: framework,
+      title: Astro,
+      match: { manifest: { file: 'package.json', key: 'dependencies.astro' } },
+    }
+  - {
+      fact: 'fw:vite',
+      category: framework,
+      title: Vite,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['vite.config.ts', 'vite.config.js', 'vite.config.mts'] },
+              { manifest: { file: 'package.json', key: 'devDependencies.vite' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:tailwind',
+      category: framework,
+      title: Tailwind CSS,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['tailwind.config.js', 'tailwind.config.ts'] },
+              { manifest: { file: 'package.json', key: 'devDependencies.tailwindcss' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:electron',
+      category: framework,
+      title: Electron,
+      match: { manifest: { file: 'package.json', key: 'devDependencies.electron' } },
+    }
+  - {
+      fact: 'fw:tauri',
+      category: framework,
+      title: Tauri,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['src-tauri'] },
+              { manifest: { file: 'package.json', key: 'dependencies.@tauri-apps/api' } },
+            ],
+        },
+    }
+
+  # ---------------------------------------------------------------- node backend
+  - {
+      fact: 'fw:express',
+      category: framework,
+      title: Express,
+      match: { manifest: { file: 'package.json', key: 'dependencies.express' } },
+    }
+  - {
+      fact: 'fw:fastify',
+      category: framework,
+      title: Fastify,
+      match: { manifest: { file: 'package.json', key: 'dependencies.fastify' } },
+    }
+  - {
+      fact: 'fw:nest',
+      category: framework,
+      title: NestJS,
+      match: { manifest: { file: 'package.json', key: 'dependencies.@nestjs/core' } },
+    }
+  - {
+      fact: 'fw:hono',
+      category: framework,
+      title: Hono,
+      match: { manifest: { file: 'package.json', key: 'dependencies.hono' } },
+    }
+  - {
+      fact: 'fw:koa',
+      category: framework,
+      title: Koa,
+      match: { manifest: { file: 'package.json', key: 'dependencies.koa' } },
+    }
+
+  # --------------------------------------------------------------------- python
+  - {
+      fact: 'fw:django',
+      category: framework,
+      title: Django,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['manage.py'] },
+              {
+                content:
+                  { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^django[=<>~]' },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:flask',
+      category: framework,
+      title: Flask,
+      match:
+        { content: { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^flask[=<>~]' } },
+    }
+  - {
+      fact: 'fw:fastapi',
+      category: framework,
+      title: FastAPI,
+      match:
+        {
+          content: { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^fastapi[=<>~]' },
+        },
+    }
+  - {
+      fact: 'fw:celery',
+      category: framework,
+      title: Celery,
+      match:
+        { content: { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^celery[=<>~]' } },
+    }
+  - {
+      fact: 'fw:airflow',
+      category: framework,
+      title: Airflow,
+      match:
+        {
+          content:
+            { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^apache-airflow[=<>~]' },
+        },
+    }
+  - {
+      fact: 'fw:streamlit',
+      category: framework,
+      title: Streamlit,
+      match:
+        {
+          content:
+            { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^streamlit[=<>~]' },
+        },
+    }
+
+  # ------------------------------------------------------------------------ go
+  - {
+      fact: 'fw:gin',
+      category: framework,
+      title: Gin,
+      match: { content: { include: ['go.mod'], pattern: 'gin-gonic/gin' } },
+    }
+  - {
+      fact: 'fw:echo',
+      category: framework,
+      title: Echo,
+      match: { content: { include: ['go.mod'], pattern: 'labstack/echo' } },
+    }
+  - {
+      fact: 'fw:fiber',
+      category: framework,
+      title: Fiber,
+      match: { content: { include: ['go.mod'], pattern: 'gofiber/fiber' } },
+    }
+  - {
+      fact: 'fw:chi',
+      category: framework,
+      title: Chi,
+      match: { content: { include: ['go.mod'], pattern: 'go-chi/chi' } },
+    }
+
+  # ---------------------------------------------------------------------- rust
+  - {
+      fact: 'fw:axum',
+      category: framework,
+      title: Axum,
+      match: { content: { include: ['Cargo.toml'], pattern: '^axum\\s*=' } },
+    }
+  - {
+      fact: 'fw:actix',
+      category: framework,
+      title: Actix,
+      match: { content: { include: ['Cargo.toml'], pattern: '^actix-web\\s*=' } },
+    }
+  - {
+      fact: 'fw:rocket',
+      category: framework,
+      title: Rocket,
+      match: { content: { include: ['Cargo.toml'], pattern: '^rocket\\s*=' } },
+    }
+
+  # ----------------------------------------------------------------- jvm / other
+  - {
+      fact: 'fw:spring',
+      category: framework,
+      title: Spring,
+      match:
+        {
+          any_of:
+            [
+              { content: { include: ['pom.xml', 'build.gradle*'], pattern: 'spring-boot' } },
+              { content: { include: ['**/*.java'], pattern: 'org\\.springframework' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:quarkus',
+      category: framework,
+      title: Quarkus,
+      match: { content: { include: ['pom.xml', 'build.gradle*'], pattern: 'quarkus' } },
+    }
+  - {
+      fact: 'fw:rails',
+      category: framework,
+      title: Rails,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['config/application.rb'] },
+              { content: { include: ['Gemfile'], pattern: 'gem [''"]rails[''"]' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:laravel',
+      category: framework,
+      title: Laravel,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['artisan'] },
+              { content: { include: ['composer.json'], pattern: 'laravel/framework' } },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:symfony',
+      category: framework,
+      title: Symfony,
+      match: { content: { include: ['composer.json'], pattern: 'symfony/framework-bundle' } },
+    }
+  - {
+      fact: 'fw:dotnet',
+      category: framework,
+      title: '.NET / ASP.NET',
+      match: { content: { include: ['**/*.csproj'], pattern: 'Microsoft\\.(NET|AspNetCore)' } },
+    }
+
+  # --------------------------------------------------------------------- mobile
+  - {
+      fact: 'fw:react-native',
+      category: framework,
+      title: 'React Native',
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'dependencies.react-native' } },
+              { file_exists: ['app.json'] },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:expo',
+      category: framework,
+      title: Expo,
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'dependencies.expo' } },
+              { file_exists: ['app.config.js', 'app.config.ts', 'expo.json'] },
+            ],
+        },
+    }
+  - {
+      fact: 'fw:flutter',
+      category: framework,
+      title: Flutter,
+      match: { any_of: [{ file_exists: ['pubspec.yaml'] }, { any_file: ['**/*.dart'] }] },
+    }
+  - {
+      fact: 'platform:ios',
+      category: platform,
+      title: iOS,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['ios', '*.xcodeproj'] },
+              { any_file: ['**/*.xcworkspace/**', '**/Info.plist', '**/*.pbxproj'] },
+            ],
+        },
+    }
+  - {
+      fact: 'platform:android',
+      category: platform,
+      title: Android,
+      match:
+        {
+          any_of:
+            [{ dir_exists: ['android'] }, { any_file: ['**/AndroidManifest.xml', '**/*.gradle'] }],
+        },
+    }
+  - { fact: 'platform:mobile', category: platform, title: Mobile, implies: ['platform:ios'] }
+  - { fact: 'platform:mobile', category: platform, title: Mobile, implies: ['platform:android'] }
+  - { fact: 'platform:mobile', category: platform, title: Mobile, implies: ['fw:react-native'] }
+  - { fact: 'platform:mobile', category: platform, title: Mobile, implies: ['fw:flutter'] }
+  - { fact: 'platform:mobile', category: platform, title: Mobile, implies: ['fw:expo'] }
+
+  # ------------------------------------------------------------------- platform
+  - {
+      fact: 'platform:web',
+      category: platform,
+      title: Web,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.html', '**/*.jsx', '**/*.tsx', '**/*.vue', '**/*.svelte'] },
+              { manifest: { file: 'package.json', key: 'dependencies.react' } },
+              { manifest: { file: 'package.json', key: 'dependencies.vue' } },
+            ],
+        },
+    }
+  - {
+      fact: 'platform:server',
+      category: platform,
+      title: Server,
+      match:
+        {
+          any_of:
+            [
+              {
+                file_exists:
+                  ['Dockerfile', 'Procfile', 'fly.toml', 'vercel.json', 'serverless.yml'],
+              },
+              { dir_exists: ['server', 'api', 'backend'] },
+            ],
+        },
+    }
+  - { fact: 'platform:desktop', category: platform, title: Desktop, implies: ['fw:electron'] }
+  - { fact: 'platform:desktop', category: platform, title: Desktop, implies: ['fw:tauri'] }
+  - {
+      fact: 'platform:evm',
+      category: platform,
+      title: 'EVM / Blockchain',
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.sol', '**/*.vy'] },
+              {
+                file_exists:
+                  ['foundry.toml', 'hardhat.config.js', 'hardhat.config.ts', 'truffle-config.js'],
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'platform:embedded',
+      category: platform,
+      title: Embedded,
+      match:
+        { any_of: [{ any_file: ['**/*.ino', '**/*.hex'] }, { file_exists: ['platformio.ini'] }] },
+    }
+
+  # ---------------------------------------------------------------------- types
+  - {
+      fact: 'project:library',
+      category: type,
+      title: 'Library / SDK',
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'main' } },
+              { manifest: { file: 'package.json', key: 'exports' } },
+              { manifest: { file: 'pyproject.toml', key: 'project.name' } },
+              { file_exists: ['setup.py', 'setup.cfg'] },
+            ],
+        },
+    }
+  - {
+      fact: 'project:cli',
+      category: type,
+      title: 'CLI tool',
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'bin' } },
+              { content: { include: ['pyproject.toml'], pattern: '\\[project\\.scripts\\]' } },
+              { dir_exists: ['cmd'] },
+            ],
+        },
+    }
+  - {
+      fact: 'project:monorepo',
+      category: type,
+      title: Monorepo,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['pnpm-workspace.yaml', 'turbo.json', 'nx.json', 'lerna.json'] },
+              { content: { include: ['package.json'], pattern: '"workspaces"\\s*:' } },
+              { dir_exists: ['packages', 'apps'] },
+            ],
+        },
+    }
+  - {
+      fact: 'project:api',
+      category: type,
+      title: 'API / service',
+      match:
+        {
+          any_of:
+            [
+              {
+                any_file: ['**/openapi.yaml', '**/openapi.json', '**/swagger.json', '**/*.graphql'],
+              },
+              { dir_exists: ['api', 'routes', 'handlers', 'controllers'] },
+            ],
+        },
+    }
+  - {
+      fact: 'project:ml',
+      category: type,
+      title: 'ML / AI system',
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['requirements*.txt', 'pyproject.toml', 'environment.yml'],
+                    pattern: '^(torch|tensorflow|scikit-learn|transformers|jax|keras|pandas|numpy)[=<>~]',
+                  },
+              },
+              { dir_exists: ['notebooks', 'models', 'checkpoints'] },
+              { any_file: ['**/*.ipynb'] },
+            ],
+        },
+    }
+  - {
+      fact: 'project:blockchain',
+      category: type,
+      title: 'Smart contracts',
+      implies: ['platform:evm'],
+    }
+  - {
+      fact: 'project:iac',
+      category: type,
+      title: 'IaC / DevOps tooling',
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.tf'] },
+              {
+                dir_exists: ['terraform', 'infra', 'infrastructure', 'charts', 'manifests', 'k8s'],
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'project:data-pipeline',
+      category: type,
+      title: 'Data pipeline / ETL',
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['dags', 'pipelines', 'etl'] },
+              {
+                content:
+                  {
+                    include: ['requirements*.txt', 'pyproject.toml'],
+                    pattern: '^(apache-airflow|dagster|prefect|luigi|dbt-core)[=<>~]',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'project:game',
+      category: type,
+      title: Game,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.unity', '**/*.godot', '**/*.tscn'] },
+              {
+                content:
+                  {
+                    include: ['package.json'],
+                    pattern: '"(phaser|three|babylonjs|pixi\\.js)"\\s*:',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'project:docs',
+      category: type,
+      title: 'Docs site',
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['docusaurus.config.js', 'mkdocs.yml', 'book.toml'] },
+              { dir_exists: ['docs'] },
+            ],
+        },
+    }
+
+  # ----------------------------------------------------------------- databases
+  - {
+      fact: 'db:postgres',
+      category: db,
+      title: PostgreSQL,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['**/*.{env,example,yml,yaml,toml,json,ts,js,py,go,rs}'],
+                    pattern: 'postgres(ql)?://',
+                  },
+              },
+              {
+                content:
+                  {
+                    include:
+                      [
+                        'requirements*.txt',
+                        'pyproject.toml',
+                        'package.json',
+                        'go.mod',
+                        'Cargo.toml',
+                      ],
+                    pattern: '(psycopg|pg|postgres|postgresql)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'db:mysql',
+      category: db,
+      title: MySQL/MariaDB,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['**/*.{env,example,yml,yaml,toml,json,ts,js,py,go}'],
+                    pattern: 'mysql://',
+                  },
+              },
+              {
+                content:
+                  {
+                    include: ['requirements*.txt', 'package.json', 'go.mod'],
+                    pattern: '(mysql2?|pymysql|mariadb)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'db:sqlite',
+      category: db,
+      title: SQLite,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.sqlite', '**/*.sqlite3', '**/*.db'] },
+              {
+                content:
+                  {
+                    include: ['requirements*.txt', 'package.json', 'go.mod', 'Cargo.toml'],
+                    pattern: '(sqlite3|better-sqlite3|sqlx.*sqlite)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'db:mongodb',
+      category: db,
+      title: MongoDB,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['**/*.{env,example,yml,yaml,ts,js,py}'],
+                    pattern: 'mongodb(\\+srv)?://',
+                  },
+              },
+              {
+                content:
+                  {
+                    include: ['package.json', 'requirements*.txt', 'go.mod'],
+                    pattern: '(mongoose|pymongo|mongo-driver)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'db:redis',
+      category: db,
+      title: Redis,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  { include: ['**/*.{env,example,yml,yaml,ts,js,py,go}'], pattern: 'redis://' },
+              },
+              {
+                content:
+                  {
+                    include: ['package.json', 'requirements*.txt', 'go.mod'],
+                    pattern: '(^|")(ioredis|redis|go-redis)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'db:clickhouse',
+      category: db,
+      title: ClickHouse,
+      match: { content: { include: ['**/*.{env,example,yml,yaml,py,go}'], pattern: 'clickhouse' } },
+    }
+  - {
+      fact: 'db:elasticsearch',
+      category: db,
+      title: Elasticsearch,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{env,example,yml,yaml,py,go,ts,js}'],
+              pattern: '(elasticsearch|opensearch)',
+            },
+        },
+    }
+  - {
+      fact: 'db:vector',
+      category: db,
+      title: 'Vector store',
+      match:
+        {
+          content:
+            {
+              include: ['package.json', 'requirements*.txt', 'pyproject.toml', 'go.mod'],
+              pattern: '(pgvector|pinecone|weaviate|qdrant|chromadb|milvus|faiss|lancedb)',
+            },
+        },
+    }
+  - {
+      fact: 'db:dynamodb',
+      category: db,
+      title: DynamoDB,
+      match: { content: { include: ['**/*.{ts,js,py,go,yml,yaml,json}'], pattern: 'dynamodb' } },
+    }
+  - {
+      fact: 'has:database',
+      category: db,
+      title: 'Uses a database',
+      match:
+        {
+          any_of:
+            [{ dir_exists: ['migrations', 'prisma', 'db', 'models'] }, { any_file: ['**/*.sql'] }],
+        },
+    }
+
+  - {
+      fact: 'orm:prisma',
+      category: orm,
+      title: Prisma,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['prisma'] },
+              { manifest: { file: 'package.json', key: 'dependencies.@prisma/client' } },
+            ],
+        },
+    }
+  - {
+      fact: 'orm:drizzle',
+      category: orm,
+      title: Drizzle,
+      match: { manifest: { file: 'package.json', key: 'dependencies.drizzle-orm' } },
+    }
+  - {
+      fact: 'orm:typeorm',
+      category: orm,
+      title: TypeORM,
+      match: { manifest: { file: 'package.json', key: 'dependencies.typeorm' } },
+    }
+  - {
+      fact: 'orm:sequelize',
+      category: orm,
+      title: Sequelize,
+      match: { manifest: { file: 'package.json', key: 'dependencies.sequelize' } },
+    }
+  - {
+      fact: 'orm:mongoose',
+      category: orm,
+      title: Mongoose,
+      match: { manifest: { file: 'package.json', key: 'dependencies.mongoose' } },
+    }
+  - {
+      fact: 'orm:sqlalchemy',
+      category: orm,
+      title: SQLAlchemy,
+      match:
+        {
+          content:
+            { include: ['requirements*.txt', 'pyproject.toml'], pattern: '^sqlalchemy[=<>~]' },
+        },
+    }
+  - {
+      fact: 'orm:gorm',
+      category: orm,
+      title: GORM,
+      match: { content: { include: ['go.mod'], pattern: 'gorm\\.io/gorm' } },
+    }
+  - {
+      fact: 'orm:sqlx',
+      category: orm,
+      title: SQLx,
+      match: { content: { include: ['Cargo.toml'], pattern: '^sqlx\\s*=' } },
+    }
+  - {
+      fact: 'orm:diesel',
+      category: orm,
+      title: Diesel,
+      match: { content: { include: ['Cargo.toml'], pattern: '^diesel\\s*=' } },
+    }
+  - {
+      fact: 'orm:hibernate',
+      category: orm,
+      title: Hibernate/JPA,
+      match:
+        {
+          content: { include: ['**/*.java'], pattern: 'javax\\.persistence|jakarta\\.persistence' },
+        },
+    }
+  - {
+      fact: 'orm:activerecord',
+      category: orm,
+      title: ActiveRecord,
+      match: { content: { include: ['**/*.rb'], pattern: 'ApplicationRecord' } },
+    }
+
+  # ------------------------------------------------------------------- auth
+  - {
+      fact: 'auth:jwt',
+      category: auth,
+      title: JWT,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['**/*.{ts,js,py,go,rs,java,kt}'],
+                    pattern: 'jsonwebtoken|jose|PyJWT|golang-jwt|json_web_token',
+                  },
+              },
+              { content: { include: ['**/*.{ts,js,py,go,rs}'], pattern: 'Bearer\\s' } },
+            ],
+        },
+    }
+  - {
+      fact: 'auth:oauth',
+      category: auth,
+      title: OAuth / OIDC,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,py,go,rs,java,yaml,yml,json}'],
+              pattern: 'oauth2?|openid|oidc',
+            },
+        },
+    }
+  - {
+      fact: 'auth:session',
+      category: auth,
+      title: Sessions / cookies,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,py,go,rs}'],
+              pattern: 'express-session|cookie-session|sessionMiddleware|SESSION_SECRET',
+            },
+        },
+    }
+  - {
+      fact: 'auth:apikey',
+      category: auth,
+      title: 'API keys',
+      match:
+        {
+          content:
+            { include: ['**/*.{ts,js,py,go,rs,env,example}'], pattern: 'API_KEY|X-API-Key|apiKey' },
+        },
+    }
+  - {
+      fact: 'auth:passport',
+      category: auth,
+      title: Passport.js,
+      match: { manifest: { file: 'package.json', key: 'dependencies.passport' } },
+    }
+  - {
+      fact: 'auth:nextauth',
+      category: auth,
+      title: Auth.js / NextAuth,
+      match:
+        {
+          any_of:
+            [
+              { manifest: { file: 'package.json', key: 'dependencies.next-auth' } },
+              { manifest: { file: 'package.json', key: 'dependencies.@auth/core' } },
+            ],
+        },
+    }
+  - {
+      fact: 'auth:supabase',
+      category: auth,
+      title: Supabase,
+      match: { manifest: { file: 'package.json', key: 'dependencies.@supabase/supabase-js' } },
+    }
+  - {
+      fact: 'auth:firebase',
+      category: auth,
+      title: Firebase Auth,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', '**/*.{ts,js,py}'],
+              pattern: 'firebase/auth|firebase-admin',
+            },
+        },
+    }
+  - {
+      fact: 'auth:auth0',
+      category: auth,
+      title: Auth0,
+      match: { content: { include: ['**/*.{ts,js,py,go,json,yml,yaml}'], pattern: 'auth0' } },
+    }
+
+  # ----------------------------------------------------------------- api style
+  - {
+      fact: 'api:graphql',
+      category: api,
+      title: GraphQL,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.graphql', '**/*.gql'] },
+              {
+                content:
+                  {
+                    include: ['package.json'],
+                    pattern: '"(graphql|apollo-server|@apollo/server)"\\s*:',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'api:grpc',
+      category: api,
+      title: gRPC,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.proto'] },
+              {
+                content:
+                  {
+                    include: ['package.json', 'go.mod', 'Cargo.toml', 'requirements*.txt'],
+                    pattern: '(grpc|tonic)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'api:trpc',
+      category: api,
+      title: tRPC,
+      match: { manifest: { file: 'package.json', key: 'dependencies.@trpc/server' } },
+    }
+  - {
+      fact: 'api:websocket',
+      category: api,
+      title: WebSockets,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', '**/*.{ts,js,py,go}'],
+              pattern: '(socket\\.io|\\bws\\b|websocket)',
+            },
+        },
+    }
+
+  # ------------------------------------------------------------------- testing
+  - {
+      fact: 'test:vitest',
+      category: test,
+      title: Vitest,
+      match: { manifest: { file: 'package.json', key: 'devDependencies.vitest' } },
+    }
+  - {
+      fact: 'test:jest',
+      category: test,
+      title: Jest,
+      match: { manifest: { file: 'package.json', key: 'devDependencies.jest' } },
+    }
+  - {
+      fact: 'test:mocha',
+      category: test,
+      title: Mocha,
+      match: { manifest: { file: 'package.json', key: 'devDependencies.mocha' } },
+    }
+  - {
+      fact: 'test:pytest',
+      category: test,
+      title: pytest,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  { include: ['pyproject.toml', 'requirements*.txt'], pattern: '^pytest[=<>~]' },
+              },
+              { any_file: ['**/test_*.py', '**/*_test.py'] },
+            ],
+        },
+    }
+  - { fact: 'test:gotest', category: test, title: 'go test', match: { any_file: ['**/*_test.go'] } }
+  - {
+      fact: 'test:cargotest',
+      category: test,
+      title: 'cargo test',
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.rs'] },
+              { content: { include: ['**/*.rs'], pattern: '#\\[test\\]' } },
+            ],
+        },
+    }
+  - {
+      fact: 'test:junit',
+      category: test,
+      title: JUnit,
+      match:
+        {
+          any_of:
+            [
+              { content: { include: ['**/*.java'], pattern: 'org\\.junit' } },
+              { content: { include: ['**/*.kt'], pattern: 'org\\.junit|io\\.kotest' } },
+            ],
+        },
+    }
+  - {
+      fact: 'test:rspec',
+      category: test,
+      title: RSpec,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*_spec.rb'] },
+              { content: { include: ['Gemfile'], pattern: 'gem [''"]rspec' } },
+            ],
+        },
+    }
+  - {
+      fact: 'test:phpunit',
+      category: test,
+      title: PHPUnit,
+      match: { content: { include: ['**/*.php'], pattern: 'PHPUnit' } },
+    }
+  - {
+      fact: 'test:playwright',
+      category: test,
+      title: Playwright,
+      match: { manifest: { file: 'package.json', key: 'devDependencies.@playwright/test' } },
+    }
+  - {
+      fact: 'test:cypress',
+      category: test,
+      title: Cypress,
+      match: { manifest: { file: 'package.json', key: 'devDependencies.cypress' } },
+    }
+  - {
+      fact: 'has:tests',
+      category: test,
+      title: 'Has tests',
+      match:
+        {
+          any_of:
+            [
+              {
+                any_file:
+                  [
+                    '**/*.test.ts',
+                    '**/*.test.js',
+                    '**/*.test.tsx',
+                    '**/*.test.jsx',
+                    '**/*.spec.ts',
+                    '**/*.spec.js',
+                    '**/test_*.py',
+                    '**/*_test.py',
+                    '**/*_test.go',
+                    '**/*_spec.rb',
+                    '**/*Test.java',
+                    '**/*Test.kt',
+                  ],
+              },
+              { dir_exists: ['tests', 'test', '__tests__', 'spec'] },
+            ],
+        },
+    }
+  - {
+      fact: 'has:e2e',
+      category: test,
+      title: 'Has E2E tests',
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['e2e', 'cypress', 'playwright'] },
+              { any_file: ['**/*.e2e.*', '**/*.cy.*', '**/*.spec.ts', '**/*.spec.js'] },
+            ],
+        },
+    }
+  - {
+      fact: 'has:perf-tests',
+      category: test,
+      title: 'Has performance tests',
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/*.perf.*', '**/*.bench.*', '**/*.load.*', '**/k6/**'] },
+              { dir_exists: ['benchmarks', 'perf', 'load-tests'] },
+            ],
+        },
+    }
+
+  # ----------------------------------------------------------------- tooling
+  - {
+      fact: 'has:lint',
+      category: tooling,
+      title: Linter configured,
+      match:
+        {
+          any_of:
+            [
+              {
+                any_file:
+                  [
+                    '**/.eslintrc*',
+                    'eslint.config.*',
+                    '.ruff.toml',
+                    '.flake8',
+                    '.pylintrc',
+                    'clippy.toml',
+                    '.golangci*',
+                  ],
+              },
+              {
+                content:
+                  {
+                    include: ['package.json', 'pyproject.toml'],
+                    pattern: '"(eslint|ruff|biome)"\\s*:|^\\[tool\\.(ruff|pylint)\\]',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'has:format',
+      category: tooling,
+      title: Formatter configured,
+      match:
+        {
+          any_of:
+            [
+              {
+                any_file:
+                  [
+                    '.prettierrc*',
+                    'prettier.config.*',
+                    '.rustfmt.toml',
+                    'rustfmt.toml',
+                    '.clang-format',
+                  ],
+              },
+              {
+                content:
+                  {
+                    include: ['package.json', 'pyproject.toml'],
+                    pattern: '"prettier"\\s*:|^\\[tool\\.black\\]',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'has:typecheck',
+      category: tooling,
+      title: Type checking,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['tsconfig.json'] },
+              { content: { include: ['package.json'], pattern: '"typescript"\\s*:' } },
+              { content: { include: ['pyproject.toml'], pattern: '^\\[tool\\.mypy\\]' } },
+            ],
+        },
+    }
+  - {
+      fact: 'has:precommit',
+      category: tooling,
+      title: Pre-commit hooks,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['.pre-commit-config.yaml', '.husky/pre-commit', 'lefthook.yml'] },
+              { manifest: { file: 'package.json', key: 'devDependencies.husky' } },
+            ],
+        },
+    }
+  - {
+      fact: 'has:dependabot',
+      category: tooling,
+      title: Dependabot,
+      match: { file_exists: ['.github/dependabot.yml'] },
+    }
+  - {
+      fact: 'has:renovate',
+      category: tooling,
+      title: Renovate,
+      match: { any_file: ['renovate.json*', '.github/renovate.json*', '.renovaterc*'] },
+    }
+  - {
+      fact: 'has:changesets',
+      category: tooling,
+      title: Changesets,
+      match: { dir_exists: ['.changeset'] },
+    }
+  - {
+      fact: 'has:release-automation',
+      category: tooling,
+      title: Release automation,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['.changeset'] },
+              {
+                content:
+                  {
+                    include: ['package.json', '.github/workflows/*.yml'],
+                    pattern: 'semantic-release',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'has:editorconfig',
+      category: tooling,
+      title: EditorConfig,
+      match: { file_exists: ['.editorconfig'] },
+    }
+  - {
+      fact: 'has:containers',
+      category: tooling,
+      title: Containers,
+      match:
+        {
+          any_of:
+            [
+              {
+                any_file:
+                  ['Dockerfile*', 'docker-compose*.yml', 'docker-compose*.yaml', 'compose.yaml'],
+              },
+              { dir_exists: ['.devcontainer'] },
+            ],
+        },
+    }
+  - {
+      fact: 'has:kubernetes',
+      category: tooling,
+      title: Kubernetes,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['**/*.yaml', '**/*.yml'],
+                    pattern: 'kind:\\s*(Deployment|Service|StatefulSet|CronJob)',
+                  },
+              },
+              { dir_exists: ['k8s', 'kube', 'manifests', 'charts'] },
+            ],
+        },
+    }
+  - {
+      fact: 'has:terraform',
+      category: tooling,
+      title: Terraform/OpenTofu,
+      match: { any_file: ['**/*.tf'] },
+    }
+  - {
+      fact: 'has:serverless',
+      category: tooling,
+      title: Serverless,
+      match:
+        {
+          any_file: ['serverless.yml', 'serverless.ts', 'vercel.json', 'netlify.toml', 'fly.toml'],
+        },
+    }
+  - {
+      fact: 'has:sbom',
+      category: tooling,
+      title: SBOM published,
+      match:
+        { any_file: ['**/sbom.*', '**/*sbom*.json', '**/*sbom*.xml', '.github/workflows/*sbom*'] },
+    }
+  - {
+      fact: 'has:secrets-scan',
+      category: tooling,
+      title: Secret scanning in CI,
+      match:
+        {
+          any_of:
+            [
+              { file_exists: ['.github/workflows/*secret*'] },
+              {
+                content:
+                  {
+                    include: ['.github/workflows/*.yml'],
+                    pattern: '(gitleaks|trufflehog|secret-scanning|detect-secrets)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'has:sast',
+      category: tooling,
+      title: SAST in CI,
+      match:
+        {
+          content:
+            {
+              include: ['.github/workflows/*.yml'],
+              pattern: '(codeql|semgrep|snyk|sonar|bandit|gosec|clippy-sarif|trivy)',
+            },
+        },
+    }
+  - {
+      fact: 'has:dep-scan',
+      category: tooling,
+      title: Dependency scanning,
+      match:
+        {
+          content:
+            {
+              include: ['.github/workflows/*.yml'],
+              pattern: '(npm audit|pnpm audit|pip-audit|osv-scanner|snyk test|trivy fs|dependabot|renovate|grype)',
+            },
+        },
+    }
+  - {
+      fact: 'has:codecov',
+      category: tooling,
+      title: Coverage tracking,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['.codecov.yml', 'codecov.yml', '.coveragerc'] },
+              {
+                content:
+                  { include: ['.github/workflows/*.yml'], pattern: 'codecov|coveralls|coverage' },
+              },
+            ],
+        },
+    }
+
+  # ------------------------------------------------------------------------ ci
+  - {
+      fact: 'ci:github-actions',
+      category: ci,
+      title: 'GitHub Actions',
+      match: { dir_exists: ['.github/workflows'] },
+    }
+  - {
+      fact: 'ci:gitlab',
+      category: ci,
+      title: 'GitLab CI',
+      match: { file_exists: ['.gitlab-ci.yml'] },
+    }
+  - { fact: 'ci:jenkins', category: ci, title: Jenkins, match: { file_exists: ['Jenkinsfile'] } }
+  - { fact: 'ci:circleci', category: ci, title: CircleCI, match: { dir_exists: ['.circleci'] } }
+  - {
+      fact: 'ci:buildkite',
+      category: ci,
+      title: Buildkite,
+      match: { file_exists: ['.buildkite/pipeline.yml'] },
+    }
+  - {
+      fact: 'ci:azure',
+      category: ci,
+      title: 'Azure Pipelines',
+      match: { file_exists: ['azure-pipelines.yml'] },
+    }
+  - { fact: 'has:ci', category: ci, title: 'Has CI', implies: ['ci:github-actions'] }
+  - { fact: 'has:ci', category: ci, title: 'Has CI', implies: ['ci:gitlab'] }
+  - { fact: 'has:ci', category: ci, title: 'Has CI', implies: ['ci:jenkins'] }
+  - { fact: 'has:ci', category: ci, title: 'Has CI', implies: ['ci:circleci'] }
+  - { fact: 'has:ci', category: ci, title: 'Has CI', implies: ['ci:buildkite'] }
+  - { fact: 'has:ci', category: ci, title: 'Has CI', implies: ['ci:azure'] }
+
+  # ----------------------------------------------------------- observability
+  - {
+      fact: 'obs:sentry',
+      category: obs,
+      title: Sentry,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', 'requirements*.txt', '**/*.{ts,js,py}'],
+              pattern: '@sentry/|sentry-sdk',
+            },
+        },
+    }
+  - {
+      fact: 'obs:otel',
+      category: obs,
+      title: OpenTelemetry,
+      match:
+        {
+          content:
+            {
+              include:
+                ['package.json', 'requirements*.txt', 'go.mod', 'Cargo.toml', '**/*.{ts,js,py,go}'],
+              pattern: 'opentelemetry',
+            },
+        },
+    }
+  - {
+      fact: 'obs:prometheus',
+      category: obs,
+      title: Prometheus,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/prometheus*.yml'] },
+              {
+                content:
+                  {
+                    include: ['package.json', 'go.mod'],
+                    pattern: 'prom-client|prometheus/client_golang',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'obs:datadog',
+      category: obs,
+      title: Datadog,
+      match:
+        { content: { include: ['**/*.{yml,yaml,json,ts,js,py}'], pattern: 'datadog|dd-trace' } },
+    }
+  - {
+      fact: 'obs:grafana',
+      category: obs,
+      title: Grafana,
+      match: { any_of: [{ dir_exists: ['grafana'] }, { any_file: ['**/grafana/**/*.json'] }] },
+    }
+  - {
+      fact: 'has:monitoring',
+      category: obs,
+      title: Monitoring configured,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['monitoring', 'observability', 'grafana'] },
+              {
+                content:
+                  {
+                    include: ['**/*.{yml,yaml,json}'],
+                    pattern: 'datadog|newrelic|grafana|prometheus',
+                  },
+              },
+            ],
+        },
+    }
+
+  # ---------------------------------------------------------------------- ai
+  - {
+      fact: 'ai:llm-sdk',
+      category: ai,
+      title: LLM SDK,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', 'requirements*.txt', 'pyproject.toml', 'go.mod'],
+              pattern: '(openai|anthropic|@anthropic-ai|ai-sdk|langchain|llamaindex|google-generativeai|cohere|mistralai|bedrock|vertexai)',
+            },
+        },
+    }
+  - {
+      fact: 'ai:prompts',
+      category: ai,
+      title: Prompt assets,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['prompts'] },
+              {
+                any_file: ['**/*.prompt', '**/*.prompt.md', '**/prompts/*.md', '**/prompts/*.yaml'],
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'ai:agents',
+      category: ai,
+      title: 'Agent / agentic code',
+      match:
+        {
+          any_of:
+            [
+              {
+                file_exists:
+                  [
+                    'AGENTS.md',
+                    'CLAUDE.md',
+                    '.cursorrules',
+                    '.github/copilot-instructions.md',
+                    'codex.md',
+                    '.windsurfrules',
+                  ],
+              },
+              { dir_exists: ['agents', '.claude/agents'] },
+              {
+                content:
+                  {
+                    include: ['package.json', 'requirements*.txt', 'pyproject.toml'],
+                    pattern: '(langgraph|crewai|autogen|@openai/agents|mastra|smolagents|pydantic-ai|llamaindex)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'ai:mcp',
+      category: ai,
+      title: 'MCP servers / tool use',
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include: ['**/*.{json,jsonc}', '.mcp.json', '**/.mcp.json', '**/mcp.json'],
+                    pattern: '"mcpServers"|modelcontextprotocol',
+                  },
+              },
+              { content: { include: ['package.json'], pattern: '@modelcontextprotocol' } },
+            ],
+        },
+    }
+  - { fact: 'ai:rag', category: ai, title: 'RAG pipeline', implies: ['db:vector'] }
+  - {
+      fact: 'ai:rag',
+      category: ai,
+      title: 'RAG pipeline',
+      match:
+        {
+          content: { include: ['**/*.{ts,js,py}'], pattern: '(embedding|retriev|rerank|chunking)' },
+        },
+    }
+  - {
+      fact: 'ai:evals',
+      category: ai,
+      title: LLM evals,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['evals', 'eval'] },
+              { any_file: ['**/*.eval.{ts,js,py}', '**/evals/**'] },
+            ],
+        },
+    }
+
+  # ------------------------------------------------------------------- docs
+  - {
+      fact: 'doc:readme',
+      category: doc,
+      title: README,
+      match: { any_file: ['README.md', 'readme.md', 'README.rst', 'README.txt', 'README'] },
+    }
+  - {
+      fact: 'doc:license',
+      category: doc,
+      title: LICENSE,
+      match: { any_file: ['LICENSE*', 'COPYING*'] },
+    }
+  - {
+      fact: 'doc:contributing',
+      category: doc,
+      title: CONTRIBUTING,
+      match: { any_file: ['CONTRIBUTING*'] },
+    }
+  - {
+      fact: 'doc:code-of-conduct',
+      category: doc,
+      title: 'Code of conduct',
+      match: { any_file: ['CODE_OF_CONDUCT*'] },
+    }
+  - {
+      fact: 'doc:security-policy',
+      category: doc,
+      title: SECURITY.md,
+      match: { any_file: ['SECURITY.md', '.github/SECURITY.md', 'docs/SECURITY.md'] },
+    }
+  - {
+      fact: 'doc:changelog',
+      category: doc,
+      title: CHANGELOG,
+      match: { any_file: ['CHANGELOG*', 'CHANGES*', 'HISTORY.md'] },
+    }
+  - {
+      fact: 'doc:architecture',
+      category: doc,
+      title: Architecture docs,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['docs/adrs', 'docs/adr', 'adr', 'docs/architecture'] },
+              {
+                any_file:
+                  [
+                    'docs/ARCHITECTURE.md',
+                    'ARCHITECTURE.md',
+                    'docs/**/adr-*.md',
+                    'docs/**/*.adr.md',
+                  ],
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'doc:adr',
+      category: doc,
+      title: ADRs,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['docs/adrs', 'docs/adr', 'adr', 'docs/decisions'] },
+              { any_file: ['**/adr-*.md', '**/ADR-*.md'] },
+            ],
+        },
+    }
+  - {
+      fact: 'doc:api-reference',
+      category: doc,
+      title: API reference,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/openapi.yaml', '**/openapi.json', '**/swagger.*', '**/*.graphql'] },
+              { dir_exists: ['docs/api'] },
+            ],
+        },
+    }
+  - {
+      fact: 'doc:runbook',
+      category: doc,
+      title: Runbook,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/RUNBOOK*', '**/runbook*'] },
+              { dir_exists: ['docs/runbooks', 'runbooks'] },
+            ],
+        },
+    }
+  - {
+      fact: 'doc:onboarding',
+      category: doc,
+      title: Onboarding guide,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['**/ONBOARDING*', '**/onboarding*', 'docs/GETTING_STARTED*'] },
+              { dir_exists: ['docs/onboarding'] },
+            ],
+        },
+    }
+  - {
+      fact: 'doc:env-example',
+      category: doc,
+      title: '.env.example',
+      match: { any_file: ['.env.example', '.env.sample', '.env.template', 'env.example'] },
+    }
+  - {
+      fact: 'doc:gitignore',
+      category: doc,
+      title: '.gitignore',
+      match: { file_exists: ['.gitignore'] },
+    }
+  - {
+      fact: 'doc:codeowners',
+      category: doc,
+      title: CODEOWNERS,
+      match: { any_file: ['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'] },
+    }
+  - {
+      fact: 'doc:pr-template',
+      category: doc,
+      title: PR template,
+      match: { any_file: ['.github/PULL_REQUEST_TEMPLATE*', 'docs/PULL_REQUEST_TEMPLATE*'] },
+    }
+  - {
+      fact: 'doc:issue-templates',
+      category: doc,
+      title: Issue templates,
+      match: { dir_exists: ['.github/ISSUE_TEMPLATE'] },
+    }
+  - {
+      fact: 'doc:agents',
+      category: doc,
+      title: 'Agent instruction file',
+      match:
+        {
+          any_file:
+            [
+              'AGENTS.md',
+              'CLAUDE.md',
+              '.cursorrules',
+              '.github/copilot-instructions.md',
+              'codex.md',
+            ],
+        },
+    }
+
+  # --------------------------------------------------------------- practices
+  - {
+      fact: 'practice:conventional-commits',
+      category: practice,
+      title: Conventional commits,
+      match:
+        {
+          any_of:
+            [
+              {
+                content:
+                  {
+                    include:
+                      ['CONTRIBUTING.md', 'docs/**/*.md', 'commitlint.config.*', '.versionrc*'],
+                    pattern: 'conventional[- ]commits?',
+                  },
+              },
+              { any_file: ['commitlint.config.*', '.commitlintrc*'] },
+            ],
+        },
+    }
+  - {
+      fact: 'practice:codeowners',
+      category: practice,
+      title: Code owners,
+      implies: ['doc:codeowners'],
+    }
+  - {
+      fact: 'practice:signed-commits',
+      category: practice,
+      title: Signed commits/attestations,
+      match:
+        {
+          content:
+            {
+              include: ['.github/workflows/*.yml'],
+              pattern: '(actions/attest|sigstore|gpg-sign|slsa)',
+            },
+        },
+    }
+  - {
+      fact: 'practice:branch-protection-doc',
+      category: practice,
+      title: Branch protection documented,
+      match:
+        {
+          any_of:
+            [
+              { any_file: ['.github/branch-protection*', 'docs/BRANCHING*'] },
+              { content: { include: ['**/*.md'], pattern: 'branch protection' } },
+            ],
+        },
+    }
+  - {
+      fact: 'practice:pinned-versions',
+      category: practice,
+      title: Pinned dependency versions,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', 'requirements*.txt'],
+              pattern: '"[^"]*":\\s*"\\d+\\.\\d+\\.\\d+"|^[a-z0-9-]+==\\d',
+            },
+        },
+    }
+  - {
+      fact: 'practice:i18n',
+      category: practice,
+      title: i18n,
+      match:
+        {
+          any_of:
+            [
+              { dir_exists: ['i18n', 'locales', 'translations', 'src/i18n'] },
+              {
+                content:
+                  {
+                    include: ['package.json'],
+                    pattern: '(i18next|react-intl|vue-i18n|lingui|next-intl)',
+                  },
+              },
+            ],
+        },
+    }
+  - {
+      fact: 'practice:feature-flags',
+      category: practice,
+      title: Feature flags,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,py,go,rs}'],
+              pattern: '(launchdarkly|unleash|flagsmith|growthbook|posthog.*flag|isFeatureEnabled|featureFlag)',
+            },
+        },
+    }
+  - {
+      fact: 'practice:queue',
+      category: practice,
+      title: Background jobs/queues,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', 'requirements*.txt', 'go.mod', '**/*.{ts,js,py,go}'],
+              pattern: '(bullmq|bull|amqplib|kafkajs|celery|rq|sqs|nats|temporal)',
+            },
+        },
+    }
+  - { fact: 'practice:cache', category: practice, title: Caching layer, implies: ['db:redis'] }
+  - {
+      fact: 'practice:monorepo-tool-turborepo',
+      category: practice,
+      title: Turborepo,
+      match: { file_exists: ['turbo.json'] },
+    }
+  - {
+      fact: 'practice:monorepo-tool-nx',
+      category: practice,
+      title: Nx,
+      match: { file_exists: ['nx.json'] },
+    }
+
+  # ---------------------------------------------------------------- security
+  - {
+      fact: 'has:crypto',
+      category: security,
+      title: Cryptography usage,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,py,go,rs,java}'],
+              pattern: '(bcrypt|argon2|scrypt|pbkdf2|crypto\\.createCipher|createHash|jose|nacl)',
+            },
+        },
+    }
+  - {
+      fact: 'has:file-upload',
+      category: security,
+      title: File uploads,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,py,go,rs}'],
+              pattern: '(multer|formidable|busboy|UploadedFile|multipart)',
+            },
+        },
+    }
+  - {
+      fact: 'has:payments',
+      category: security,
+      title: Payments,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', 'requirements*.txt', '**/*.{ts,js,py}'],
+              pattern: '(stripe|braintree|paypal|razorpay|adyen|@stripe/)',
+            },
+        },
+    }
+  - {
+      fact: 'has:pii',
+      category: security,
+      title: PII handling,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,py,sql,prisma}'],
+              pattern: '(\\bssn\\b|social[_-]?security|date[_-]?of[_-]?birth|passport[_-]?(no|number)|credit[_-]?card|card[_-]?number|phone[_-]?number|email[_-]?address|home[_-]?address|ip[_-]?address)',
+            },
+        },
+    }
+  - {
+      fact: 'has:csp',
+      category: security,
+      title: CSP / security headers,
+      match:
+        {
+          content:
+            {
+              include: ['**/*.{ts,js,json,conf,nginx,yaml,yml}'],
+              pattern: '(Content-Security-Policy|helmet|Strict-Transport-Security)',
+            },
+        },
+    }
+  - {
+      fact: 'has:rate-limit',
+      category: security,
+      title: Rate limiting,
+      match:
+        {
+          content:
+            {
+              include: ['package.json', '**/*.{ts,js,py,go}'],
+              pattern: '(express-rate-limit|rate-limit|ratelimit|tower.*limit|slowapi)',
+            },
+        },
+    }
+
+  # ------------------------------------------------------------------ git
+  - {
+      fact: 'git:initialized',
+      category: git,
+      title: Git repository,
+      match: { dir_exists: ['.git'] },
+    }

@@ -1,0 +1,46 @@
+name: False positive
+description: A rule reported something that is not actually a problem
+title: '[FP] <rule-id> — short description'
+labels: ['false-positive', 'rules']
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: e.g. SEC-001
+      placeholder: SEC-001
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What did USAT report?
+      description: Paste the finding, including the file:line it pointed at.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why-wrong
+    attributes:
+      label: Why is it wrong?
+      description: What is the code actually doing, and why is that fine?
+    validations:
+      required: true
+
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Minimal reproducer
+      description: The smallest file contents that reproduce it.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: USAT version
+      placeholder: 1.0.0
+    validations:
+      required: true

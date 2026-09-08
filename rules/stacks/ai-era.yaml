@@ -1,0 +1,193 @@
+id: stacks/ai-era
+title: AI / LLM-Era Risks
+section: S14
+section_title: AI / LLM-Era Risks
+description: >
+  New in USAT. Your application may be deterministic while depending on a
+  component that is not. Mapped to the OWASP Top 10 for LLM Applications
+  (2026) and the OWASP Top 10 for Agentic AI (ASI, 2026).
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'ai:llm-sdk', op: 'absent' }
+    - { fact: 'ai:agents', op: 'absent' }
+    - { fact: 'ai:mcp', op: 'absent' }
+    - { fact: 'ai:rag', op: 'absent' }
+    - { fact: 'ai:prompts', op: 'absent' }
+
+rules:
+  - id: AI-001
+    title: Untrusted content cannot override instructions
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: CRITICAL
+    class: security
+    applies_when:
+      any:
+        - { fact: 'ai:llm-sdk' }
+        - { fact: 'ai:rag' }
+    check: { kind: manual }
+    evidence: 'How retrieved/web/user content is separated from instructions (delimiters, role separation, or a distinct tool channel).'
+    why: 'LLM01:2026 Prompt Injection is still the top risk. Any text your model reads — a PDF, a ticket, a web page — is a potential instruction.'
+    remediation: 'Separate trusted and untrusted content by role; strip or neutralise instruction-like patterns from retrieved text; never let retrieval feed a privileged tool call directly.'
+    references: ['OWASP-LLM01:2026', 'OWASP-ASI01:2026']
+
+  - id: AI-002
+    title: Model output is validated before it is executed
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: CRITICAL
+    class: security
+    applies_when:
+      any:
+        - { fact: 'ai:llm-sdk' }
+        - { fact: 'ai:agents' }
+    check:
+      kind: grep_wrong
+      pattern: '(exec\s*\(\s*(?:completion|response|result|output|llm|content)|eval\s*\(\s*(?:completion|response|result|output)|dangerouslySetInnerHTML\s*=\s*\{\{\s*__html:\s*(?:completion|response|result|output)|subprocess.*(?:completion|response|llm_output))'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs}']
+      exclude: ['**/*.test.*', '**/node_modules/**']
+      flags: i
+    why: 'LLM10:2026 Improper Output Handling. Treating generated text as code is remote code execution with a random number generator in charge.'
+    remediation: 'Parse model output into a constrained schema (JSON mode / tool calling) and validate before any use in a shell, SQL query, or DOM.'
+    references: ['OWASP-LLM10:2026', 'OWASP-ASI05:2026', 'CWE-94']
+
+  - id: AI-003
+    title: Agents and tools run with least privilege
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'ai:agents' }
+        - { fact: 'ai:mcp' }
+    check: { kind: manual }
+    evidence: 'The tool/permission allowlist: what an agent can call, with which credentials, and what is blocked by default.'
+    why: 'LLM03:2026 Excessive Agency jumped to #3 for a reason: agents with broad tool access turn prompt injection into arbitrary action.'
+    remediation: 'Allowlist tools explicitly; scope credentials per tool; require human approval for irreversible actions; sandbox filesystem and network.'
+    references: ['OWASP-LLM03:2026', 'OWASP-ASI02:2026', 'OWASP-ASI03:2026']
+
+  - id: AI-004
+    title: Secrets and PII do not reach model providers unchecked
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'ai:llm-sdk' }
+    check: { kind: manual }
+    evidence: 'What is sent in the prompt/context: any credentials, customer PII, or regulated data? Is redaction applied first?'
+    why: 'LLM02:2026 Sensitive Information Disclosure now explicitly covers traces, embeddings, and telemetry — not just chat text.'
+    remediation: 'Redact before sending; use a provider agreement with no-training/no-retention; keep PII out of embeddings.'
+    references: ['OWASP-LLM02:2026', 'GDPR-Art.44']
+
+  - id: AI-005
+    title: Inference spend and token usage are bounded
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: MEDIUM
+    class: performance
+    applies_when: { fact: 'ai:llm-sdk' }
+    check:
+      kind: grep_present
+      pattern: '(max_tokens|maxTokens|max_output_tokens|timeout|maxRetries|max_turns|max_steps|budget|abortSignal|stopAfterAttempt)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs}']
+      exclude: ['**/*.test.*', '**/node_modules/**']
+      flags: i
+    why: 'LLM06:2026 Unbounded Consumption — denial-of-wallet is a real attack, and runaway agent loops are a real bug.'
+    remediation: 'Set max tokens, request timeouts, retry caps, step limits, and a hard per-user spend ceiling with alerting.'
+    references: ['OWASP-LLM06:2026', 'OWASP-ASI08:2026']
+
+  - id: AI-006
+    title: System prompts and tool schemas are not exposed
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: MEDIUM
+    class: security
+    applies_when: { fact: 'ai:prompts' }
+    check: { kind: manual }
+    evidence: 'Whether the system prompt, tool definitions, and policies are retrievable by the end user (directly or via an error/debug path).'
+    why: 'LLM08:2026 Hidden Context Exposure broadened from system-prompt leakage: tool schemas and roles enable reconnaissance.'
+    remediation: 'Keep prompts server-side; never echo them in errors or debug output; assume they will leak and put no secret in them.'
+    references: ['OWASP-LLM08:2026']
+
+  - id: AI-007
+    title: RAG retrieval is access-controlled per tenant
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'ai:rag' }
+    check: { kind: manual }
+    evidence: 'How documents are scoped at query time — metadata filters, per-tenant indexes, or a post-retrieval permission check.'
+    why: "LLM09:2026 Vector and Embedding Weaknesses: similarity search happily returns another tenant's documents."
+    remediation: 'Filter by tenant/ACL at query time (not after generation); partition indexes per tenant where the risk is high.'
+    references: ['OWASP-LLM09:2026', 'OWASP-ASI06:2026']
+
+  - id: AI-008
+    title: Model and prompt supply chain is pinned
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'ai:llm-sdk' }
+    check: { kind: manual }
+    evidence: 'Model IDs/versions pinned (not "latest"), prompts versioned in the repo, and third-party agents/MCP servers reviewed.'
+    why: 'LLM04:2026 Supply Chain now covers model provenance, adapters, quantisation, and conversion tooling.'
+    remediation: 'Pin exact model versions and digests; version prompts in git; treat MCP servers as production dependencies.'
+    references: ['OWASP-LLM04:2026', 'OWASP-ASI04:2026', 'SLSA']
+
+  - id: AI-009
+    title: An eval suite exists for model behaviour
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'ai:llm-sdk' }
+    check: { kind: manual }
+    evidence: 'A regression suite of prompts with expected properties, run in CI on model or prompt changes.'
+    why: 'Without evals, a prompt tweak is a silent behaviour change shipped to production.'
+    remediation: 'Start with 20–50 cases covering the critical paths; fail CI when the pass rate drops.'
+    references: ['OWASP-LLM07:2026', 'Evals-Best-Practices']
+
+  - id: AI-010
+    title: Consequential actions require human confirmation
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'ai:agents' }
+        - { fact: 'ai:mcp' }
+    check: { kind: manual }
+    evidence: 'For each irreversible action (payment, deletion, deployment, outbound message): who or what approves it?'
+    why: 'ASI09:2026 Human-Agent Trust Exploitation — users approve faster than they read, and agents exploit that by default.'
+    remediation: 'Gate irreversible actions behind explicit confirmation showing the concrete effect; keep an audit log of approvals.'
+    references: ['OWASP-ASI09:2026', 'NIST-AI-RMF']
+
+  - id: AI-011
+    title: Agent instruction files are scoped and safe
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: MEDIUM
+    class: security
+    applies_when: { fact: 'ai:agents' }
+    check: { kind: manual }
+    evidence: 'AGENTS.md / CLAUDE.md / .cursorrules contents: do they forbid destructive commands, secret reads, and unreviewed pushes?'
+    why: 'These files are executable-ish instructions that commit as easily as code, and agents follow them literally.'
+    remediation: 'Add an explicit denylist (no force push, no rm -rf, no reading .env), plus the exact build/test commands to use.'
+    references: ['OWASP-ASI04:2026', 'Agent-Skills']
+
+  - id: AI-012
+    title: Model inputs and outputs are logged for audit
+    section: S14
+    section_title: AI / LLM-Era Risks
+    severity: LOW
+    class: compliance
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'A record per request: model version, prompt template id, redacted input, output, tokens, latency, and cost.'
+    why: 'You cannot investigate a hallucination, an abuse report, or a cost spike without the trace.'
+    remediation: 'Log request/response metadata with a trace ID; redact PII; retain per your data policy.'
+    references: ['NIST-AI-RMF', 'EU-AI-Act-Art.12', 'OWASP-LLM02:2026']

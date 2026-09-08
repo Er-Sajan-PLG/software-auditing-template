@@ -1,0 +1,139 @@
+id: stacks/solidity
+title: Blockchain / Smart Contracts
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Solidity, Foundry, or Hardhat is detected. USAT is not a substitute for a third-party audit.'
+version: '1.0'
+skip_when: { fact: 'platform:evm', op: 'absent' }
+
+rules:
+  - id: SOLID-001
+    title: Contracts are protected against reentrancy
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check: { kind: manual }
+    evidence: 'Every external call followed by a state change, or use of nonReentrant / checks-effects-interactions ordering.'
+    why: 'Reentrancy drained The DAO and has drained a great many contracts since. Funds are unrecoverable.'
+    remediation: 'Follow checks-effects-interactions; use OpenZeppelin ReentrancyGuard; never call external contracts before updating state.'
+    references: ['SWC-107', 'Consensys-Best-Practices']
+
+  - id: SOLID-002
+    title: Compiler version is 0.8+ (or SafeMath is used)
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_deprecated
+      pattern: 'pragma solidity\s+\^?0\.[0-7]\.'
+      include: ['**/*.sol']
+    why: 'Pre-0.8 Solidity wraps silently on overflow. That is how balances go negative.'
+    remediation: 'Use Solidity ^0.8.x, which reverts on overflow/underflow by default.'
+    references: ['SWC-101', 'Solidity-0.8-Breaking-Changes']
+
+  - id: SOLID-003
+    title: Access control is explicit on privileged functions
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check: { kind: manual }
+    evidence: 'For every state-changing external/public function: the modifier or require that restricts the caller.'
+    why: 'An unprotected initialise or setOwner function is a complete takeover, irrevocably.'
+    remediation: 'Use Ownable/AccessControl; require(msg.sender == owner) on every privileged entry point.'
+    references: ['SWC-105', 'SWC-112']
+
+  - id: SOLID-004
+    title: tx.origin is not used for authorisation
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(require\s*\(\s*tx\.origin|if\s*\(\s*tx\.origin|msg\.sender\s*==\s*tx\.origin)'
+      include: ['**/*.sol']
+    why: 'tx.origin is the EOA that started the transaction — a phishing contract can impersonate it.'
+    remediation: 'Always authorise on msg.sender.'
+    references: ['SWC-115', 'Consensys-Best-Practices']
+
+  - id: SOLID-005
+    title: External calls are checked and treated as untrusted
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(\.call\s*\(\s*|\.send\s*\(\s*|\.transfer\s*\(\s*)(?![^\n;]*require)'
+      include: ['**/*.sol']
+    why: 'A failed low-level call returns false; it does not revert. Ignoring the return value means silent failure.'
+    remediation: 'Check the return value and revert, or use a safe wrapper (Address.sendValue).'
+    references: ['SWC-104', 'SWC-113']
+
+  - id: SOLID-006
+    title: No block.timestamp dependence for critical logic
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(block\.timestamp|block\.number|now)\s*(%|/|\*|>|<)\s*\d'
+      include: ['**/*.sol']
+    why: 'Miners can nudge timestamps by seconds, which is enough to swing a block-number-based lottery.'
+    remediation: 'Use an oracle or a commit-reveal scheme for randomness; allow tolerance in time comparisons.'
+    references: ['SWC-116', 'SWC-120']
+
+  - id: SOLID-007
+    title: Events are emitted for state changes
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check: { kind: manual }
+    evidence: 'Every function that mutates meaningful state emits an event (transfer, ownership, config).'
+    why: 'Off-chain consumers (and incident responders) rely on events; without them, reconstructing history is guesswork.'
+    remediation: 'Emit an indexed event for every state transition, including parameters that identify the affected entity.'
+    references: ['Consensys-Best-Practices']
+
+  - id: SOLID-008
+    title: An emergency pause mechanism exists
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    check:
+      kind: grep_present
+      pattern: '(Pausable|whenNotPaused|_pause\s*\(|emergencyStop|circuitBreaker)'
+      include: ['**/*.sol']
+    why: 'When an exploit is live, the difference between losing everything and losing a little is a pause button.'
+    remediation: 'Add OpenZeppelin Pausable to value-moving functions, with a documented, time-bounded pausing authority.'
+    references: ['Consensys-Best-Practices']
+
+  - id: SOLID-009
+    title: A test suite with fuzzing/invariants exists
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: correctness
+    check: { kind: manual }
+    evidence: 'Foundry invariant/fuzz tests, Echidna properties, or a Hardhat suite covering the economic edge cases.'
+    why: 'Unit tests with hand-picked inputs miss the one input that drains the pool.'
+    remediation: 'Add invariant tests for the core accounting identity (e.g. sum(balances) == totalSupply).'
+    references: ['Foundry-Invariant-Testing']
+
+  - id: SOLID-010
+    title: Third-party security audit has been performed
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Audit report, the version it covered, and confirmation that every finding was fixed or explicitly accepted.'
+    why: 'Automated tooling catches patterns; it does not catch economic design flaws. Deployed contract code is immutable.'
+    remediation: 'Commission an audit before mainnet; publish the report and the remediation status.'
+    references: ['OpenSSF-Criticality', 'Consensys-Best-Practices']

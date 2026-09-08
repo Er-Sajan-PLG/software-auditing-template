@@ -1,58 +1,29 @@
-// Software Auditing Template - Main entry point
-// This file serves as the starting point for audit tools
+/**
+ * USAT — Universal Software Audit Template
+ * Programmatic API. Everything the CLI does is available here.
+ */
 
-export interface AuditConfig {
-  targetPath: string;
-  rules: string[];
-  outputFormat: 'json' | 'markdown' | 'html';
-  severityThreshold: 'low' | 'medium' | 'high' | 'critical';
-}
+export { Project } from './util/project.js';
+export { detect, loadDetectors, classifyMaturity, loadDetectorFile } from './detect/index.js';
+export {
+  loadRulePacks,
+  applyRuleOverrides,
+  DEFAULT_WEIGHT,
+  SEVERITY_LADDER,
+} from './engine/loader.js';
+export { loadSections, DEFAULT_SECTIONS } from './engine/sections.js';
+export { loadProfiles, dampen } from './engine/maturity.js';
+export { runAudit } from './engine/audit.js';
+export { score } from './engine/score.js';
+export { evaluateRule, evalPredicate, ruleApplies, packApplies } from './engine/evaluate.js';
+export { renderMarkdown, parseTrailer, trailer } from './report/markdown.js';
+export { diffReports } from './engine/diff.js';
+export { evaluateGate, blockingFindings } from './engine/gate.js';
+export { loadConfig, EXAMPLE_CONFIG, CONFIG_FILE } from './config.js';
 
-export interface AuditResult {
-  summary: {
-    totalFiles: number;
-    issuesFound: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-  };
-  issues: AuditIssue[];
-  timestamp: string;
-}
-
-export interface AuditIssue {
-  file: string;
-  line: number;
-  column: number;
-  rule: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  message: string;
-  suggestion?: string;
-}
-
-export class Auditor {
-  private config: AuditConfig;
-
-  constructor(config: AuditConfig) {
-    this.config = config;
-  }
-
-  async run(): Promise<AuditResult> {
-    // Implementation will be added by agents
-    return {
-      summary: {
-        totalFiles: 0,
-        issuesFound: 0,
-        criticalCount: 0,
-        highCount: 0,
-        mediumCount: 0,
-        lowCount: 0,
-      },
-      issues: [],
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
-
-export default Auditor;
+export type * from './types.js';
+export type { SectionDef } from './engine/sections.js';
+export type { MaturityProfile } from './engine/maturity.js';
+export type { AuditOutcome, AuditOptions } from './engine/audit.js';
+export type { ScoredRule } from './engine/score.js';
+export type { EvalContext } from './engine/evaluate.js';

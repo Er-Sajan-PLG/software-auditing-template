@@ -1,0 +1,119 @@
+id: core/documentation
+title: Documentation & Knowledge
+section: S12
+section_title: Documentation & Knowledge
+description: >
+  Documentation is the only part of the system that ships to every future
+  maintainer. USAT checks the artefacts exist and then asks whether they are true.
+version: '1.0'
+
+rules:
+  - id: DOC-001
+    title: README covers what / install / run / contribute
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: MEDIUM
+    class: documentation
+    applies_when: { fact: 'doc:readme' }
+    check: { kind: manual }
+    evidence: 'The four headings. If any is missing, the README fails this check.'
+    why: 'A README that only says the project name is a README-shaped placeholder.'
+    remediation: 'Four sections: what it is, how to install, how to run it locally, how to contribute.'
+    references: ['CII-Best-Practices']
+
+  - id: DOC-002
+    title: Setup instructions have been verified recently
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: MEDIUM
+    class: documentation
+    check: { kind: manual }
+    evidence: 'A clean-machine clone-and-run within the last quarter, or CI that installs from scratch on every PR.'
+    why: 'Setup docs rot faster than any other file, and the cost lands on whoever joins next.'
+    remediation: 'Run the README steps in a container from scratch; fix every command that fails.'
+    references: ['CII-Best-Practices']
+
+  - id: DOC-003
+    title: Public APIs are documented
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: MEDIUM
+    class: documentation
+    applies_when:
+      any:
+        - { fact: 'project:library' }
+        - { fact: 'project:api' }
+        - { fact: 'doc:api-reference' }
+    check:
+      kind: any_file
+      patterns:
+        [
+          '**/openapi.{yaml,yml,json}',
+          '**/swagger.{yaml,yml,json}',
+          '**/*.graphql',
+          'docs/api/**',
+          'docs/reference/**',
+          '**/*.d.ts',
+        ]
+    why: 'For a library or API, the docs are the product surface.'
+    remediation: 'Publish an OpenAPI spec or typedoc/jsdoc output; generate it in CI so it cannot drift silently.'
+    references: ['OpenAPI', 'OpenSSF-Scorecard']
+
+  - id: DOC-004
+    title: Complex logic is explained at the point of use
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: LOW
+    class: documentation
+    check: { kind: manual }
+    evidence: 'Two non-obvious modules: does a comment explain WHY, not WHAT?'
+    why: 'Code tells you what it does. Only a comment can tell you why the obvious solution was wrong.'
+    remediation: 'Comment the surprising parts: workarounds, invariants, and anything you had to look up twice.'
+    references: ['Clean-Code']
+
+  - id: DOC-005
+    title: Docs live in the repo with the code
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: LOW
+    class: documentation
+    check:
+      kind: any_file
+      patterns: ['docs/**', '**/*.md']
+    why: 'Docs in a separate wiki are docs that outlive nobody and get updated by no one.'
+    remediation: 'Move docs next to the code so they are reviewed in the same PR.'
+    references: ['Docs-as-Code']
+
+  - id: DOC-006
+    title: An onboarding path exists
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: LOW
+    class: documentation
+    applies_when: { fact: 'metric:contributors', op: 'gt', value: 2 }
+    check:
+      kind: any_file
+      patterns:
+        [
+          '**/ONBOARDING*',
+          '**/onboarding*',
+          'docs/GETTING_STARTED*',
+          'docs/getting-started*',
+          'docs/onboarding/**',
+        ]
+    why: 'Without it, onboarding is a series of interruptions for whoever has been there longest.'
+    remediation: 'A single page: architecture in five bullets, setup, the three commands you need, and who to ask.'
+    references: ['CII-Best-Practices']
+
+  - id: DOC-007
+    title: Documentation examples are tested
+    section: S12
+    section_title: Documentation & Knowledge
+    severity: FUTURE
+    class: documentation
+    applies_when: { fact: 'project:library' }
+    check: { kind: manual }
+    evidence: 'Doctests, README code blocks executed in CI, or example apps built against the published API.'
+    why: 'The only thing worse than no example is an example that no longer works.'
+    remediation: 'Run README snippets in CI (mdsh, pytest-examples, or a small example app).'
+    references: ['Docs-as-Code']

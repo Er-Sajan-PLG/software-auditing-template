@@ -1,0 +1,260 @@
+id: core/testing
+title: Testing & Quality Assurance
+section: S7
+section_title: Testing & Quality Assurance
+description: >
+  Coverage is a weak proxy for confidence; USAT separates "tests exist",
+  "tests run in CI", and "tests actually cover the paths that matter".
+version: '1.0'
+
+rules:
+  - id: TEST-001
+    title: A test suite exists
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: HIGH
+    class: correctness
+    check:
+      kind: any_file
+      patterns:
+        - '**/*.test.{ts,tsx,js,jsx,mjs,cjs}'
+        - '**/*.spec.{ts,tsx,js,jsx,mjs,cjs}'
+        - '**/test_*.py'
+        - '**/*_test.py'
+        - '**/*_test.go'
+        - '**/*_spec.rb'
+        - '**/*Test.java'
+        - '**/*Test.kt'
+        - '**/*Test.php'
+        - '**/tests/**/*.rs'
+        - '**/__tests__/**'
+    why: 'A project with zero tests has no definition of "working" that a machine can check.'
+    remediation: 'Start with the happy path of the main flow and every bug you have already fixed once.'
+    references: ['OpenSSF-Scorecard:CI-Tests', 'NIST-SSDF-RV.1.1']
+
+  - id: TEST-002
+    title: Tests run in CI on every pull request
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: HIGH
+    class: operations
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(npm (run )?test|npm (run )?test:ci|vitest run|jest --ci|pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|make test)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Jenkinsfile',
+          '.circleci/config.yml',
+          'azure-pipelines.yml',
+          '.buildkite/**',
+        ]
+      flags: i
+    why: 'Tests that only run on a laptop are a memoir, not a control.'
+    remediation: 'Run the full suite on pull_request and on push to the default branch; block merge on failure.'
+    references: ['OpenSSF-Scorecard:CI-Tests', 'NIST-SSDF-PW.7']
+
+  - id: TEST-003
+    title: There is a meaningful number of tests
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'has:tests' }
+    check:
+      kind: count_min
+      patterns:
+        - '**/*.test.{ts,tsx,js,jsx,mjs,cjs}'
+        - '**/*.spec.{ts,tsx,js,jsx,mjs,cjs}'
+        - '**/test_*.py'
+        - '**/*_test.py'
+        - '**/*_test.go'
+        - '**/*_spec.rb'
+        - '**/*Test.java'
+      min: 5
+    why: 'One test file is a gesture. Five is a habit.'
+    remediation: 'Target the paths that carry money or data first: auth, payments, persistence, permissions.'
+    references: ['OpenSSF-Scorecard:CI-Tests']
+
+  - id: TEST-004
+    title: Coverage is measured
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'has:tests' }
+    check:
+      kind: grep_present
+      pattern: '(--coverage|--cov\b|coverage[_-]?threshold|coverageThreshold|--fail-under|codecov|coveralls|lcov|c8|nyc|go test -cover|tarpaulin|llvm-cov)'
+      include:
+        [
+          'package.json',
+          'pyproject.toml',
+          'setup.cfg',
+          '.coveragerc',
+          'Makefile',
+          'justfile',
+          'Taskfile.yml',
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          'vitest.config.*',
+          'jest.config.*',
+        ]
+      flags: i
+    why: 'Unmeasured coverage drifts down silently, one "I''ll add tests later" at a time.'
+    remediation: 'Turn on coverage reporting; publish the number on every PR so it is visible when it moves.'
+    references: ['NIST-SSDF-RV.1.1']
+
+  - id: TEST-005
+    title: Coverage thresholds are enforced
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: LOW
+    class: correctness
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check:
+      kind: grep_present
+      pattern: '(coverageThreshold|failUnder|--fail-under|min-coverage|coverage\s*\{|\[tool\.coverage\.report\]\s*\n[^\n]*fail_under)'
+      include:
+        [
+          'package.json',
+          'vitest.config.*',
+          'jest.config.*',
+          'pyproject.toml',
+          'setup.cfg',
+          '.coveragerc',
+          'codecov.yml',
+          '.codecov.yml',
+          'Cargo.toml',
+        ]
+      flags: i
+    why: "A gate stops the slide. Set it at today's number and ratchet upward."
+    remediation: 'Set a floor slightly below current coverage and raise it whenever it is comfortably met.'
+    references: ['NIST-SSDF-RV.1.1']
+
+  - id: TEST-006
+    title: Integration tests cover the seams
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: MEDIUM
+    class: correctness
+    applies_when:
+      any:
+        - { fact: 'has:database' }
+        - { fact: 'platform:server' }
+        - { fact: 'project:api' }
+    check: { kind: manual }
+    evidence: 'Tests that exercise a real database/queue/HTTP boundary (or a containerised test double) rather than mocking every collaborator.'
+    why: 'Unit tests with everything mocked verify your mock, not your integration.'
+    remediation: 'Add tests that run against a real Postgres/Redis via testcontainers or a docker-compose test profile.'
+    references: ['Testing-Trophy']
+
+  - id: TEST-007
+    title: End-to-end tests cover critical user journeys
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: MEDIUM
+    class: correctness
+    applies_when:
+      any:
+        - { fact: 'platform:web' }
+        - { fact: 'platform:mobile' }
+        - { fact: 'maturity:production' }
+    check:
+      kind: any_file
+      patterns:
+        [
+          'e2e/**',
+          'cypress/**',
+          'playwright.config.*',
+          'tests/e2e/**',
+          '**/*.e2e.{ts,js,py}',
+          '**/*.cy.{ts,js}',
+          '**/spec/features/**',
+        ]
+    why: 'Unit tests cannot tell you that checkout is broken because a button moved.'
+    remediation: 'Three journeys: sign up/log in, the core money path, and the path that would lose data if it failed.'
+    references: ['Testing-Trophy']
+
+  - id: TEST-008
+    title: Security-relevant behaviour is tested
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: MEDIUM
+    class: security
+    applies_when:
+      any:
+        - { fact: 'auth:jwt' }
+        - { fact: 'auth:session' }
+        - { fact: 'auth:oauth' }
+        - { fact: 'has:database' }
+    check: { kind: manual }
+    evidence: "Tests asserting that user A cannot read or modify user B's resources, and that unauthenticated calls are rejected."
+    why: 'Authorization regressions are silent: nothing crashes, someone just sees data they should not.'
+    remediation: 'Add negative tests for every permission boundary — 401/403 paths and cross-tenant access attempts.'
+    references: ['ASVS-4.2.1', 'OWASP-A01:2021']
+
+  - id: TEST-009
+    title: Tests are independent and deterministic
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: MEDIUM
+    class: correctness
+    applies_when: { fact: 'has:tests' }
+    check: { kind: manual }
+    evidence: 'Run the suite in random order and twice in a row. Report failures and any test that depends on wall-clock time or network.'
+    why: 'Order-dependent tests are a distributed system with extra steps, and flaky tests train people to ignore red builds.'
+    remediation: 'Reset state per test; freeze the clock; seed randomness. Quarantine flaky tests and fix them within a sprint.'
+    references: ['Google-Testing-Blog:Flaky']
+
+  - id: TEST-010
+    title: Performance/load tests exist for critical paths
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: FUTURE
+    class: performance
+    applies_when:
+      any:
+        - { fact: 'maturity:production' }
+        - { fact: 'maturity:beta' }
+    check: { kind: manual }
+    evidence: 'A load-test script (k6, Locust, wrk, artillery) and the last recorded p95/p99 for the main endpoint.'
+    why: 'You do not know your ceiling until you have hit it.'
+    remediation: 'Script the top three endpoints; run them before each release; record the numbers.'
+    references: ['ISO-25010']
+
+  - id: TEST-011
+    title: Mutation testing or equivalent
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: FUTURE
+    class: correctness
+    depths: [deep]
+    check: { kind: manual }
+    evidence: 'Astryx/Stryker/mutmut/cargo-mutants score, or a documented decision not to use it.'
+    why: 'Coverage tells you which lines ran, not whether the test would have failed if the line were wrong.'
+    remediation: 'Run mutation testing on the highest-risk module first.'
+    references: ['Mutation-Testing']
+
+  - id: TEST-012
+    title: Test data comes from fixtures or factories
+    section: S7
+    section_title: Testing & Quality Assurance
+    severity: LOW
+    class: maintainability
+    applies_when: { fact: 'has:tests' }
+    check:
+      kind: grep_present
+      pattern: '(factory|fixture|faker|builder|testcontainers|factories)'
+      include: ['**/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb}']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'Hand-built object literals in 200 tests make every schema change a 200-file migration.'
+    remediation: 'Add a factory (fishery, factory_boy, faker) and generate data at the edges of tests.'
+    references: ['Testing-Patterns']

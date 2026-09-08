@@ -1,0 +1,159 @@
+id: stacks/web-frontend
+title: Web Frontend
+section: S15
+section_title: Platform-Specific
+description: 'Activated for browser-facing applications. Covers Core Web Vitals, a11y, and bundle discipline.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'platform:web', op: 'absent' }
+    - { fact: 'fw:react', op: 'absent' }
+    - { fact: 'fw:vue', op: 'absent' }
+    - { fact: 'fw:svelte', op: 'absent' }
+    - { fact: 'fw:angular', op: 'absent' }
+    - { fact: 'fw:next', op: 'absent' }
+    - { fact: 'fw:nuxt', op: 'absent' }
+    - { fact: 'fw:sveltekit', op: 'absent' }
+    - { fact: 'fw:astro', op: 'absent' }
+
+rules:
+  - id: WEB-001
+    title: Core Web Vitals are measured
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    check:
+      kind: grep_present
+      pattern: '(web-vitals|LCP|CLS|INP|lighthouse|next/web-vitals|useReportWebVitals|reportWebVitals)'
+      include:
+        ['**/*.{ts,tsx,js,jsx,html}', 'package.json', '.github/workflows/*.yml', 'lighthouse*']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'You cannot improve what you do not measure, and LCP/INP/CLS are what search and users actually judge.'
+    remediation: 'Report web-vitals to your analytics; add Lighthouse CI to catch regressions per PR.'
+    references: ['Web-Vitals']
+
+  - id: WEB-002
+    title: Code splitting / lazy loading is used
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    check:
+      kind: grep_present
+      pattern: '(React\.lazy|import\(\s*[''"]|dynamic\s*\(\s*\(\s*\)|defineAsyncComponent|loadable|next/dynamic|Suspense)'
+      include: ['**/*.{ts,tsx,js,jsx,vue,svelte}']
+      exclude: ['**/node_modules/**', '**/*.test.*']
+    why: 'A single 2 MB bundle means every user pays for the heaviest route on first load.'
+    remediation: 'Route-level code splitting first, then lazy-load anything behind a tab, modal, or fold.'
+    references: ['Web-Vitals:LCP']
+
+  - id: WEB-003
+    title: Images are optimised
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    check:
+      kind: grep_present
+      pattern: '(loading\s*=\s*[''"]lazy|next/image|next/font|<Image|webp|avif|decoding\s*=\s*[''"]async)'
+      include: ['**/*.{ts,tsx,js,jsx,vue,svelte,html,astro}']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'Images are usually 60%+ of page weight. AVIF/WebP plus lazy loading is the single biggest win available.'
+    remediation: 'Serve WebP/AVIF at the rendered size; lazy-load below the fold; set width/height to avoid CLS.'
+    references: ['Web-Vitals:LCP', 'Web-Vitals:CLS']
+
+  - id: WEB-004
+    title: Accessibility basics are in place
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: compliance
+    check: { kind: manual }
+    evidence: 'Lighthouse/axe accessibility score, or evidence of: semantic landmarks, labelled form inputs, visible focus, and alt text on meaningful images.'
+    why: 'Roughly 1 in 4 adults has a disability. Accessibility bugs are also, almost always, plain bugs.'
+    remediation: 'Add eslint-plugin-jsx-a11y; run axe in CI; test keyboard-only navigation end to end.'
+    references: ['WCAG-2.2-AA', 'EN-301-549', 'ADA']
+
+  - id: WEB-005
+    title: Bundle size is monitored
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: performance
+    check:
+      kind: grep_present
+      pattern: '(size-limit|bundlesize|rollup-plugin-visualizer|webpack-bundle-analyzer|bundlephobia|build\.analyze|"size-limit")'
+      include:
+        [
+          'package.json',
+          '.github/workflows/*.yml',
+          'vite.config.*',
+          'next.config.*',
+          'webpack.config.*',
+        ]
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'Bundle size grows by 5% a sprint and nobody notices until it is 3 MB.'
+    remediation: 'Add size-limit with a per-entry budget; fail CI when the budget is exceeded.'
+    references: ['Web-Vitals']
+
+  - id: WEB-006
+    title: Error boundaries exist around risky UI
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    applies_when:
+      any:
+        - { fact: 'fw:react' }
+        - { fact: 'fw:next' }
+    check:
+      kind: grep_present
+      pattern: '(ErrorBoundary|componentDidCatch|error\.tsx|error-boundary|useErrorBoundary)'
+      include: ['**/*.{ts,tsx,js,jsx}']
+      exclude: ['**/node_modules/**', '**/*.test.*']
+    why: 'One throw inside a render and the user gets a blank white page.'
+    remediation: 'Wrap route segments in an ErrorBoundary with a retry and a report-to-Sentry path.'
+    references: ['React-Error-Boundaries']
+
+  - id: WEB-007
+    title: No secrets in client-side bundles
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(NEXT_PUBLIC_.*(SECRET|KEY|TOKEN|PASSWORD)|VITE_.*(SECRET|PRIVATE|PASSWORD)|process\.env\.[A-Z_]*(SECRET|PRIVATE_KEY|PASSWORD)[A-Z_]*)'
+      include: ['**/*.{ts,tsx,js,jsx,vue,svelte}']
+      exclude: ['**/node_modules/**', '**/*.test.*', '**/server/**', '**/api/**']
+    why: 'Anything bundled for the browser is public. NEXT_PUBLIC_/VITE_ variables are shipped verbatim.'
+    remediation: 'Move the call server-side (API route, server action, BFF) and keep the secret out of the bundle.'
+    references: ['CWE-798', 'ASVS-14.3.2']
+
+  - id: WEB-008
+    title: Forms validate and expose errors accessibly
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: compliance
+    check: { kind: manual }
+    evidence: 'A form with: a validation schema, error text linked via aria-describedby, and focus moved to the first error.'
+    why: 'An error message only sighted users can see (or only sighted users can find) is not an error message.'
+    remediation: 'Use a schema validator, render errors next to the field, and set aria-invalid / aria-describedby.'
+    references: ['WCAG-3.3.1', 'WCAG-3.3.3']
+
+  - id: WEB-009
+    title: An offline/PWA story exists
+    section: S15
+    section_title: Platform-Specific
+    severity: FUTURE
+    class: performance
+    check: { kind: manual }
+    evidence: 'Service worker, offline fallback page, or an explicit decision that offline support is not required.'
+    why: 'Mobile networks fail. Deciding not to support offline is fine; discovering it during an outage is not.'
+    remediation: 'At minimum, add a custom offline page. Full PWA only if the use case justifies it.'
+    references: ['Web-Vitals']

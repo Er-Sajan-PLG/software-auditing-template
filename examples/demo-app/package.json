@@ -1,0 +1,13 @@
+{
+  "name": "demo-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "express": "*",
+    "mysql": "^2.18.1"
+  }
+}

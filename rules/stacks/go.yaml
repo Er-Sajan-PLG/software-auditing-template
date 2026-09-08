@@ -1,0 +1,134 @@
+id: stacks/go
+title: Go
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Go is detected.'
+version: '1.0'
+skip_when: { fact: 'lang:go', op: 'absent' }
+
+rules:
+  - id: GO-001
+    title: go.mod declares the Go version
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    check:
+      kind: grep_present
+      pattern: '^go\s+\d+\.\d+'
+      include: ['go.mod']
+    why: 'Without it the toolchain guesses, and the guess changes when the runner image updates.'
+    remediation: 'Add `go 1.22` to go.mod and pin the same version in CI.'
+    references: ['Go-Modules']
+
+  - id: GO-002
+    title: Errors are checked, not discarded
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: correctness
+    check: { kind: manual }
+    evidence: 'errcheck or `go vet` output; grep for `_ =` assignments and bare `_` error receivers.'
+    why: 'A discarded error is a failure that reports success. This is the canonical Go bug.'
+    remediation: 'Run errcheck in CI; handle every returned error or explicitly document why it is ignored.'
+    references: ['Go-Proverbs', 'CWE-390']
+
+  - id: GO-003
+    title: Contexts are propagated
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_present
+      pattern: '(ctx\s+context\.Context|context\.WithTimeout|context\.WithCancel|context\.Background)'
+      include: ['**/*.go']
+      exclude: ['**/*_test.go']
+    why: 'Without context there is no cancellation, so a client disconnect leaves goroutines and DB connections hanging.'
+    remediation: 'Thread context.Context through every blocking call; derive timeouts at the boundary.'
+    references: ['Go-Context']
+
+  - id: GO-004
+    title: No panics in request paths
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_absent
+      pattern: '\bpanic\s*\('
+      include: ['**/*.go']
+      exclude: ['**/*_test.go', '**/cmd/**', 'main.go']
+    why: 'A panic in a handler takes down the whole process, not just the request.'
+    remediation: 'Return errors. Recover in middleware that logs and returns 500.'
+    references: ['Go-Error-Handling']
+
+  - id: GO-005
+    title: go vet / staticcheck / golangci-lint runs in CI
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(go vet|golangci-lint|staticcheck|gofmt -l)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Makefile',
+          'justfile',
+          'Taskfile.yml',
+          '.pre-commit-config.yaml',
+        ]
+      flags: i
+    why: 'go vet finds the bug class that compiles cleanly and fails at runtime.'
+    remediation: 'Add `go vet ./...` and golangci-lint to CI; start with the default linters.'
+    references: ['Go-Vet']
+
+  - id: GO-006
+    title: Goroutine lifecycle is bounded
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check: { kind: manual }
+    evidence: 'For every `go func`: what stops it? Is there a WaitGroup, a context, or an unbuffered channel that can block forever?'
+    why: 'Goroutine leaks are invisible in dev and fatal after three weeks in production.'
+    remediation: 'Tie every goroutine to a context; add a leak detector (goleak) to the test suite.'
+    references: ['Go-Concurrency']
+
+  - id: GO-007
+    title: SQL is parameterised
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    applies_when: { fact: 'has:database' }
+    check:
+      kind: grep_absent
+      pattern: '(fmt\.Sprintf\(\s*[''"](SELECT|INSERT|UPDATE|DELETE)|db\.Query\(\s*[''"][^''"]*[''"]\s*\+|Exec\(\s*.*\+)'
+      include: ['**/*.go']
+      exclude: ['**/*_test.go']
+      flags: i
+    why: 'Sprintf-built SQL is textbook injection.'
+    remediation: 'Use placeholders: db.QueryContext(ctx, "SELECT ... WHERE id = $1", id).'
+    references: ['CWE-89', 'ASVS-5.3.4']
+
+  - id: GO-008
+    title: HTTP servers set timeouts
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: performance
+    applies_when: { fact: 'platform:server' }
+    check:
+      kind: grep_present
+      pattern: '(ReadHeaderTimeout|ReadTimeout|WriteTimeout|IdleTimeout)'
+      include: ['**/*.go']
+      exclude: ['**/*_test.go']
+    why: 'The default net/http server has no timeouts, which is Slowloris as a service.'
+    remediation: 'Set ReadHeaderTimeout, ReadTimeout, WriteTimeout, and IdleTimeout on http.Server.'
+    references: ['CWE-400', 'Go-http-Server']

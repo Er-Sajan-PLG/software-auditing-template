@@ -1,0 +1,140 @@
+id: stacks/ml-ai
+title: ML / AI Systems
+section: S15
+section_title: Platform-Specific
+description: 'Activated when PyTorch/TensorFlow/JAX, notebooks, or model artefacts are detected.'
+version: '1.0'
+skip_when: { fact: 'project:ml', op: 'absent' }
+
+rules:
+  - id: ML-001
+    title: Training data is versioned
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: grep_present
+      pattern: '(dvc|lfs|lakefs|wandb\.Artifact|mlflow|dataset.*version|\.dvc/|data/raw)'
+      include: ['**/*.{py,yaml,yml,toml,md}', '.gitattributes', '.dvc/config']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'A model you cannot reproduce from its data is a result you cannot defend or debug.'
+    remediation: 'Version datasets with DVC or Git LFS; record the exact snapshot hash with every training run.'
+    references: ['DVC', 'Google-Rules-of-ML']
+
+  - id: ML-002
+    title: Model artefacts are versioned and registered
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    check: { kind: manual }
+    evidence: 'A model registry (MLflow, Weights & Biases, SageMaker) mapping deployed model → training run → data snapshot.'
+    why: 'When production degrades, the first question is "which model is running and what was it trained on?"'
+    remediation: 'Register every candidate model with metadata; deploy by registry version, never by copying files.'
+    references: ['MLflow', 'Google-Rules-of-ML']
+
+  - id: ML-003
+    title: Training is reproducible (seeded and pinned)
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_present
+      pattern: '(random_seed|manual_seed|set_seed|seed\s*=\s*\d+|deterministic\s*=\s*True|torch\.use_deterministic)'
+      include: ['**/*.py', '**/*.ipynb', '**/*.{yaml,yml}']
+      exclude: ['**/node_modules/**']
+      flags: i
+    why: 'Unseeded training means you cannot tell an improvement from noise.'
+    remediation: 'Seed every RNG (python, numpy, torch), pin the library versions, and record the environment.'
+    references: ['PyTorch-Reproducibility']
+
+  - id: ML-004
+    title: Model/data drift is monitored in production
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: operations
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Input distribution monitoring and a performance/label-feedback loop with alert thresholds.'
+    why: 'Models do not crash when they degrade. They just get quietly worse, and nobody notices for a quarter.'
+    remediation: 'Log input feature distributions and prediction confidence; alert on drift beyond a threshold.'
+    references: ['Google-Rules-of-ML', 'NIST-AI-RMF']
+
+  - id: ML-005
+    title: Predictions are logged for audit
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: compliance
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'Per-request log of model version, input features (or a hash), output, and latency, retained per policy.'
+    why: 'You cannot investigate a harmful prediction, a bias complaint, or a regression without the record.'
+    remediation: 'Log predictions with a request ID and model version; keep PII out or pseudonymised.'
+    references: ['NIST-AI-RMF', 'EU-AI-Act-Art.12']
+
+  - id: ML-006
+    title: Bias/fairness has been evaluated
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: compliance
+    check: { kind: manual }
+    evidence: 'Evaluation sliced across relevant protected or sensitive attributes, with the results recorded.'
+    why: 'Aggregate accuracy hides per-group failure. "95% accurate" can still mean one group is systematically wrong.'
+    remediation: 'Slice metrics by relevant cohorts before launch; document known limitations in a model card.'
+    references: ['NIST-AI-RMF', 'EU-AI-Act']
+
+  - id: ML-007
+    title: Notebooks are not the deployment path
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check: { kind: manual }
+    evidence: "Whether training/inference runs from scripts or pipelines, or still from someone's notebook."
+    why: '"Run cells 1 through 14, then the one I added" is not a reproducible pipeline.'
+    remediation: 'Extract to versioned scripts and a pipeline definition; keep notebooks for exploration only.'
+    references: ['Google-Rules-of-ML']
+
+  - id: ML-008
+    title: Inference cost and latency are tracked
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: performance
+    applies_when: { fact: 'maturity:production' }
+    check: { kind: manual }
+    evidence: 'p50/p95 inference latency and cost per 1k predictions (GPU hours or API spend).'
+    why: 'LLM and GPU inference bills are the fastest-growing line item in most 2026 stacks.'
+    remediation: 'Instrument per-request token/compute cost; set budgets; cache and batch where possible.'
+    references: ['FinOps', 'OWASP-LLM06:2026']
+
+  - id: ML-009
+    title: Model files are not committed to git
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: maintainability
+    check:
+      kind: tracked_absent
+      patterns:
+        [
+          '**/*.pt',
+          '**/*.pth',
+          '**/*.ckpt',
+          '**/*.h5',
+          '**/*.safetensors',
+          '**/*.onnx',
+          '**/*.bin',
+          '**/*.pb',
+          '**/checkpoints/**',
+          '**/*.gguf',
+        ]
+    why: 'Model weights are hundreds of megabytes to tens of gigabytes. Git will remember every version, forever.'
+    remediation: 'Store weights in a model registry or object storage (DVC, S3, Hugging Face Hub) and reference by digest.'
+    references: ['DVC', 'OpenSSF-Scorecard:Binary-Artifacts']

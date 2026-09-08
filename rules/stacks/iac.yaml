@@ -1,0 +1,128 @@
+id: stacks/iac
+title: Infrastructure as Code & Cloud
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Terraform/OpenTofu, Pulumi, Ansible, or Kubernetes manifests are detected.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'has:terraform', op: 'absent' }
+    - { fact: 'has:kubernetes', op: 'absent' }
+    - { fact: 'project:iac', op: 'absent' }
+
+rules:
+  - id: IAC-001
+    title: No public exposure of storage buckets or databases
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    applies_when: { fact: 'has:terraform' }
+    check:
+      kind: grep_wrong
+      pattern: '(acl\s*=\s*[''"]public-read|publicly_accessible\s*=\s*true|0\.0\.0\.0/0|cidr_blocks\s*=\s*\[\s*[''"]0\.0\.0\.0/0|Effect\s*=\s*[''"]Allow[\s\S]{0,120}Principal\s*=\s*[''"]\*)'
+      include: ['**/*.tf', '**/*.tfvars', '**/*.{yaml,yml,json}']
+      exclude: ['**/node_modules/**']
+    why: 'This is the single most common cause of cloud data breaches, and it is one line of config.'
+    remediation: 'Default to private; allowlist specific principals/CIDRs; add an automated check (Checkov/tfsec) in CI.'
+    references: ['CWE-284', 'CIS-AWS-2.1.5', 'ASVS-14.1.3']
+
+  - id: IAC-002
+    title: Encryption at rest is enabled
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'has:terraform' }
+    check:
+      kind: grep_present
+      pattern: '(encrypted\s*=\s*true|storage_encrypted\s*=\s*true|sse_algorithm|kms_key_id|enable_disk_encryption|customer_managed_key)'
+      include: ['**/*.tf', '**/*.tfvars', '**/*.{yaml,yml}']
+      exclude: ['**/node_modules/**']
+    why: 'Unencrypted volumes and buckets fail every compliance framework you will ever be asked about.'
+    remediation: 'Enable encryption with a customer-managed KMS key on all storage, databases, and queues.'
+    references: ['CIS-AWS-2.2.1', 'ASVS-8.1.1', 'GDPR-Art.32']
+
+  - id: IAC-003
+    title: IaC is validated and scanned before apply
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'has:ci' }
+    check:
+      kind: grep_present
+      pattern: '(terraform validate|terraform plan|tflint|checkov|tfsec|trivy config|kubeconform|kubeval|pulumi preview|ansible-lint)'
+      include:
+        [
+          '.github/workflows/*.yml',
+          '.github/workflows/*.yaml',
+          '.gitlab-ci.yml',
+          'Makefile',
+          'justfile',
+          '.pre-commit-config.yaml',
+        ]
+      flags: i
+    why: '`terraform apply` on unreviewed HCL is a production change with no diff shown to anybody.'
+    remediation: 'Run validate → plan → policy scan on every PR; require approval before apply.'
+    references: ['NIST-SSDF-PO.5', 'CIS']
+
+  - id: IAC-004
+    title: State is stored remotely and locked
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: operations
+    applies_when: { fact: 'has:terraform' }
+    check:
+      kind: grep_present
+      pattern: '(backend\s+"(s3|azurerm|gcs|remote|http|cos)|dynamodb_table|use_lockfile|lock_table)'
+      include: ['**/*.tf', '**/backend.tf', '**/*.hcl']
+    why: 'Local state means a laptop is the source of truth for your infrastructure, and concurrent applies corrupt it.'
+    remediation: 'Configure a remote backend with locking (S3 + DynamoDB, GCS, or Terraform Cloud).'
+    references: ['Terraform-Backends']
+
+  - id: IAC-005
+    title: IAM follows least privilege
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'has:terraform' }
+    check:
+      kind: grep_absent
+      pattern: '(Action\s*=\s*[''"]\*[''"]|actions\s*=\s*\[\s*[''"]\*[''"]|Resource\s*=\s*[''"]\*[''"]\s*$)'
+      include: ['**/*.tf', '**/*.{yaml,yml,json}']
+      exclude: ['**/node_modules/**']
+    why: '`Action: "*"` on `Resource: "*"` is administrator access with a nicer YAML indent.'
+    remediation: 'Enumerate the exact actions and resources; separate read and write roles; review quarterly.'
+    references: ['CIS-AWS-1.16', 'ASVS-4.1.1']
+
+  - id: IAC-006
+    title: Cloud spend is tagged and budgeted
+    section: S15
+    section_title: Platform-Specific
+    severity: LOW
+    class: operations
+    applies_when: { fact: 'has:terraform' }
+    check: { kind: manual }
+    evidence: 'A required-tags policy (owner, service, environment) and budget alerts at 50/80/100%.'
+    why: 'Untagged resources are how a forgotten load balancer costs $4,000 for eleven months.'
+    remediation: 'Enforce tags in policy (OPA/Sentinel); set per-environment budgets with alerts.'
+    references: ['FinOps', 'AWS-Well-Architected:Cost']
+
+  - id: IAC-007
+    title: Kubernetes manifests avoid privileged containers
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    applies_when: { fact: 'has:kubernetes' }
+    check:
+      kind: grep_absent
+      pattern: '(privileged\s*:\s*true|hostPID\s*:\s*true|hostNetwork\s*:\s*true|allowPrivilegeEscalation\s*:\s*true|capabilities\s*:[\s\S]{0,60}add\s*:[\s\S]{0,40}\[\s*[''"]?ALL)'
+      include: ['**/*.{yaml,yml}']
+      exclude: ['**/node_modules/**']
+    why: 'A privileged container is root on the node. There is almost always a narrower capability that works.'
+    remediation: 'Drop ALL capabilities and add back only what is needed; use Pod Security Admission "restricted".'
+    references: ['CIS-K8s-5.2.1', 'NSA-K8s-Hardening']

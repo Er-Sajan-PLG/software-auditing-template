@@ -1,0 +1,121 @@
+id: stacks/mobile
+title: Mobile (iOS / Android / Cross-platform)
+section: S15
+section_title: Platform-Specific
+description: 'Activated when iOS, Android, React Native, Expo, or Flutter is detected.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'platform:mobile', op: 'absent' }
+    - { fact: 'platform:ios', op: 'absent' }
+    - { fact: 'platform:android', op: 'absent' }
+
+rules:
+  - id: MOB-001
+    title: Crash reporting is integrated
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: operations
+    check:
+      kind: grep_present
+      pattern: '(Crashlytics|Sentry|BugSnag|Instabug|@sentry/react-native|firebase/crashlytics|crashReporting)'
+      include: ['**/*.{ts,tsx,js,json,plist,xml,gradle,kts,swift,kt,dart,yaml,yml}']
+      exclude: ['**/node_modules/**', '**/Pods/**']
+      flags: i
+    why: "On mobile you cannot watch the user's screen. Without crash reporting, your bug reports are one-star reviews."
+    remediation: 'Add Crashlytics or Sentry with symbol/dSYM upload so stack traces are readable.'
+    references: ['DORA:Monitoring']
+
+  - id: MOB-002
+    title: No hardcoded API secrets in app bundles
+    section: S15
+    section_title: Platform-Specific
+    severity: CRITICAL
+    class: security
+    check:
+      kind: grep_absent
+      pattern: '(api[_-]?key|secret|token|password)\s*[:=]\s*[''"][A-Za-z0-9._-]{16,}[''"]'
+      include: ['**/*.{swift,kt,java,dart,ts,tsx,js,plist,xml,gradle,json}']
+      exclude:
+        ['**/node_modules/**', '**/Pods/**', '**/*Test*', '**/android/build/**', '**/ios/Pods/**']
+      flags: i
+    why: 'Anything in an app bundle is extractable in about four minutes with apktool or Hopper.'
+    remediation: 'Keep secrets server-side; use attestation (App Check / DeviceCheck) and short-lived tokens.'
+    references: ['OWASP-MASVS-STORAGE-1', 'CWE-798']
+
+  - id: MOB-003
+    title: Sensitive data is not stored insecurely on device
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check: { kind: manual }
+    evidence: 'Where tokens/PII live: Keychain/Keystore/EncryptedSharedPreferences, not AsyncStorage, UserDefaults, or a plaintext SQLite file.'
+    why: 'On a rooted or backed-up device, plaintext local storage is a data breach with extra steps.'
+    remediation: 'Use Keychain (iOS) / Keystore-backed EncryptedSharedPreferences (Android); never AsyncStorage for secrets.'
+    references: ['OWASP-MASVS-STORAGE-2', 'CWE-311']
+
+  - id: MOB-004
+    title: Network security configuration is explicit
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: security
+    check: { kind: manual }
+    evidence: 'ATS settings (iOS Info.plist) and network-security-config / cleartextTrafficPermitted (Android).'
+    why: 'Both platforms default to permissive in older templates, which means plaintext HTTP and MITM.'
+    remediation: 'Disallow cleartext traffic; pin certificates only if you can commit to a rotation process.'
+    references: ['OWASP-MASVS-NETWORK-1', 'CWE-319']
+
+  - id: MOB-005
+    title: Permissions are requested minimally and with rationale
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: compliance
+    check: { kind: manual }
+    evidence: 'Declared permissions vs. permissions actually used; where and when each is requested.'
+    why: 'Over-broad permissions are the fastest route to an app-store rejection and a privacy headline.'
+    remediation: 'Request at the moment of use with an explanation; drop anything unused.'
+    references: ['OWASP-MASVS-PLATFORM-1', 'App-Store-Review']
+
+  - id: MOB-006
+    title: Offline behaviour is handled
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check: { kind: manual }
+    evidence: 'Behaviour when the network is unavailable mid-action: queued, retried, or failed with a clear message?'
+    why: 'Mobile networks drop constantly. An app that assumes connectivity corrupts data.'
+    remediation: 'Queue mutations locally and reconcile on reconnect; show a clear offline state.'
+    references: ['OWASP-MASVS']
+
+  - id: MOB-007
+    title: Privacy manifests / data collection disclosure are present
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: compliance
+    applies_when:
+      any:
+        - { fact: 'platform:ios' }
+        - { fact: 'platform:android' }
+    check: { kind: manual }
+    evidence: 'PrivacyInfo.xcprivacy (Apple) and the Play Data Safety declaration, both matching what the app actually collects.'
+    why: 'Apple rejects apps with missing or inaccurate privacy manifests. The declaration is also legally binding.'
+    remediation: 'Enumerate every SDK that collects data, then fill in the manifest to match reality.'
+    references: ['Apple-Privacy-Manifest', 'Play-Data-Safety']
+
+  - id: MOB-008
+    title: Tested on multiple screen sizes and OS versions
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check: { kind: manual }
+    evidence: 'Device matrix you test against, and whether the min-supported OS version is still patched upstream.'
+    why: '"Works on my iPhone 15 Pro" is not a test matrix.'
+    remediation: 'Test at least: smallest supported phone, a tablet, one dark-mode run, and the oldest supported OS.'
+    references: ['OWASP-MASVS']
