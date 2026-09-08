@@ -121,10 +121,13 @@ jobs:
         run: npm audit --audit-level=high
 
       # Run the gitleaks binary directly rather than through gitleaks-action:
-      # the Action ships its own default config and does not reliably pick up
-      # the repo's .gitleaks.toml, which is the file that allowlists the
-      # deliberately vulnerable demo app. The binary is MIT; the Action wrapper
-      # is what carries the organisation-licence gate.
+      # the Action ships its own default config, so the repo's .gitleaks.toml
+      # (which allowlists the deliberately vulnerable demo app) is not reliably
+      # applied. The binary is MIT; the Action wrapper carries the org licence.
+      #
+      # This repo must contain credential-shaped strings, so the build is failed
+      # by scripts/gitleaks-filter.mjs rather than by gitleaks' own exit code:
+      # findings in the demo app, or in the docs that quote it, are expected.
       - name: Secret scan
         run: |
           VERSION=8.28.0
@@ -132,7 +135,16 @@ jobs:
             "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
           sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
-          gitleaks detect --source . --config .gitleaks.toml --redact --no-banner
+          set +e
+          gitleaks detect --source . --no-banner --redact \
+            --report-format json --report-path /tmp/gitleaks.json
+          gitleaks_exit=$?
+          set -e
+          if [ "$gitleaks_exit" -ne 0 ] && [ ! -f /tmp/gitleaks.json ]; then
+            echo "gitleaks failed to run (exit $gitleaks_exit) without producing a report"
+            exit "$gitleaks_exit"
+          fi
+          node scripts/gitleaks-filter.mjs /tmp/gitleaks.json
 
       - name: License scan
         run: npx license-checker --production --onlyAllow 'MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;Unlicense;Python-2.0'

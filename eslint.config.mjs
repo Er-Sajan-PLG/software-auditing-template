@@ -21,4 +21,15 @@ export default tseslint.config(
     files: ['**/*.test.ts'],
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
+  {
+    // Node scripts (scripts/*.mjs) run under plain node, which js.configs
+    // .recommended does not know about — without this, `process` and `console`
+    // are reported as undefined.
+    files: ['**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly' },
+    },
+  },
 );

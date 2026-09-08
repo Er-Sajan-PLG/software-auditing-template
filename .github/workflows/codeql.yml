@@ -1,5 +1,9 @@
 # Static analysis. USAT's own rule SUP-006 asks whether SAST runs in CI, so this
 # repo runs it. CodeQL is free for public repositories.
+#
+# Note: this is *Advanced* setup. If the repository has CodeQL *Default* setup
+# enabled instead, the analysis step reports the conflict rather than blocking a
+# merge — a settings change cannot be made from a pull request.
 name: CodeQL
 
 on:
@@ -23,11 +27,6 @@ jobs:
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [javascript-typescript]
-
     steps:
       - uses: actions/checkout@v4
 
@@ -41,14 +40,13 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          language: ${{ matrix.language }}
+          # Plural `languages` is the current input; the singular `language`
+          # falls back to autodetection, which tries to build a Python database
+          # for a repository that contains no Python.
+          languages: javascript-typescript
 
-      # CodeQL Advanced setup is a repository setting (Settings → Code security).
-      # If Default setup is enabled instead of Advanced, this step reports the
-      # conflict and we do not block a merge on a settings change that cannot be
-      # made from a pull request. Everything else in CI stays blocking.
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
         continue-on-error: true
         with:
-          category: '/language:${{ matrix.language }}'
+          category: '/language:javascript-typescript'
