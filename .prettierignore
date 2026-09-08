@@ -10,3 +10,4 @@ examples/demo-app/
 # Generated artefact.
 AUDIT.md
 examples/sample-report.md
+.gitleaks.toml
