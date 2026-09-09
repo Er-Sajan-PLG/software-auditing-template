@@ -68,7 +68,10 @@ Automation:
 
 Deferred (in ROADMAP with rationale, not forgotten):
 
-- [ ] release-please + commitlint (needs maintainer workflow decision)
+- [x] release-please + commitlint (decision: release-please over
+      semantic-release — rule content keeps its human gate; commitlint via hook
+  - CI `commits` job; bootstrap-sha + manifest pin the 1.0.0 baseline;
+    `.github/release.yml` categories retired as dead config)
 - [ ] SARIF/JSON renderers, per-rule fixtures, oracle ingestion (ROADMAP)
 - [ ] OpenSSF Scorecard action + badge (ROADMAP)
 

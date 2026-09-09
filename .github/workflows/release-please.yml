@@ -1,0 +1,38 @@
+name: Release please
+
+# Developer-style versioning: every squash-merged PR with a conventional
+# title (`feat:`, `fix:`, `BREAKING CHANGE:`) accumulates into an open
+# Release PR carrying the version bump + CHANGELOG entries as a reviewable
+# diff. Merging that PR cuts the `v*` tag, which fires release.yml
+# (OIDC publish + provenance + SBOM). No manual version arithmetic, ever.
+#
+# Deliberately NOT semantic-release: rule-pack content needs the human gate
+# a Release PR provides (see ROADMAP.md). Deliberately no moving `v1` tag:
+# it would retrigger release.yml (`v*` matches) and fail on the duplicate
+# version — docs pin exact versions instead (see ci-integration.md).
+#
+# Bootstrap (no tags or GitHub releases predate automation; the first
+# registry publish was manual): release-please-config.json pins
+# bootstrap-sha at the automation cutover commit, and
+# .release-please-manifest.json pins the starting version 1.0.0, so the
+# first Release PR is incremental. release-please-config.json must stay
+# comment-free: the action parses it as strict JSON.
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          release-type: node
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

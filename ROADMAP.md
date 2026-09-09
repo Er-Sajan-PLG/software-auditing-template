@@ -40,7 +40,7 @@ verify` success, attestation/VSA presence where network allows; existence
 - [x] **Self-audit correctness hardening** — 27-finding adversarial review
       fixed (fail-closed inputs, expiry-aware suppressions, fixed-point
       detection, trailer hygiene). _(shipped)_
-- [ ] **release-please + commitlint** — reviewable Release PRs (version +
+- [x] **release-please + commitlint** — reviewable Release PRs (version +
       CHANGELOG + tag atomically); keep the human gate on rule-content
       releases. Not semantic-release (wrong risk profile for curated rules).
 - [ ] **Trusted publishing + npm provenance + SBOM + attestation** — remove
