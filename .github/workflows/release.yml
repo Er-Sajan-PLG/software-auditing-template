@@ -21,8 +21,19 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          # Node 24: trusted publishing REQUIRES npm ≥ 11.5.1 (Node ≥ 22.14).
+          # On Node 20 (npm 10) the Sigstore/provenance leg succeeds but the
+          # registry OIDC token exchange silently never happens — the PUT
+          # goes out unauthenticated and npm 404s. Do not downgrade this.
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+
+      # Belt and braces: setup-node's bundled npm is not pinned to ≥ 11.5.1,
+      # and a future downgrade would fail exactly like Node 20 did (provenance
+      # signed, PUT 404). Pin the floor explicitly instead of trusting it.
+      - name: Ensure npm supports OIDC trusted publishing
+        run: npm install -g npm@^11.15.0 && npm --version
+
       - run: npm ci
       - run: npm run build
       # Provenance is public, verifiable build metadata on the registry —
