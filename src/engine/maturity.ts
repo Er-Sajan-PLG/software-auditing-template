@@ -159,9 +159,12 @@ export function dampen(
   profile: MaturityProfile,
 ): { severity: Severity; dampened: boolean } {
   if (severity === 'CRITICAL') return { severity, dampened: false };
-  const steps = profile.dampen[ruleClass] ?? 0;
-  if (steps <= 0) return { severity, dampened: false };
+  const raw = profile.dampen[ruleClass] ?? 0;
+  // Pack-supplied dampen steps are untrusted input: a fractional step indexes
+  // the ladder at a hole (severity: undefined → NaN scores downstream), so
+  // only non-negative integers dampen. Anything else means full severity.
+  if (!Number.isInteger(raw) || raw <= 0) return { severity, dampened: false };
   const idx = LADDER.indexOf(severity);
-  const next = Math.max(0, idx - steps);
+  const next = Math.max(0, idx - raw);
   return { severity: LADDER[next]!, dampened: next !== idx };
 }

@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
   packages: write
+  # OIDC trusted publishing: no long-lived NPM_TOKEN. One-time owner setup:
+  # npmjs.com → package Settings → Trusted Publisher → GitHub Actions,
+  # this repo + this workflow. Until then, publishing fails closed here.
+  id-token: write
 
 jobs:
   publish:
@@ -21,6 +25,17 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: npm run build
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Provenance is public, verifiable build metadata on the registry —
+      # what USAT's own S3 rules demand of others (SUP-005..007, S3).
+      - run: npm publish --provenance
+
+      # CycloneDX SBOM for the shipped tarball. Same preach/practice logic:
+      # USAT audits SBOM publication (SUP-014), so it ships one.
+      - name: SBOM (CycloneDX)
+        run: npm sbom --sbom-format cyclonedx -o sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: usat-sbom
+          path: sbom.cdx.json

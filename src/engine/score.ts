@@ -137,13 +137,22 @@ function accumulateScoredRule(
   bucket.applicable++;
   acc.applicableAll++;
 
+  // Suppressed findings live under Accepted Risk only: counting them as open
+  // once produced "HIGH: 1" next to "No CRITICAL or HIGH findings. Nice."
+  // in the same report. Unsuppressed UNKNOWN still counts — the report
+  // narrative ("N checks need a human") is driven by counts.UNKNOWN.
+  if (finding.suppressedReason) {
+    if (finding.status === 'UNKNOWN') bucket.unknown++;
+    return;
+  }
+
   acc.counts[finding.status]++;
   if (finding.status !== 'PASS' && finding.status !== 'UNKNOWN') {
     acc.severityCounts[finding.severity]++;
   }
 
-  if (finding.suppressedReason || finding.status === 'UNKNOWN') {
-    if (finding.status === 'UNKNOWN') bucket.unknown++;
+  if (finding.status === 'UNKNOWN') {
+    bucket.unknown++;
     return;
   }
   applyRuleCredit(acc, bucket, rule, finding, sec.weight);

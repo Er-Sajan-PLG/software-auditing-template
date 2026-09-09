@@ -1,0 +1,36 @@
+name: Automerge (patch/minor)
+
+# Dependabot toil removal, tightly scoped: patch and minor updates merge
+# themselves once CI is green. Majors stay manual (breaking changes deserve
+# a human), and auto-merge waits for all required checks by construction.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge on patch/minor
+        if: >-
+          ${{ steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+              steps.meta.outputs.update-type == 'version-update:semver-minor' }}
+        # `github.event.number` (server-generated integer), never
+        # `github.event.pull_request.*` text: SUP-008 forbids interpolating
+        # event payloads into `run:` — even via `env:` — and numbers are the
+        # injection-safe identifier `gh pr merge` accepts.
+        run: gh pr merge --auto --squash "${{ github.event.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -158,6 +158,75 @@ describe('end-to-end audits', () => {
     expect(report.findings.find((f) => f.ruleId === 'REPO-005')).toBeUndefined();
   });
 
+  it('expired suppressions fail closed with a warning', () => {
+    const root = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const { report, warnings } = auditAt(root, {
+      config: {
+        version: 1,
+        suppressions: [{ rule: 'REPO-005', reason: 'stale waiver', until: '2020-01-01' }],
+      },
+    });
+    const f = report.findings.find((x) => x.ruleId === 'REPO-005')!;
+    expect(f.suppressedReason).toBeUndefined();
+    expect(warnings.some((w) => w.includes('REPO-005') && w.includes('expired'))).toBe(true);
+  });
+
+  it('unparseable suppression dates fail closed with a warning', () => {
+    const root = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const { report, warnings } = auditAt(root, {
+      config: {
+        version: 1,
+        suppressions: [{ rule: 'REPO-005', reason: 'typo waiver', until: 'someday' }],
+      },
+    });
+    expect(report.findings.find((x) => x.ruleId === 'REPO-005')!.suppressedReason).toBeUndefined();
+    expect(warnings.some((w) => w.includes('REPO-005') && w.includes('unparseable'))).toBe(true);
+  });
+
+  it('honours a config maturity override', () => {
+    const root = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const { report, warnings } = auditAt(root, {
+      config: { version: 1, maturity: 'production' },
+    });
+    expect(report.detection.maturity).toBe('production');
+    expect(warnings).toEqual([]);
+  });
+
+  it('warns on an invalid config maturity and falls back to detection', () => {
+    const root = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const { report, warnings } = auditAt(root, {
+      // @ts-expect-error intentionally invalid maturity
+      config: { version: 1, maturity: 'enterprise' },
+    });
+    expect(report.detection.maturity).not.toBe('enterprise');
+    expect(warnings.some((w) => w.includes('invalid maturity'))).toBe(true);
+  });
+
+  it('restricts scoring and findings to configured sections', () => {
+    const root = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const { report, warnings } = auditAt(root, {
+      config: { version: 1, sections: ['S2'] },
+    });
+    expect(warnings).toEqual([]);
+    expect(report.findings.length).toBeGreaterThan(0);
+    for (const f of report.findings) expect(f.section).toBe('S2');
+    for (const s of report.score.sections) expect(s.id).toBe('S2');
+  });
+
+  it('rejects invalid rule overrides with a warning and a finite score', () => {
+    const root = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const { report, warnings } = auditAt(root, {
+      config: {
+        version: 1,
+        // @ts-expect-error intentionally invalid override values
+        rules: { 'SEC-001': { severity: 'BOGUS', weight: -5 } },
+      },
+    });
+    expect(warnings.some((w) => w.includes('invalid severity'))).toBe(true);
+    expect(warnings.some((w) => w.includes('invalid weight'))).toBe(true);
+    expect(Number.isFinite(report.score.overall)).toBe(true);
+  });
+
   it('is deterministic across runs', () => {
     const root = build({
       'package.json': JSON.stringify({ name: 'x', version: '1.0.0' }),

@@ -125,14 +125,42 @@ function classifyRuleChange(
     return;
   }
   if (x.status === y.status) return;
-  const wasOpen = OPEN.has(x.status as Status);
-  const isOpen = OPEN.has(y.status as Status);
-  if (wasOpen && PASSING.has(y.status)) {
-    buckets.fixed.push(`${id} — ${x.status} → PASS`);
+  if (classifyUnknownTransition(id, x.status, y.status, buckets)) return;
+  classifyOpenTransition(id, x.status, y.status, buckets);
+}
+
+/**
+ * Movements to or from the judgement queue. Previously these were dropped
+ * entirely, so resolving the queue (the tool's headline workflow) was
+ * invisible in `usat diff` — "No net movement… nothing changed" while a
+ * human did the most valuable work.
+ */
+function classifyUnknownTransition(
+  id: string,
+  xs: string,
+  ys: string,
+  buckets: DiffBuckets,
+): boolean {
+  if (xs !== 'UNKNOWN' && ys !== 'UNKNOWN') return false;
+  if (xs === 'UNKNOWN' && ys === 'PASS') {
+    buckets.fixed.push(`${id} — UNKNOWN → PASS (resolved by review)`);
+  } else if (ys === 'UNKNOWN' && !OPEN.has(xs as Status)) {
+    buckets.regressed.push(`${id} — ${xs} → UNKNOWN (needs review)`);
+  } else {
+    buckets.improved.push(`${id} — ${xs} → ${ys}`);
+  }
+  return true;
+}
+
+function classifyOpenTransition(id: string, xs: string, ys: string, buckets: DiffBuckets): void {
+  const wasOpen = OPEN.has(xs as Status);
+  const isOpen = OPEN.has(ys as Status);
+  if (wasOpen && PASSING.has(ys)) {
+    buckets.fixed.push(`${id} — ${xs} → PASS`);
   } else if (!wasOpen && isOpen) {
-    buckets.regressed.push(`${id} — ${x.status} → ${y.status}`);
+    buckets.regressed.push(`${id} — ${xs} → ${ys}`);
   } else if (wasOpen && isOpen) {
-    buckets.improved.push(`${id} — ${x.status} → ${y.status}`);
+    buckets.improved.push(`${id} — ${xs} → ${ys}`);
   }
 }
 

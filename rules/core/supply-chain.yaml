@@ -62,7 +62,11 @@ rules:
     class: supply-chain
     check:
       kind: grep_absent
-      pattern: ':\s*[''"]?(\*|latest|x|\^0\.0|>=?0\.0\.0)[''"]?\s*[,}]'
+      # NOTE: every range operator must be listed, not just the `0.0` forms —
+      # an earlier revision missed `^1.2.3`, `~1.2`, `>=1.0` and `1.x`, so the
+      # most common floating ranges passed as "pinned". Exact versions
+      # (`"18.3.1"`) still pass: no alternative matches a bare digit run.
+      pattern: ':\s*[''"]?(\*|latest|x|~|\^|>=?|>|<=?|<|\d+\.[xX])[''"]?\s*[,}]'
       include:
         ['package.json', 'bower.json', 'composer.json', 'pyproject.toml', 'requirements*.txt']
       exclude: []
@@ -186,7 +190,12 @@ rules:
     applies_when: { fact: 'ci:github-actions' }
     check:
       kind: grep_present
-      pattern: '^\s*permissions\s*:\s*(\s*$|read-all$)|^\s{2,}(contents|id-token|pull-requests)\s*:\s*(read|write)\s*$'
+      # NOTE: a bare `permissions:` line proves nothing — the grants live on
+      # the following lines, which a per-line check cannot see. Only an
+      # explicit same-line `read-all`, or a scoped `contents:`/`id-token:` /
+      # `pull-requests:` grant, counts as evidence. `write-all` and bare
+      # `permissions:` yield MISSING (unverifiable), never PASS.
+      pattern: '^\s*permissions\s*:\s*read-all\s*$|^\s{2,}(contents|id-token|pull-requests)\s*:\s*(read|write)\s*$'
       include: ['.github/workflows/*.yml', '.github/workflows/*.yaml']
     why: 'A default GITHUB_TOKEN with write-all turns any compromised action into a supply-chain incident.'
     remediation: 'Set `permissions: contents: read` at the top of each workflow and grant write only where needed.'

@@ -30,6 +30,53 @@ function fixture(files: Record<string, string>): string {
 
 describe('core/security rules', () => {
   const sec002 = ruleOf('core/security.yaml', 'SEC-002');
+  const sec003 = ruleOf('core/security.yaml', 'SEC-003');
+  const sec005 = ruleOf('core/security.yaml', 'SEC-005');
+  const sec013 = ruleOf('core/security.yaml', 'SEC-013');
+
+  // SEC-003 once used `https?://` and failed every compliant https:// URL,
+  // including this repo's own package.json. The `s?` must never come back.
+  it('SEC-003 passes on https URLs, fails on plaintext http', () => {
+    const ok = fixture({ 'src/api.ts': 'export const BASE = "https://api.example.com/v1";\n' });
+    expect(evaluateAt(ok, sec003.check).status).toBe('PASS');
+    const bad = fixture({ 'src/api.ts': 'export const BASE = "http://api.example.com/v1";\n' });
+    const r = evaluateAt(bad, sec003.check);
+    expect(r.status).toBe('FAIL');
+    expect(r.locations[0]!.line).toBe(1);
+  });
+
+  it('SEC-003 still exempts localhost', () => {
+    const root = fixture({ 'src/api.ts': 'export const BASE = "http://localhost:3000/v1";\n' });
+    expect(evaluateAt(root, sec003.check).status).toBe('PASS');
+  });
+
+  // The `%s` alternative once matched the safe DB-API parameter style.
+  it('SEC-005 passes parameterised queries, fails interpolation', () => {
+    const ok = fixture({
+      'src/db.py': 'cursor.execute("SELECT * FROM t WHERE id = %s", (user_id,))\n',
+    });
+    expect(evaluateAt(ok, sec005.check).status).toBe('PASS');
+    const bad = fixture({ 'src/db.py': 'q = "SELECT * FROM t WHERE id = %s" % user_id\n' });
+    expect(evaluateAt(bad, sec005.check).status).toBe('WRONG');
+    const concat = fixture({ 'src/db.py': 'q = "SELECT * FROM t" + user_input\n' });
+    expect(evaluateAt(concat, sec005.check).status).toBe('WRONG');
+  });
+
+  // The trailing `['"']?` was optional, so every correct two-argument
+  // jwt.verify call failed. The quote is now mandatory (inline secrets only).
+  it('SEC-013 passes correct verify calls, fails bypasses', () => {
+    const mk = (line: string) => fixture({ 'src/auth.js': `${line}\n` });
+    expect(
+      evaluateAt(mk('jwt.verify(token, SECRET, { algorithms: ["RS256"] });'), sec013.check).status,
+    ).toBe('PASS');
+    expect(evaluateAt(mk('jwt.verify(token, SECRET);'), sec013.check).status).toBe('PASS');
+    expect(
+      evaluateAt(mk('const t = jwt.verify(token, "hardcoded-secret");'), sec013.check).status,
+    ).toBe('FAIL');
+    expect(
+      evaluateAt(mk('jwt.verify(token, secret, { algorithms: ["none"] });'), sec013.check).status,
+    ).toBe('FAIL');
+  });
 
   // A log line that merely talks about secrets is not a log line that leaks
   // one. This rule used to fire on its own documentation.

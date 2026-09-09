@@ -563,10 +563,19 @@ export function trailer(report: AuditReport): string {
   lines.push('rules:');
   for (const f of report.findings) {
     lines.push(
-      `  ${f.ruleId}: {status: ${f.status}, severity: ${f.severity}, section: ${f.section}}`,
+      `  ${yamlKey(f.ruleId)}: {status: ${f.status}, severity: ${f.severity}, section: ${f.section}}`,
     );
   }
   return lines.join('\n');
+}
+
+/**
+ * Rule IDs are pack-author-controlled input to a machine-parsed channel.
+ * An unquoted id containing `:`, `#`, a newline, or a ``` fence truncates
+ * or corrupts the YAML mapping the trailer — and therefore `usat diff`.
+ */
+function yamlKey(id: string): string {
+  return `"${id.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
 }
 
 /** Extracts the machine-readable trailer from a previously rendered report. */
@@ -578,15 +587,21 @@ export function parseTrailer(markdown: string): string | null {
   // Find the END first and then walk back: a report that *quotes* an earlier
   // BEGIN marker (or one concatenated with a decoy) must still yield its own
   // trailer, so the nearest BEGIN before END is the one that matters.
-  const end = markdown.indexOf(TRAILER_END);
+  // Last END wins: in a concatenation of reports the newest trailer is the
+  // one that matters. (First-END returned the oldest — stale diffs.)
+  const end = markdown.lastIndexOf(TRAILER_END);
   if (end < 0) return null;
   const start = markdown.lastIndexOf(TRAILER_BEGIN, end);
   if (start < 0) return null;
   const body = markdown.slice(start + TRAILER_BEGIN.length, end);
 
-  const fence = /```ya?ml\n/.exec(body);
+  // Tolerate trailing spaces, CRLF line endings, and `yml` shorthand.
+  const fence = /```ya?ml[ \t]*\r?\n/.exec(body);
   if (!fence) return null;
   const yamlStart = fence.index + fence[0].length;
-  const yamlEnd = body.indexOf('```', yamlStart);
-  return yamlEnd < 0 ? body.slice(yamlStart) : body.slice(yamlStart, yamlEnd);
+  // Last fence wins: a hostile rule id can legally contain ``` inside its
+  // quoted YAML string, so the first fence after the header is not
+  // necessarily the closing one. The emitted closing fence is always last.
+  const yamlEnd = body.lastIndexOf('```');
+  return yamlEnd <= yamlStart ? body.slice(yamlStart) : body.slice(yamlStart, yamlEnd);
 }

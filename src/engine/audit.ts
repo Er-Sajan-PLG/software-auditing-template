@@ -6,8 +6,11 @@ import type {
   Finding,
   Maturity,
   RulePack,
+  Suppression,
   UsatConfig,
 } from '../types.js';
+import type { SectionDef } from './sections.js';
+import { SEVERITY_LADDER } from './loader.js';
 import { Project } from '../util/project.js';
 import { detect, loadDetectorFile } from '../detect/index.js';
 import { loadRulePacks, applyRuleOverrides } from './loader.js';
@@ -75,10 +78,10 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   const { packs, warnings: packWarnings } = loadRulePacks(opts.rulesDir);
   warnings.push(...packWarnings);
 
-  const { disabled, overrides } = collectRuleSettings(config);
+  const { disabled, overrides } = collectRuleSettings(config, warnings);
   applyRuleOverrides(packs, overrides);
 
-  const suppressions = buildSuppressions(config);
+  const suppressions = resolveSuppressions(config.suppressions, warnings);
   const { include, exclude } = resolvePackSets(options, config);
 
   // A pack may assert extra facts simply by applying (e.g. "we are a monorepo").
@@ -89,10 +92,9 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   // fixed point (bounded, so a malformed pack cannot hang the audit).
   resolvePackFacts(packs, facts, include, exclude, selection);
 
-  const sections = loadSections(opts.rulesDir);
+  const sections = selectSections(loadSections(opts.rulesDir), config.sections, warnings);
   const profiles = loadProfiles(opts.rulesDir);
-  const forcedProfile = opts.profile !== 'auto' ? opts.profile : null;
-  const maturity: Maturity = forcedProfile ?? detection.maturity;
+  const maturity = resolveMaturity(opts.profile, config.maturity, detection.maturity, warnings);
   const profile = profiles[maturity];
 
   const ctx: EvalContext = {
@@ -104,7 +106,22 @@ export function runAudit(options: AuditOptions): AuditOutcome {
     suppressions,
   };
 
-  const evaluated = evaluatePacks(selection.activePacks, facts, opts.depth, include, ctx, profile);
+  const evaluatedAll = evaluatePacks(
+    selection.activePacks,
+    facts,
+    opts.depth,
+    include,
+    ctx,
+    profile,
+  );
+  // A `sections:` restriction narrows both the scored set and the report, so a
+  // scoped audit cannot leak findings it promised to exclude.
+  const sectionFilter = config.sections ?? [];
+  const wanted = new Set(sections.map((s) => s.id));
+  const evaluated =
+    sectionFilter.length > 0
+      ? evaluatedAll.filter((e) => wanted.has(e.finding.section))
+      : evaluatedAll;
   const card = score(evaluated, sections, profile);
   const report = buildReport(
     opts,
@@ -133,8 +150,72 @@ function normalizeAuditOptions(options: AuditOptions, config: UsatConfig) {
   };
 }
 
-function buildSuppressions(config: UsatConfig): Map<string, string> {
-  return new Map((config.suppressions ?? []).map((s) => [s.rule, s.reason]));
+/**
+ * Expired (or undated) waivers fail closed: an `until` date in the past — or
+ * one that cannot be parsed — excludes the suppression and raises a warning,
+ * so an audit never silently honours dead risk acceptances.
+ */
+function resolveSuppressions(
+  suppressions: Suppression[] | undefined,
+  warnings: string[],
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const s of suppressions ?? []) {
+    if (!s.rule) continue;
+    if (s.until && isSuppressionExpired(s.rule, s.until, warnings)) continue;
+    map.set(s.rule, s.reason);
+  }
+  return map;
+}
+
+function isSuppressionExpired(rule: string, until: string, warnings: string[]): boolean {
+  const t = Date.parse(until);
+  if (Number.isNaN(t)) {
+    warnings.push(
+      `suppression for ${rule} has an unparseable "until" date ("${until}") — waiver ignored`,
+    );
+    return true;
+  }
+  if (t < Date.now()) {
+    warnings.push(`suppression for ${rule} expired on ${until} — treating as an active finding`);
+    return true;
+  }
+  return false;
+}
+
+const MATURITIES: Maturity[] = ['prototype', 'mvp', 'beta', 'production', 'legacy'];
+
+/**
+ * CLI --profile wins; otherwise a valid config `maturity` pins the bar;
+ * otherwise auto-detection stands. Invalid config values warn and fall back.
+ */
+function resolveMaturity(
+  cliProfile: Maturity | 'auto',
+  configMaturity: Maturity | undefined,
+  detected: Maturity,
+  warnings: string[],
+): Maturity {
+  if (cliProfile !== 'auto') return cliProfile;
+  if (configMaturity === undefined) return detected;
+  if ((MATURITIES as readonly string[]).includes(configMaturity)) return configMaturity;
+  warnings.push(
+    `.usat.yaml: invalid maturity "${String(configMaturity)}" — using auto-detected ${detected}`,
+  );
+  return detected;
+}
+
+/** Restrict scoring and reporting to the configured sections, if any. */
+function selectSections(
+  all: SectionDef[],
+  wanted: string[] | undefined,
+  warnings: string[],
+): SectionDef[] {
+  if (!wanted || wanted.length === 0) return all;
+  const known = new Set(all.map((s) => s.id));
+  for (const id of wanted) {
+    if (!known.has(id)) warnings.push(`.usat.yaml: unknown section "${id}" in sections — ignored`);
+  }
+  return all.filter((s) => wanted.includes(s.id));
 }
 
 function resolvePackSets(
@@ -149,7 +230,10 @@ function resolvePackSets(
 
 type RuleOverride = { severity?: Finding['severity']; weight?: number };
 
-function collectRuleSettings(config: UsatConfig): {
+function collectRuleSettings(
+  config: UsatConfig,
+  warnings: string[],
+): {
   disabled: Set<string>;
   overrides: Record<string, RuleOverride>;
 } {
@@ -157,11 +241,40 @@ function collectRuleSettings(config: UsatConfig): {
   const overrides: Record<string, RuleOverride> = {};
   for (const [id, o] of Object.entries(config.rules ?? {})) {
     if (o.disabled) disabled.add(id);
-    if (o.severity || typeof o.weight === 'number') {
-      overrides[id] = { severity: o.severity, weight: o.weight };
+    const severity = validateOverrideSeverity(id, o.severity, warnings);
+    const weight = validateOverrideWeight(id, o.weight, warnings);
+    if (severity !== undefined || weight !== undefined) {
+      overrides[id] = { severity, weight };
     }
   }
   return { disabled, overrides };
+}
+
+/**
+ * Config overrides flow straight into scoring arithmetic — an invalid severity
+ * yields NaN totals and a negative weight yields scores outside 0–100.
+ * Reject loudly rather than corrupt the report.
+ */
+function validateOverrideSeverity(
+  id: string,
+  v: unknown,
+  warnings: string[],
+): RuleOverride['severity'] {
+  if (v === undefined) return undefined;
+  if ((SEVERITY_LADDER as readonly string[]).includes(String(v))) {
+    return String(v) as RuleOverride['severity'];
+  }
+  warnings.push(`rules.${id}: invalid severity "${String(v)}" — override ignored`);
+  return undefined;
+}
+
+function validateOverrideWeight(id: string, v: unknown, warnings: string[]): number | undefined {
+  if (v === undefined) return undefined;
+  if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
+  warnings.push(
+    `rules.${id}: invalid weight "${String(v)}" (must be a finite number ≥ 0) — override ignored`,
+  );
+  return undefined;
 }
 
 interface PackSelection {

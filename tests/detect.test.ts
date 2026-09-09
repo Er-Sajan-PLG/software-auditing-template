@@ -155,3 +155,84 @@ describe('maturity classification', () => {
     expect(full.maturity).toBe('legacy');
   });
 });
+
+describe('implies chains resolve regardless of order and length', () => {
+  it('resolves a 4-link chain declared worst-first', () => {
+    const root = build({ 'marker.txt': 'x\n' });
+    const project = new Project(root);
+    const chain = [
+      { fact: 'base', category: 't', title: 'b', match: { any_file: ['marker.txt'] } },
+      { fact: 'A', category: 't', title: 'a', implies: ['base'] },
+      { fact: 'B', category: 't', title: 'b', implies: ['A'] },
+      { fact: 'C', category: 't', title: 'c', implies: ['B'] },
+      { fact: 'D', category: 't', title: 'd', implies: ['C'] },
+    ];
+    const out = detect(project, [...chain].reverse(), project.gitInfo(), []);
+    for (const f of ['base', 'A', 'B', 'C', 'D']) {
+      expect(out.facts.flags).toContain(f);
+    }
+  });
+});
+
+describe('manifest matching precision', () => {
+  function matchedWith(detectors: never[], files: Record<string, string>, fact: string): boolean {
+    const root = build(files);
+    const project = new Project(root);
+    const out = detect(project, detectors, project.gitInfo(), []);
+    return out.facts.flags.has(fact);
+  }
+
+  it('does not match a leaf inside a longer word', () => {
+    const detectors = [
+      {
+        fact: 'x:test',
+        category: 't',
+        title: 't',
+        match: { manifest: { file: 'config.toml', key: 'tool.test', contains: 'x' } },
+      },
+    ];
+    // `latest` contains `test` as a substring — must not count.
+    expect(
+      matchedWith(detectors as never[], { 'config.toml': '[tool]\nlatest = "x"\n' }, 'x:test'),
+    ).toBe(false);
+    expect(
+      matchedWith(detectors as never[], { 'config.toml': '[tool]\ntest = "x"\n' }, 'x:test'),
+    ).toBe(true);
+  });
+
+  it('matches sections by full segment, case-insensitively', () => {
+    const detectors = [
+      {
+        fact: 'x:deps',
+        category: 't',
+        title: 't',
+        match: { manifest: { file: 'pyproject.toml', key: 'dependencies.django' } },
+      },
+    ];
+    // [dev-dependencies] is not [dependencies] (`-` is not a segment boundary).
+    expect(
+      matchedWith(
+        detectors as never[],
+        { 'pyproject.toml': '[dev-dependencies]\ndjango = "^5"\n' },
+        'x:deps',
+      ),
+    ).toBe(false);
+  });
+
+  it('does not satisfy a dotted JSON key from a root-level coincidence', () => {
+    const detectors = [
+      {
+        fact: 'x:thing',
+        category: 't',
+        title: 't',
+        match: { manifest: { file: 'data.json', key: 'a.b.c' } },
+      },
+    ];
+    expect(matchedWith(detectors as never[], { 'data.json': '{"c": true}' }, 'x:thing')).toBe(
+      false,
+    );
+    expect(
+      matchedWith(detectors as never[], { 'data.json': '{"a": {"b": {"c": true}}}' }, 'x:thing'),
+    ).toBe(true);
+  });
+});

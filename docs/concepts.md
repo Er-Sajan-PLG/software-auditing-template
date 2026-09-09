@@ -140,6 +140,12 @@ A rule participates when **all** of these hold:
 3. Its `depths` (if any) include the current `--depth`
 4. It is not disabled in `.usat.yaml`
 
+Two escape hatches, both loud: a force-included pack (`include:`) applies
+all its rules regardless of 2 and 3 — the operator asked for it — and a
+malformed `applies_when` (unknown key or operator, bad regex, non-mapping)
+warns at load time and evaluates to false, so a typo can never silently
+include rules. See ADR-0009.
+
 ```yaml
 - id: DATA-007
   applies_when: { fact: 'has:database' }
@@ -165,8 +171,14 @@ suppressions:
     until: '2026-12-31'
 ```
 
-Suppressed findings are **excluded from the score but still listed** under
-_Accepted Risk_. Anyone reading the report can see what was waived and why.
+Suppressed findings are **excluded from the score, the severity tallies, and
+the action sections, but still listed** under _Accepted Risk_. Anyone reading
+the report can see what was waived and why — and the Findings Summary can
+never contradict Immediate Action over a waived item.
+
+Waivers **expire**: an `until` date in the past (or one that cannot be
+parsed) is ignored with a warning, and the finding reports normally. See
+ADR-0007.
 
 ---
 

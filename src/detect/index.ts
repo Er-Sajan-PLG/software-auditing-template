@@ -47,8 +47,11 @@ const CONTENT_EXCLUDES = [
   '**/__mocks__/**',
   '**/test/**',
   '**/tests/**',
+  '**/__tests__/**',
+  '**/spec/**',
   '**/*.test.*',
   '**/*.spec.*',
+  '**/*.stories.*',
   '**/test_*',
   '**/*_test.*',
   'LICENSE*',
@@ -95,11 +98,17 @@ export function detect(
 
   const fired: DetectionResult['detectorsFired'] = [];
 
-  // Two passes so `implies` chains resolve regardless of declaration order.
-  for (let pass = 0; pass < 2; pass++) {
+  // Fixed-point resolution: `implies` chains of any length resolve regardless
+  // of declaration order. Bounded by detectors.length + 1 passes (each pass
+  // must fire at least one new fact to continue), so a malformed registry
+  // cannot hang detection. Two hardcoded passes silently dropped chains of
+  // length 3+ declared worst-first, inflating score and confidence.
+  for (let pass = 0; pass <= detectors.length; pass++) {
+    let changed = false;
     for (const d of detectors) {
-      processDetector(d, project, flags, metrics, fired);
+      if (processDetector(d, project, flags, metrics, fired)) changed = true;
     }
+    if (!changed) break;
   }
 
   const { maturity, signals } = classifyMaturity(flags, metrics, project);
@@ -114,8 +123,8 @@ function processDetector(
   flags: Set<string>,
   metrics: Record<string, number>,
   fired: DetectionResult['detectorsFired'],
-): void {
-  if (flags.has(d.fact)) return;
+): boolean {
+  if (flags.has(d.fact)) return false;
   let hit = false;
   if (d.implies?.length) {
     hit = d.implies.every((f) => flags.has(f));
@@ -123,11 +132,12 @@ function processDetector(
   if (!hit && d.match) {
     hit = evalMatch(d.match, project, flags, metrics);
   }
-  if (!hit) return;
+  if (!hit) return false;
   flags.add(d.fact);
   if (!fired.some((f) => f.fact === d.fact)) {
     fired.push({ fact: d.fact, title: d.title, category: d.category });
   }
+  return true;
 }
 
 function evalMatch(
@@ -220,12 +230,11 @@ function manifestHasJson(
   contains: string | undefined,
 ): boolean {
   const json = project.readJson(file);
-  const leaf = parts[parts.length - 1]!;
-  const sections = parts.slice(0, -1);
-  let value = deepGet(json, parts.join('.'));
-  if (value === undefined && sections.length > 0) {
-    value = deepGet(json, leaf);
-  }
+  const value = deepGet(json, parts.join('.'));
+  // No root-leaf fallback: when sections were specified (`a.b.c`) but the
+  // full path missed, a root-level key equal to the leaf (`{"c": …}`) must
+  // not count as a section-scoped hit. That fallback fired on any JSON with
+  // a coincidentally named top-level key.
   if (value === undefined) return false;
   if (contains === undefined) return true;
   return String(value).includes(contains);
@@ -242,36 +251,69 @@ function manifestHasText(
   if (text === null) return false;
   const leaf = parts[parts.length - 1]!;
   const sections = parts.slice(0, -1);
-  const leafRe = new RegExp(`["']?${escapeRe(leaf)}["']?\\s*[=:]`, 'm');
+  // Word boundaries on both sides: without the leading one, leaf `test`
+  // matches inside `latest = …`; without the trailing one, similar affix
+  // collisions apply. Manifest keys are identifiers, so \b is the right gate.
+  const leafRe = new RegExp(`["']?\\b${escapeRe(leaf)}\\b["']?\\s*[=:]`, 'm');
 
   if (sections.length > 0) {
     const secName = sections[sections.length - 1]!;
     const block = extractSection(text, secName);
-    if (block && leafRe.test(block)) return containsOk(text, contains);
+    if (block) {
+      // The section exists: decide solely on its content. A dependency named
+      // elsewhere (comments, other sections) must not satisfy a
+      // section-scoped query, and `contains` is checked against the block.
+      return leafRe.test(block) && containsOk(block, contains);
+    }
+    // No such section block. In a section-structured file (TOML/INI) that
+    // means the requested structure is absent — fail, don't rummage the
+    // whole file. In a flat file (YAML, go.mod) there are no blocks to
+    // match, so fall through to the whole-text search below.
+    if (hasSectionHeaders(text)) return false;
   }
   if (leafRe.test(text)) return containsOk(text, contains);
   return false;
+}
+
+/** True when the text contains at least one `[section]`-style header. */
+function hasSectionHeaders(text: string): boolean {
+  return /^\s*\[[^\]]*\]\s*$/m.test(text);
 }
 
 function containsOk(text: string, contains?: string): boolean {
   return contains === undefined || text.includes(contains);
 }
 
-/** Grabs the body of an ini/TOML section like `[dependencies]` or `[tool.poetry]`. */
+/** Grabs the bodies of ini/TOML sections like `[dependencies]` or `[tool.poetry]`. */
 function extractSection(text: string, section: string): string | null {
   const lines = text.split(/\r?\n/);
-  const headerRe = new RegExp(`^\\s*\\[[^\\]]*\\b${escapeRe(section)}\\b[^\\]]*\\]\\s*$`);
+  const want = section.toLowerCase();
   let collecting = false;
+  let found = false;
   let out = '';
   for (const line of lines) {
-    if (/^\s*\[/.test(line)) {
-      if (collecting) break;
-      collecting = headerRe.test(line);
+    const header = /^\s*\[([^\]]*)\]\s*$/.exec(line);
+    if (header) {
+      collecting = isWantedSection(header[1]!, want);
+      if (collecting) found = true;
       continue;
     }
     if (collecting) out += line + '\n';
   }
-  return collecting ? out : null;
+  return found ? out : null;
+}
+
+/**
+ * The requested name must equal a full dot-segment of the header,
+ * case-insensitively. The old `\bname\b` substring test matched
+ * `[dev-dependencies]` for `dependencies` (`-` is a non-word char) and missed
+ * `[tool.Poetry]` for `poetry` (case). All matching blocks are gathered, not
+ * just the first — a repeated section later in the file counts too.
+ */
+function isWantedSection(headerBody: string, want: string): boolean {
+  const segments = headerBody.split('.').map((s) => s.trim().replace(/^["']|["']$/g, ''));
+  const last = segments[segments.length - 1] ?? '';
+  return last.toLowerCase() === want;
 }
 
 function deepGet(obj: unknown, dotted: string): unknown {

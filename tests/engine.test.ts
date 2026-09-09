@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { makeProject, evaluateAt } from './engine-helpers.js';
+import { evalPredicate, ruleApplies } from '../src/engine/evaluate.js';
+import type { Facts, Rule } from '../src/types.js';
 
 const cleanups: (() => void)[] = [];
 const build = (files: Record<string, string>) => {
@@ -68,17 +70,19 @@ describe('check kinds', () => {
     ).toBe('DEPRECATED');
   });
 
-  it('count_min → PASS at threshold, FAIL below', () => {
+  it('count_min → PASS at threshold, MISSING below', () => {
     const root = build({ 'a.test.ts': 'x', 'b.test.ts': 'x' });
     expect(evaluateAt(root, { kind: 'count_min', patterns: ['**/*.test.ts'], min: 2 }).status).toBe(
       'PASS',
     );
+    // Below threshold means required files are absent (MISSING), not a
+    // violated condition (FAIL) — see the status taxonomy in types.ts.
     expect(evaluateAt(root, { kind: 'count_min', patterns: ['**/*.test.ts'], min: 5 }).status).toBe(
-      'FAIL',
+      'MISSING',
     );
   });
 
-  it('file_lines_max → WRONG with line counts', () => {
+  it('file_lines_max → FAIL with line counts', () => {
     const root = build({
       'src/god.ts': Array.from({ length: 900 }, (_, i) => `// ${i}`).join('\n'),
     });
@@ -87,7 +91,9 @@ describe('check kinds', () => {
       patterns: ['src/**/*.ts'],
       max_lines: 800,
     });
-    expect(r.status).toBe('WRONG');
+    // A god object is a violation (FAIL, 0 credit), not a partial
+    // implementation (WRONG would award 0.15 credit for failing modularity).
+    expect(r.status).toBe('FAIL');
     expect(r.locations[0]!.excerpt).toContain('900');
   });
 
@@ -139,5 +145,53 @@ describe('check kinds', () => {
       exclude: ['**/*.test.ts'],
     });
     expect(r.status).toBe('PASS');
+  });
+});
+
+describe('predicate hardening (fail closed, never crash)', () => {
+  const facts: Facts = { flags: new Set(['has:ci']), metrics: { commits: 25 } };
+
+  it('matches with an invalid regex fails closed without throwing', () => {
+    expect(evalPredicate({ fact: 'metric:commits', op: 'matches', value: '([' }, facts)).toBe(
+      false,
+    );
+  });
+
+  it('matches with a valid regex still works', () => {
+    expect(evalPredicate({ fact: 'metric:commits', op: 'matches', value: '^2' }, facts)).toBe(true);
+    expect(evalPredicate({ fact: 'metric:commits', op: 'matches', value: '^9' }, facts)).toBe(
+      false,
+    );
+  });
+
+  it('unknown operators exclude the rule instead of silently including it', () => {
+    expect(evalPredicate({ fact: 'has:ci', op: 'bogus' as never }, facts)).toBe(false);
+  });
+
+  it('malformed predicates fail closed; empty constraint still applies always', () => {
+    expect(evalPredicate('has:ci' as never, facts)).toBe(false);
+    expect(evalPredicate({} as never, facts)).toBe(true);
+    expect(evalPredicate(undefined, facts)).toBe(true);
+  });
+
+  it('in/includes need metric facts — presence alone never satisfies them', () => {
+    expect(evalPredicate({ fact: 'has:ci', op: 'in', value: ['x'] }, facts)).toBe(false);
+    expect(evalPredicate({ fact: 'has:ci', op: 'includes', value: ['never'] }, facts)).toBe(false);
+    expect(evalPredicate({ fact: 'metric:commits', op: 'in', value: [25, 100] }, facts)).toBe(true);
+  });
+
+  it('ruleApplies with includeAll honors the force-load contract', () => {
+    const rule: Rule = {
+      id: 'T-1',
+      title: 't',
+      section: 'S1',
+      severity: 'HIGH',
+      ruleClass: 'security',
+      check: { kind: 'manual' },
+      appliesWhen: { fact: 'has:something-that-does-not-exist' },
+      depths: ['deep'],
+    };
+    expect(ruleApplies(rule, { flags: new Set(), metrics: {} }, 'quick', true)).toBe(true);
+    expect(ruleApplies(rule, { flags: new Set(), metrics: {} }, 'quick', false)).toBe(false);
   });
 });

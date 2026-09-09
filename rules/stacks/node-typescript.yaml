@@ -44,7 +44,7 @@ rules:
     check:
       kind: grep_present
       pattern: '"strict"\s*:\s*true|"extends"\s*:\s*(.*strict|@tsconfig/strict)'
-      include: ['tsconfig.json', 'tsconfig.*.json']
+      include: ['**/tsconfig*.json']
       flags: i
     why: 'TypeScript without strict is TypeScript with the safety features switched off.'
     remediation: 'Set "strict": true. If the migration is large, enable one flag at a time (strictNullChecks first).'
@@ -113,7 +113,7 @@ rules:
     applies_when: { fact: 'platform:server' }
     check:
       kind: grep_present
-      pattern: '(envalid|t3-oss/env|@t3-oss/env|zod.*\.parse\(\s*process\.env|cleanEnv|convict|dotenv-safe|env\.safeParse)'
+      pattern: '(envalid|t3-oss/env|@t3-oss/env|zod.*\.parse\(\s*process\.env|\.parse\(\s*env\b|cleanEnv|convict|dotenv-safe|env\.safeParse)'
       include: ['**/*.{ts,js,mjs,cjs}']
       exclude: ['**/*.test.*', '**/node_modules/**']
       flags: i
