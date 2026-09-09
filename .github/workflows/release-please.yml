@@ -17,6 +17,13 @@ name: Release please
 # .release-please-manifest.json pins the starting version 1.0.0, so the
 # first Release PR is incremental. release-please-config.json must stay
 # comment-free: the action parses it as strict JSON.
+#
+# TOKEN: must be a fine-grained PAT (repo secret RELEASE_PLEASE_TOKEN),
+# NOT GITHUB_TOKEN. Tags pushed by GITHUB_TOKEN do not trigger downstream
+# workflows — release.yml would silently never run and releases would stop
+# at the GitHub Release with nothing on npm. The PAT needs, scoped to this
+# repo only: Contents read+write, Pull requests read+write, Issues
+# read+write. Rotate yearly; the action fails closed without it.
 on:
   push:
     branches:
@@ -33,6 +40,7 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           release-type: node
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

@@ -154,6 +154,13 @@ before the first OIDC publish succeeds.
 3. Merge the Release PR → tag `vX.Y.Z` is cut → `release.yml` publishes
    via OIDC with provenance + SBOM. Tags are the release act; never push
    `v*` tags by hand (first bootstrap tag `v1.0.0` excepted).
+4. release-please itself authenticates with a fine-grained PAT
+   (`RELEASE_PLEASE_TOKEN`, repo-scoped: Contents, PRs, Issues
+   read+write) — **not** `GITHUB_TOKEN`. Tags pushed by `GITHUB_TOKEN`
+   do not trigger downstream workflows, so with the default token the
+   tag lands, the GitHub Release is created… and `release.yml` never
+   fires. Nothing reaches npm. This failure is silent by design
+   (loop prevention) — the PAT is load-bearing, not optional.
 
 ## Choosing a depth in CI
 
