@@ -90,7 +90,7 @@ const docFiles = [
   ...walkDocs('examples'),
 ];
 const cmdLine =
-  /^[ \t]*(?:\$\s*)?(?:npx(?:\s+[^\s\\]+)*\s+)?(?:usat(?:@\S+)?|npm run usat --)(.*)$/gm;
+  /^[ \t]*(?:\$\s*)?(?:npx(?:\s+[^\s\\]+)*\s+)?(?:@\S+\/usat|usat(?:@\S+)?|npm run usat --)(.*)$/gm;
 for (const rel of docFiles) {
   const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   for (const m of text.matchAll(cmdLine)) {

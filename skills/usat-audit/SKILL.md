@@ -34,7 +34,7 @@ how old it is.
 ### 1 · Detect
 
 ```bash
-npx usat detect .
+npx @xenos1996/usat detect .
 ```
 
 Read the facts. If any are wrong, say so — the operator can assert them with
@@ -43,7 +43,7 @@ Read the facts. If any are wrong, say so — the operator can assert them with
 ### 2 · Deterministic pass
 
 ```bash
-npx usat audit . --out AUDIT.md --depth standard
+npx @xenos1996/usat audit . --out AUDIT.md --depth standard
 # --depth deep        for architecture/coupling/complexity rules
 # --profile production to grade against the full bar regardless of age
 ```

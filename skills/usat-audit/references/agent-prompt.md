@@ -9,7 +9,7 @@ You are auditing this repository with USAT — the Universal Software Audit Temp
 **Step 1 — detect.**
 
 ```bash
-npx usat detect .
+npx @xenos1996/usat detect .
 ```
 
 Confirm the detected facts against what you see. If any are wrong, say which ones and
@@ -18,7 +18,7 @@ what the correct answer is.
 **Step 2 — deterministic pass.**
 
 ```bash
-npx usat audit . --out AUDIT.md --depth standard
+npx @xenos1996/usat audit . --out AUDIT.md --depth standard
 ```
 
 This resolves every rule that can be settled by reading a file, with locations and a
@@ -70,8 +70,8 @@ Follow the Section 14 structure:
 
 ```
 Audit this repo with USAT:
-  npx usat detect .
-  npx usat audit . --depth standard --out AUDIT.md
+  npx @xenos1996/usat detect .
+  npx @xenos1996/usat audit . --depth standard --out AUDIT.md
 Then read USAT.md and AUDIT.md, work the Judgement Queue, and report the
 CRITICAL and HIGH findings with file:line and a fix for each. Never mark
 anything ✅ without evidence. Say UNKNOWN when you cannot tell.
