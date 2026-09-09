@@ -28,6 +28,8 @@ rules:
         - '**/*Test.php'
         - '**/tests/**/*.rs'
         - '**/__tests__/**'
+        - '**/Tests/**/*.swift'
+        - '**/*Tests.swift'
     why: 'A project with zero tests has no definition of "working" that a machine can check.'
     remediation: 'Start with the happy path of the main flow and every bug you have already fixed once.'
     references: ['OpenSSF-Scorecard:CI-Tests', 'NIST-SSDF-RV.1.1']
@@ -41,7 +43,7 @@ rules:
     applies_when: { fact: 'has:ci' }
     check:
       kind: grep_present
-      pattern: '(npm (run )?test|npm (run )?test:ci|vitest run|jest --ci|pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|make test)'
+      pattern: '(npm (run )?test|npm (run )?test:ci|vitest run|jest --ci|pytest|go test|cargo test|swift test|mvn test|gradle test|rspec|phpunit|dotnet test|make test)'
       include:
         [
           '.github/workflows/*.yml',

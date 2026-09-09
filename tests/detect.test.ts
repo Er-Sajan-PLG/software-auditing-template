@@ -35,9 +35,9 @@ describe('detection', () => {
 
   it('detects Python / FastAPI', () => {
     const root = build({
-      'pyproject.toml': '[project]\\nname = "api"\\n\\n[tool.ruff]\\nline-length = 100\\n',
-      'requirements.txt': 'fastapi==0.115.0\\nuvicorn==0.30.0\\n',
-      'main.py': 'from fastapi import FastAPI\\napp = FastAPI()\\n',
+      'pyproject.toml': '[project]\nname = "api"\n\n[tool.ruff]\nline-length = 100\n',
+      'requirements.txt': 'fastapi==0.115.0\nuvicorn==0.30.0\n',
+      'main.py': 'from fastapi import FastAPI\napp = FastAPI()\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('lang:python');
@@ -47,9 +47,8 @@ describe('detection', () => {
 
   it('detects Go', () => {
     const root = build({
-      'go.mod':
-        'module example.com/api\\n\\ngo 1.22\\n\\nrequire github.com/gin-gonic/gin v1.9.1\\n',
-      'main.go': 'package main\\nfunc main() {}\\n',
+      'go.mod': 'module example.com/api\n\ngo 1.22\n\nrequire github.com/gin-gonic/gin v1.9.1\n',
+      'main.go': 'package main\nfunc main() {}\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('lang:go');
@@ -59,8 +58,8 @@ describe('detection', () => {
 
   it('detects Solidity / Foundry', () => {
     const root = build({
-      'foundry.toml': '[profile.default]\\nsrc = "src"\\n',
-      'src/Vault.sol': 'pragma solidity ^0.8.20;\\ncontract Vault {}\\n',
+      'foundry.toml': '[profile.default]\nsrc = "src"\n',
+      'src/Vault.sol': 'pragma solidity ^0.8.20;\ncontract Vault {}\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('lang:solidity');
@@ -97,11 +96,11 @@ describe('detection', () => {
 
   it('resolves implies chains regardless of declaration order', () => {
     const root = build({
-      'src/Vault.sol': 'pragma solidity ^0.8.20;\\ncontract Vault {}\\n',
+      'src/Vault.sol': 'pragma solidity ^0.8.20;\ncontract Vault {}\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('platform:evm');
-    expect(d.facts.flags).toContain('project:blockchain'); // derived via implies
+    expect(d.facts.flags).toContain('project:blockchain');
   });
 });
 
@@ -118,10 +117,9 @@ describe('maturity classification', () => {
       'CHANGELOG.md': '# Changelog',
       'SECURITY.md': '# Security',
       'CONTRIBUTING.md': '# Contributing',
-      Dockerfile: 'FROM node:20\\n',
-      '.github/workflows/ci.yml': 'name: CI\\non: push\\njobs: {}\\n',
+      Dockerfile: 'FROM node:20\n',
+      '.github/workflows/ci.yml': 'name: CI\non: push\njobs: {}\n',
     });
-    // Simulate a long history and release tags, which need real git objects.
     const d = detectAt(root);
     const project = new Project(root);
     const fakeGit = {
@@ -134,7 +132,7 @@ describe('maturity classification', () => {
     };
     const full = detect(project, loadDetectorFile('rules'), fakeGit as any, []);
     expect(full.maturity).toBe('production');
-    expect(d.maturity).not.toBe('production'); // without the git facts, it is younger
+    expect(d.maturity).not.toBe('production');
   });
 
   it('classifies an abandoned repo as legacy', () => {
@@ -159,7 +157,7 @@ describe('maturity classification', () => {
 
 describe('implies chains resolve regardless of order and length', () => {
   it('resolves a 4-link chain declared worst-first', () => {
-    const root = build({ 'marker.txt': 'x\\n' });
+    const root = build({ 'marker.txt': 'x\n' });
     const project = new Project(root);
     const chain = [
       { fact: 'base', category: 't', title: 'b', match: { any_file: ['marker.txt'] } },
@@ -192,12 +190,11 @@ describe('manifest matching precision', () => {
         match: { manifest: { file: 'config.toml', key: 'tool.test', contains: 'x' } },
       },
     ];
-    // `latest` contains `test` as a substring — must not count.
     expect(
-      matchedWith(detectors as never[], { 'config.toml': '[tool]\\nlatest = "x"\\n' }, 'x:test'),
+      matchedWith(detectors as never[], { 'config.toml': '[tool]\nlatest = "x"\n' }, 'x:test'),
     ).toBe(false);
     expect(
-      matchedWith(detectors as never[], { 'config.toml': '[tool]\\ntest = "x"\\n' }, 'x:test'),
+      matchedWith(detectors as never[], { 'config.toml': '[tool]\ntest = "x"\n' }, 'x:test'),
     ).toBe(true);
   });
 
@@ -210,11 +207,10 @@ describe('manifest matching precision', () => {
         match: { manifest: { file: 'pyproject.toml', key: 'dependencies.django' } },
       },
     ];
-    // [dev-dependencies] is not [dependencies] (`-` is not a segment boundary).
     expect(
       matchedWith(
         detectors as never[],
-        { 'pyproject.toml': '[dev-dependencies]\\ndjango = "^5"\\n' },
+        { 'pyproject.toml': '[dev-dependencies]\ndjango = "^5"\n' },
         'x:deps',
       ),
     ).toBe(false);
@@ -242,7 +238,7 @@ describe('framework facts imply their platform', () => {
   it('a bare Express app is a server (no Dockerfile needed)', () => {
     const root = build({
       'package.json': JSON.stringify({ dependencies: { express: '^4.0.0' } }),
-      'index.js': 'const express = require("express");\\n',
+      'index.js': 'const express = require("express");\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('fw:express');
@@ -252,7 +248,7 @@ describe('framework facts imply their platform', () => {
   it('a frontend-only app is not a server', () => {
     const root = build({
       'package.json': JSON.stringify({ dependencies: { react: '^19.0.0' } }),
-      'src/app.jsx': 'export default function App() { return null; }\\n',
+      'src/app.jsx': 'export default function App() { return null; }\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('fw:react');
@@ -270,13 +266,13 @@ describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
       '    dependencies: [.package(url: "https://github.com/vapor/vapor.git", from: "4.0.0")],',
       ...Object.values(extra),
       ')',
-    ].join('\\n'),
+    ].join('\n'),
   });
 
   it('detects vapor framework and server platform', () => {
     const root = build({
       ...vapidPkg(),
-      'Sources/App/routes.swift': 'import Vapor\\n',
+      'Sources/App/routes.swift': 'import Vapor\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('fw:vapor');
@@ -286,13 +282,13 @@ describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
   it('detects executable targets, absent in pure libraries', () => {
     const app = build({
       ...vapidPkg({ exe: '    targets: [.executableTarget(name: "App")],' }),
-      'Sources/App/main.swift': 'print("hi")\\n',
+      'Sources/App/main.swift': 'print("hi")\n',
     });
     expect(detectAt(app).facts.flags).toContain('swift:executable');
 
     const lib = build({
       ...vapidPkg(),
-      'Sources/Lib/lib.swift': 'public func f() {}\\n',
+      'Sources/Lib/lib.swift': 'public func f() {}\n',
     });
     expect(detectAt(lib).facts.flags).not.toContain('swift:executable');
   });
@@ -300,7 +296,7 @@ describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
   it('detects swift-validation presence', () => {
     const root = build({
       'Sources/App/Models/User.swift':
-        'import Vapor\\nstruct User: Validatable {\\n  static func validations(_ validations: inout Validations) {}\\n}\\n',
+        'import Vapor\nstruct User: Validatable {\n  static func validations(_ validations: inout Validations) {}\n}\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('has:swift-validation');
@@ -308,7 +304,7 @@ describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
 
   it('detects swift-security-headers presence', () => {
     const root = build({
-      'Sources/App/Middleware.swift': 'import Vapor\\napp.middleware.use(CORSMiddleware())\\n',
+      'Sources/App/Middleware.swift': 'import Vapor\napp.middleware.use(CORSMiddleware())\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('has:swift-security-headers');
@@ -316,7 +312,7 @@ describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
 
   it('does not detect swift-validation without Validatable', () => {
     const root = build({
-      'Sources/App/Models/User.swift': 'struct User {\\n  let name: String\\n}\\n',
+      'Sources/App/Models/User.swift': 'struct User {\n  let name: String\n}\n',
     });
     const d = detectAt(root);
     expect(d.facts.flags).not.toContain('has:swift-validation');
