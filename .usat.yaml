@@ -44,3 +44,10 @@ suppressions:
       licence, and every published artefact inherits it. Per-file SPDX headers
       are not this project's convention; adding them would be ceremony without
       a compliance requirement behind it.
+
+  - rule: REL-004
+    reason: >-
+      No staged-rollout surface exists to flag. USAT ships as a versioned CLI
+      through npm (and a composite action); risky changes gate on CI, review,
+      and the release-please Release PR instead of runtime flags. Revisit the
+      day the project ships a hosted service.

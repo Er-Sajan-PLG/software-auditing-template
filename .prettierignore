@@ -11,3 +11,7 @@ examples/demo-app/
 AUDIT.md
 examples/sample-report.md
 .gitleaks.toml
+
+# Machine-written by release-please (double blank lines after headers).
+# Formatting it by hand fights the generator on every Release PR.
+CHANGELOG.md

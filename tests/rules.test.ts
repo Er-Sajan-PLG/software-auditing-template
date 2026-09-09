@@ -28,6 +28,22 @@ function fixture(files: Record<string, string>): string {
   return root;
 }
 
+describe('core/testing rules', () => {
+  // TEST-005 once missed Vitest's `coverage: { thresholds: … }` form (the
+  // pattern required `coverage{` with no colon) — failing USAT's own
+  // self-audit the week thresholds were added.
+  it('TEST-005 recognises Vitest coverage thresholds', () => {
+    const rule = ruleOf('core/testing.yaml', 'TEST-005');
+    const ok = fixture({
+      'vitest.config.ts':
+        'export default defineConfig({\n  test: {\n    coverage: {\n      thresholds: { lines: 75 },\n    },\n  },\n});\n',
+    });
+    expect(evaluateAt(ok, rule.check).status).toBe('PASS');
+    const bare = fixture({ 'vitest.config.ts': 'export default defineConfig({});\n' });
+    expect(evaluateAt(bare, rule.check).status).toBe('MISSING');
+  });
+});
+
 describe('core/security rules', () => {
   const sec002 = ruleOf('core/security.yaml', 'SEC-002');
   const sec003 = ruleOf('core/security.yaml', 'SEC-003');

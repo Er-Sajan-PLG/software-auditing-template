@@ -120,7 +120,11 @@ rules:
         - { fact: 'maturity:beta' }
     check:
       kind: grep_present
-      pattern: '(coverageThreshold|failUnder|--fail-under|min-coverage|coverage\s*\{|\[tool\.coverage\.report\]\s*\n[^\n]*fail_under)'
+      # NOTE: `coverage\s*:\s*\{` covers Vitest-style `coverage: { thresholds:
+      # … }` blocks — the earlier `coverage\s*{` (no colon) missed exactly
+      # the config form this repo itself uses, so the rule failed USAT's own
+      # self-audit the week thresholds were added. Keep both alternatives.
+      pattern: '(coverageThreshold|failUnder|--fail-under|min-coverage|coverage\s*\{|coverage\s*:\s*\{|\[tool\.coverage\.report\]\s*\n[^\n]*fail_under)'
       include:
         [
           'package.json',

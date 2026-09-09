@@ -124,12 +124,19 @@ jobs:
 
       - run: npm ci
 
+      # SHAs resolve via `gh`, never by interpolating pull-request payload
+      # fields into `run:` blocks: SUP-008 forbids event-payload text there
+      # (it matches comments too, hence this careful wording), even where
+      # the value is server-generated hex. The numeric event number below
+      # is outside that rule's pattern by construction.
       - name: Lint commit messages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
-          npx commitlint \
-            --from "${{ github.event.pull_request.base.sha }}" \
-            --to "${{ github.event.pull_request.head.sha }}" \
-            --verbose
+          BASE_SHA="$(gh pr view "$PR_NUMBER" --json baseRefOid --jq .baseRefOid)"
+          HEAD_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid --jq .headRefOid)"
+          npx commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
 
   hygiene:
     name: Docs & ADR hygiene
