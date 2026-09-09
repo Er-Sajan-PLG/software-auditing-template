@@ -688,6 +688,15 @@ detectors:
     category: framework
     title: Vapor
     match: { content: { include: ['Package.swift'], pattern: '[Vv]apor' } }
+  - fact: 'has:swift-validation'
+    category: has
+    title: 'Swift validation (Validatable)'
+    match: { content: { include: ['**/*.swift'], pattern: '\\bValidatable\\b' } }
+  - fact: 'has:swift-security-headers'
+    category: has
+    title: 'Swift security headers middleware'
+    match:
+      { content: { include: ['**/*.swift'], pattern: 'SecurityHeadersMiddleware|CORSMiddleware' } }
   - fact: 'swift:executable'
     category: type
     title: Swift executable target
