@@ -11,7 +11,7 @@ import type {
 } from '../types.js';
 import type { SectionDef } from './sections.js';
 import { SEVERITY_LADDER } from './loader.js';
-import { Project } from '../util/project.js';
+import { MAX_FILE_BYTES, MAX_FILES, Project } from '../util/project.js';
 import { detect, loadDetectorFile } from '../detect/index.js';
 import { loadRulePacks, applyRuleOverrides } from './loader.js';
 import { evaluateRule, packApplies, ruleApplies, type EvalContext } from './evaluate.js';
@@ -122,6 +122,9 @@ export function runAudit(options: AuditOptions): AuditOutcome {
     sectionFilter.length > 0
       ? evaluatedAll.filter((e) => wanted.has(e.finding.section))
       : evaluatedAll;
+  // Index warnings go last: content reads happen lazily during rule
+  // evaluation, so oversize counts are only complete once scoring is done.
+  appendIndexWarnings(project, warnings);
   const card = score(evaluated, sections, profile);
   const report = buildReport(
     opts,
@@ -216,6 +219,25 @@ function selectSections(
     if (!known.has(id)) warnings.push(`.usat.yaml: unknown section "${id}" in sections — ignored`);
   }
   return all.filter((s) => wanted.includes(s.id));
+}
+
+/**
+ * Scale honesty: a truncated index or skipped oversize files means PASS
+ * verdicts may rest on unseen files. Loud warning, never silent absorption.
+ */
+function appendIndexWarnings(project: Project, warnings: string[]): void {
+  if (project.truncated) {
+    warnings.push(
+      `index truncated at ${MAX_FILES} files — the tree is bigger than the audit can see; ` +
+        'treat PASS verdicts as partial and split the target (e.g. per-package audits)',
+    );
+  }
+  if (project.skippedLarge > 0) {
+    warnings.push(
+      `${project.skippedLarge} file(s) skipped for exceeding ${MAX_FILE_BYTES} bytes — ` +
+        'content checks could not see them',
+    );
+  }
 }
 
 function resolvePackSets(

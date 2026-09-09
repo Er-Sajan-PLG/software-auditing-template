@@ -87,6 +87,16 @@ npm run build && node dist/cli.js audit . --depth deep # self-audit: expect 100/
 node dist/cli.js diff <previous-AUDIT> AUDIT.md        # expect no regressions
 ```
 
+## Self-extension round (this program)
+
+- [x] Honest scale: `MAX_FILES` truncation flag + oversize counter, both
+      surfaced as end-of-audit warnings (were silent); caps documented
+- [x] `usat bootstrap`: curated starter packs for php/ruby/cpp/csharp/
+      swift + generic fallback, fail-closed (never registers, REVIEW header)
+- [x] Proof on Vapor (Swift, 249 files, zero shipped coverage): baseline
+      71.8 → +4 Swift rules applicable, zero regressions, diff-verified
+- [x] ADR-0012 + guides updated + regression tests (160 green)
+
 ## Post-merge re-audit round (follow-up)
 
 Vigorous re-verification on `master` found and fixed:

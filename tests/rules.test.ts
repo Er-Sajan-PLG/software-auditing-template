@@ -46,6 +46,21 @@ describe('core/testing rules', () => {
 
 describe('core/security rules', () => {
   const sec002 = ruleOf('core/security.yaml', 'SEC-002');
+  const sec006 = ruleOf('core/security.yaml', 'SEC-006');
+
+  // The eval alternative once fired on prose mentioning eval() — including
+  // this repo's own rule descriptions. A rule that fires on its own
+  // documentation is worse than no rule.
+  it('SEC-006 passes prose mentions, fails real dynamic execution', () => {
+    const prose = fixture({
+      'src/catalog.ts': "why: 'eval() and string assert() execute arbitrary code',\n",
+    });
+    expect(evaluateAt(prose, sec006.check).status).toBe('PASS');
+    const real = fixture({ 'src/app.js': 'const r = eval(userInput);\n' });
+    expect(evaluateAt(real, sec006.check).status).toBe('WRONG');
+    const fn = fixture({ 'src/app.js': 'const f = new Function("return " + expr);\n' });
+    expect(evaluateAt(fn, sec006.check).status).toBe('WRONG');
+  });
   const sec003 = ruleOf('core/security.yaml', 'SEC-003');
   const sec005 = ruleOf('core/security.yaml', 'SEC-005');
   const sec013 = ruleOf('core/security.yaml', 'SEC-013');

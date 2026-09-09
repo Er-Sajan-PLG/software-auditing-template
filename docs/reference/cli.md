@@ -15,6 +15,7 @@ usat — Universal Software Audit Template
   usat explain <RULE-ID>         Show everything about one rule
   usat diff <before> <after>     Compare two previously generated reports
   usat init [path]               Scaffold .usat.yaml + a GitHub Actions workflow
+  usat bootstrap [path]          Propose rule packs for stacks USAT cannot audit yet
 
 audit options
   --out <file>        Report path (default AUDIT.md)
@@ -29,8 +30,12 @@ audit options
   --fail-on <sev>     Exit 1 on findings >= sev: critical|high|medium|low|none
   --quiet             Only errors
 
+bootstrap options
+  --out <file|dir>    Write pack files instead of printing (default: print)
+
 examples
   usat audit . --depth deep
+  usat bootstrap ~/code/legacy-php-app --out /tmp/packs
   usat audit ../api --profile production --fail-on high
   usat audit . --out reports/audit-$(date +%F).md
 ```

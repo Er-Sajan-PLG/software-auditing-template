@@ -276,3 +276,20 @@ usat audit . --include stacks/mobile --depth deep
 
 A pack with a YAML syntax error is skipped with a warning on stderr — the audit never
 crashes because of a bad rule file.
+
+## Starting from `usat bootstrap`
+
+For a language with no shipped pack, `usat bootstrap <path> [--out <dir>]`
+drafts a starter pack from the curated catalog (or generic judgement
+prompts for unknown languages). The draft is a proposal, not a verdict —
+see ADR-0012. The acceptance ritual before registering it in
+`rules/index.yaml`:
+
+1. Read every pattern; delete any that misfires on the target codebase.
+2. Audit one project WITH the problem and one WITHOUT it; both runs must
+   behave (`usat audit --rules-dir` accepts an unregistered pack dir, so
+   the review never pollutes the shipped registry).
+3. Add FP _and_ FN regression tests to `tests/rules.test.ts`.
+4. Register the reviewed file in `rules/index.yaml` and watch the
+   self-audit-adjacent gates (`check-docs` rule floor, e2e uniqueness)
+   stay green.

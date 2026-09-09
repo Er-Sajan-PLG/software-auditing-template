@@ -192,8 +192,8 @@ const TEXT_EXT = new Set([
   '.gemfile',
 ]);
 
-const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB — skip anything bigger
-const MAX_FILES = 60_000; // hard safety valve for pathological trees
+export const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB — skip anything bigger
+export const MAX_FILES = 60_000; // hard safety valve for pathological trees
 
 export interface GrepHit {
   file: string;
@@ -212,6 +212,14 @@ export class Project {
   private readonly contentCache = new Map<string, string | null>();
   private readonly dirCache = new Set<string>();
   private tracked: string[] | null = null;
+  /**
+   * True when indexing stopped at MAX_FILES — the tree is bigger than the
+   * audit can see, so PASS verdicts may rest on unindexed files. Always
+   * surfaced as a warning, never silently absorbed into the score.
+   */
+  truncated = false;
+  /** Files skipped for exceeding MAX_FILE_BYTES (counted once each). */
+  skippedLarge = 0;
 
   constructor(root: string, extraIgnores: string[] = []) {
     this.root = path.resolve(root);
@@ -230,7 +238,10 @@ export class Project {
 
     while (stack.length > 0) {
       const relDir = stack.pop()!;
-      if (this.files.length >= MAX_FILES) return;
+      if (this.files.length >= MAX_FILES) {
+        this.truncated = true;
+        return;
+      }
       const absDir = path.join(root, relDir);
       let entries: fs.Dirent[];
       try {
@@ -309,7 +320,11 @@ export class Project {
     try {
       const abs = path.join(this.root, rel);
       const st = fs.statSync(abs);
-      if (st.isFile() && st.size <= MAX_FILE_BYTES && looksLikeText(rel)) {
+      if (st.isFile() && st.size > MAX_FILE_BYTES) {
+        // Counted once per file (cache guard above): oversized files are
+        // invisible to every content check, so the audit must say so.
+        this.skippedLarge++;
+      } else if (st.isFile() && looksLikeText(rel)) {
         const buf = fs.readFileSync(abs);
         // Cheap binary sniff: NUL byte in the first 8 KB.
         const head = buf.subarray(0, Math.min(buf.length, 8192));

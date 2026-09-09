@@ -9,6 +9,12 @@ Items graduate to ADRs when decided and to `CHANGELOG.md` when shipped.
 
 ## Next: rule coverage (the product)
 
+- [x] **`usat bootstrap` self-extension** — curated starter packs for
+      uncovered stacks (php/ruby/cpp/csharp/swift + fallback), fail-closed
+      per ADR-0012, proven on Vapor. _(shipped)_
+- [x] **Honest scale limits** — truncation/oversize warnings instead of
+      silent absorption. _(shipped)_
+
 - [ ] **SARIF + JSON renderers** — findings already carry file/line/severity/
       rule identity; add renderers so USAT composes with dashboards and code
       scanning. Engine unchanged. _(S)_
