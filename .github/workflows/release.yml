@@ -58,3 +58,17 @@ jobs:
         with:
           name: usat-sbom
           path: sbom.cdx.json
+
+      # GitHub Packages mirror: the repo's Packages tab only lists packages
+      # hosted on npm.pkg.github.com — npmjs releases never appear there.
+      # Same tarball, second registry. Placed last because reconfiguring the
+      # scope below repoints @xenos1996 publishes at GPR for the rest of the
+      # job. No provenance flag: GPR does not consume Sigstore attestations.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@xenos1996'
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
