@@ -79,3 +79,21 @@ npm run lint && npm run typecheck && npm test          # gates
 npm run build && node dist/cli.js audit . --depth deep # self-audit: expect 100/100
 node dist/cli.js diff <previous-AUDIT> AUDIT.md        # expect no regressions
 ```
+
+## Post-merge re-audit round (follow-up)
+
+Vigorous re-verification on `master` found and fixed:
+
+- [x] `release.yml` SBOM step used a nonexistent `npm sbom -o` flag —
+      verified broken locally, fixed to stdout redirect (would have failed the
+      next release; proven with `npm sbom` after a clean `npm ci`)
+- [x] `platform:server` never fired for bare framework apps — 24
+      `implies` detectors map request-serving frameworks (express…sveltekit)
+      to the platform fact, fixing 16 platform-gated rules at once
+- [x] No CI net for rule-pattern rot — new test asserts all 270+ shipped
+      grep patterns compile and all `applies_when` validate warning-free
+- [x] Scorecard workflow added (API-verified hygiene counterpart)
+- [x] 14-check end-to-end harness (`usat` CLI on fixtures: SEC-003/025,
+      expiry, overrides, sections, maturity, loader guards, diff) — 14/14
+- [x] One-time owner actions outstanding (not code): enable the npmjs
+      trusted publisher for OIDC; review first Scorecard/Security-tab results

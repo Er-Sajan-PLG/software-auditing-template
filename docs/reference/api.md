@@ -15,7 +15,8 @@ the same default the CLI uses.
 ```ts
 import { runAudit } from 'usat';
 
-const { report, profile, warnings } = await runAudit({
+const { report, profile, warnings } = runAudit({
+  // synchronous — no await needed
   target: '/path/to/project',
   depth: 'standard', // 'quick' | 'standard' | 'deep'
   profile: 'auto', // 'auto' | 'prototype' | 'mvp' | 'beta' | 'production' | 'legacy'
@@ -112,39 +113,70 @@ if (ruleApplies(rule, facts, depth)) {
 }
 ```
 
-## `score(packs, findings, sections): ScoreResult`
+## `score(evaluated, sections, profile): ScoreCard`
 
 ```ts
-score.overall; // 88.7 — null only if nothing at all resolved
-score.coverage; // 0.708 — share of applicable rules the engine could verify
-score.sections; // [{ id, title, score: number | null, confidence, … }]
+import { score } from 'usat';
+
+const card = score(evaluated, sections, profile);
+card.overall; // 88.7 — 0 when nothing resolved (never null; see below)
+card.automationCoverage; // 70.8 — share of applicable rules verified without a human
+card.sections; // [{ id, title, score: number | null, confidence, … }]
+card.counts; // per-status totals, suppressed findings excluded
+card.severityCounts; // per-severity open findings, suppressed excluded
+card.expectedBand; // e.g. [60, 85] for the detected maturity stage
 ```
 
 A section whose rules all resolved to `UNKNOWN` scores **`null`**, not 10. It is
 excluded from the numerator _and_ the denominator, and rendered as
-`— not verified`.
+`— not verified`. The **overall** score, however, is a number: `0` when
+nothing resolved. A bare `0` cannot tell "everything failed" from "nothing
+was verifiable" — read it together with `automationCoverage`, which is
+exactly the confusion `docs/concepts.md` warns is the most misleading thing
+an audit tool can produce.
 
-## `renderMarkdown(report): string`
+## `renderMarkdown(report, profile): string`
 
-Deterministic Markdown, including the machine-readable trailer.
+Deterministic Markdown, including the machine-readable trailer. Rule IDs in
+the trailer are YAML-quoted, so pack-author-controlled IDs cannot corrupt
+the machine-parsed channel.
 
 ```ts
 import { renderMarkdown, parseTrailer, trailer } from 'usat';
 
-const md = renderMarkdown(report);
-const summary = trailer(report); // the plain object the trailer encodes
-const parsed = parseTrailer(md); // round-trip: read a trailer back out
+const md = renderMarkdown(report, profile);
+const yaml = trailer(report); // the YAML string embedded in the trailer fences
+const parsed = parseTrailer(md); // read a trailer back out (latest wins on concatenation)
 ```
 
-## `diffReports(a, b): Diff`
+## `diffReports(beforeRaw, afterRaw): string`
+
+Takes two trailer YAML strings (or full reports — `parseTrailer` extracts),
+returns Markdown. Reports fixed, regressed, changed-still-open, and newly
+applicable rules with net point movement. Judgement-queue transitions are
+first-class: `UNKNOWN → PASS` lists as fixed _(resolved by review)_ and
+`PASS → UNKNOWN` as regressed _(needs review)_.
 
 ```ts
-const d = diffReports(oldReport, newReport);
-d.overall; // { from: 80.8, to: 88.7, delta: 7.9 }
-d.regressions; // findings that got worse
-d.improvements; // findings that got better
-d.newFindings;
-d.resolvedFindings;
+import { diffReports, parseTrailer } from 'usat';
+
+const md = diffReports(parseTrailer(beforeMd)!, parseTrailer(afterMd)!);
+console.log(md); // # 🔁 USAT Audit Diff …
+```
+
+## `validatePredicate(p, where, warnings): void`
+
+Validates an `applies_when` predicate the way the loader does: unknown keys
+and operators, non-list `all`/`any`, and uncompilable `matches` regexes each
+push a named warning. Use it when authoring packs programmatically —
+evaluation fails closed (rule skipped) on anything this flags.
+
+```ts
+import { validatePredicate } from 'usat';
+
+const warnings: string[] = [];
+validatePredicate({ fact: 'has:ci', op: 'bogus' }, 'my-pack MY-001', warnings);
+// warnings: ['my-pack MY-001: unknown predicate op "bogus" — rule will never apply']
 ```
 
 ## `loadConfig(target, explicitPath?): UsatConfig`

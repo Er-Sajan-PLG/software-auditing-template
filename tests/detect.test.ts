@@ -236,3 +236,25 @@ describe('manifest matching precision', () => {
     ).toBe(true);
   });
 });
+
+describe('framework facts imply their platform', () => {
+  it('a bare Express app is a server (no Dockerfile needed)', () => {
+    const root = build({
+      'package.json': JSON.stringify({ dependencies: { express: '^4.0.0' } }),
+      'index.js': 'const express = require("express");\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).toContain('fw:express');
+    expect(d.facts.flags).toContain('platform:server');
+  });
+
+  it('a frontend-only app is not a server', () => {
+    const root = build({
+      'package.json': JSON.stringify({ dependencies: { react: '^19.0.0' } }),
+      'src/app.jsx': 'export default function App() { return null; }\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).toContain('fw:react');
+    expect(d.facts.flags).not.toContain('platform:server');
+  });
+});

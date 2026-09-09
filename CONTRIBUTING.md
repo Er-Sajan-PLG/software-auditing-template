@@ -80,6 +80,23 @@ version:
 
 CI enforces most of this (see `tests/e2e.test.ts`).
 
+## Contributor gates (all enforced in CI)
+
+| Gate              | Rule                                                                                                                            | Where                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Complexity budget | Functions stay at cyclomatic complexity ≤ 10 (warn-only). Over? Split: one branch = one function, dispatch tables over switches | `eslint.config.mjs`, PR #10 pattern |
+| Coverage ratchet  | Thresholds sit at the measured number and only rise (`vitest.config.ts`). Lowering a threshold needs an ADR-level reason        | `npm run test:cov`                  |
+| ADR hygiene       | Filenames sequential, title numbers match, Date + Status present, index complete                                                | `node scripts/check-adrs.mjs`       |
+| Doc sync          | README rule-count floor holds; every section id appears in `USAT.md`; every `--flag` in docs exists in `--help`                 | `node scripts/check-docs.mjs`       |
+| CLI reference     | `docs/reference/cli.md` is generated — never hand-edit it; regenerate and commit                                                | `node scripts/gen-cli-docs.mjs`     |
+
+**Fixing a rule that over/under-fires** (the highest-value rule contribution):
+
+1. Prove it with a minimal reproducer first (FP line that fires, FN line that does not).
+2. Fix the pattern narrowly; add a `NOTE:` comment in the YAML naming the trap and what must never come back (see SEC-003, SEC-005, SEC-013).
+3. Add FP _and_ FN cases to `tests/rules.test.ts` following the `ruleOf` + `fixture` + `evaluateAt` pattern.
+4. Run the full suite — rule changes move the self-audit score, and `usat diff` against the previous report must show no unintended movement.
+
 ## Testing a rule
 
 A rule that fires on its own documentation is worse than no rule. Test against two

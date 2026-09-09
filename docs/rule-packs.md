@@ -219,6 +219,26 @@ Operators: `exists` (default) · `absent` · `eq` · `neq` · `in` · `includes`
 
 Combinators: `all` · `any` · `not`
 
+### Fail-closed contracts (the engine does not guess)
+
+Malformed input warns at load time and evaluates conservatively — see
+ADR-0009. What to know as an author:
+
+- `in` / `includes` compare **metric** values against the list. On flag
+  facts they are always false: presence alone never satisfies a value
+  comparison.
+- `matches` compiles `value` as a regex; an invalid regex warns and the
+  predicate is false. Unknown operators and unknown predicate keys behave
+  the same way (rule skipped, warning on stderr).
+- An empty grep `pattern` drops the rule with a warning — `new RegExp('')`
+  matches every line, so a missing pattern would otherwise FAIL (or PASS)
+  the whole repo.
+- Duplicate rule IDs across packs: first definition wins, later ones warn.
+- Override `severity` must be on the ladder and `weight` a finite number
+  ≥ 0, or the override is ignored with a warning. Run `node
+scripts/check-docs.mjs`-adjacent `usat rules` after editing: the shipped
+  packs must load with **zero warnings** (enforced by `tests/e2e.test.ts`).
+
 ---
 
 ## Available facts

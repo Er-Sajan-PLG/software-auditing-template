@@ -30,9 +30,11 @@ jobs:
       - run: npm publish --provenance
 
       # CycloneDX SBOM for the shipped tarball. Same preach/practice logic:
-      # USAT audits SBOM publication (SUP-014), so it ships one.
+      # USAT audits SBOM publication (SUP-014), so it ships one. `npm sbom`
+      # writes to stdout (there is no -o flag); the tree is complete because
+      # `npm ci` ran above — a partial node_modules fails with ESBOMPROBLEMS.
       - name: SBOM (CycloneDX)
-        run: npm sbom --sbom-format cyclonedx -o sbom.cdx.json
+        run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v7
