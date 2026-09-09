@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.0.0...v1.1.0) (2026-09-09)
+
+
+### Features
+
+* **release:** developer-style versioning via release-please + commitlint ([#16](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/16)) ([6dc28e3](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/6dc28e3a49c92f2da39fb17755c77ab72f4ca6fd))
+
+
+### Bug Fixes
+
+* Node 24 + npm floor for OIDC trusted publishing ([#15](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/15)) ([73f321d](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/73f321d4302eec13e7187ceb58dd5d56922b5a89))
+* pin scorecard-action to v2.4.4 (no v2 major tag exists) ([#17](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/17)) ([9967ddf](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/9967ddf564d4883426961091fe8170bf85578ac0))
+* unblock releases — SUP-008 self-finding, CHANGELOG prettierignore, TEST-005 pattern ([#19](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/19)) ([9304f0a](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/9304f0a32e465507e526ca6adc44a157246b7f9a))
+
 ## [Unreleased]
 
 ## [1.0.0] — 2026-09-08
