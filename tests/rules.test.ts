@@ -199,7 +199,41 @@ describe('stacks/cli rules', () => {
 
   it('CLI-002 still recognises inline process.exit', () => {
     const cli002 = ruleOf('stacks/cli.yaml', 'CLI-002');
-    const root = fixture({ 'src/cli.ts': 'process.exit(1);\n' });
+    const root = fixture({ 'src/cli.ts': 'process.exit(1);\\n' });
     expect(evaluateAt(root, cli002.check).status).toBe('PASS');
+  });
+});
+
+describe('stacks/swift rules', () => {
+  const sw005 = ruleOf('stacks/swift.yaml', 'SW-005');
+  const sw006 = ruleOf('stacks/swift.yaml', 'SW-006');
+
+  it('SW-005 passes when Validatable is present', () => {
+    const root = fixture({
+      'Sources/App/Models/User.swift':
+        'import Vapor\\nstruct User: Validatable {\\n  static func validations(_ validations: inout Validations) {}\\n}\\n',
+    });
+    expect(evaluateAt(root, sw005.check).status).toBe('PASS');
+  });
+
+  it('SW-005 fails when Validatable is absent', () => {
+    const root = fixture({
+      'Sources/App/Models/User.swift': 'struct User {\\n  let name: String\\n}\\n',
+    });
+    expect(evaluateAt(root, sw005.check).status).toBe('MISSING');
+  });
+
+  it('SW-006 passes when CORSMiddleware is present', () => {
+    const root = fixture({
+      'Sources/App/Middleware.swift': 'import Vapor\\napp.middleware.use(CORSMiddleware())\\n',
+    });
+    expect(evaluateAt(root, sw006.check).status).toBe('PASS');
+  });
+
+  it('SW-006 fails when neither CORSMiddleware nor SecurityHeadersMiddleware are present', () => {
+    const root = fixture({
+      'Sources/App/Middleware.swift': 'import Vapor\\napp.middleware.use(SomeOtherMiddleware())\\n',
+    });
+    expect(evaluateAt(root, sw006.check).status).toBe('MISSING');
   });
 });
