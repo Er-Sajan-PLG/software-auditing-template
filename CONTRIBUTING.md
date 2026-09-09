@@ -122,6 +122,13 @@ it('does not flag an env-var reference as a hardcoded credential', () => {
 - Branches: `feat/…`, `fix/…`, `docs/…`, `rules/…`, `refactor/…`
 - Commits: [Conventional Commits](https://www.conventionalcommits.org/) —
   `feat(rules): add Bun runtime checks`, `fix(detect): requirements.txt is a not prose file`
+- **Enforced, not asked:** a commit-msg hook runs commitlint, and CI lints
+  every PR commit. This is load-bearing — release-please computes version
+  bumps and CHANGELOG entries from history, so a non-conventional message
+  is silently excluded from releases.
+- Squash-merge PRs with a conventional title: the title becomes the commit
+  release-please reads. `feat` → minor, `fix` → patch,
+  `BREAKING CHANGE:` footer → major; docs/chore/test ride along unbumped.
 
 ## Pull requests
 

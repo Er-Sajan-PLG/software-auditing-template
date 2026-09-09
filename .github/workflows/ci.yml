@@ -105,6 +105,32 @@ jobs:
   # the README rule-count floor, USAT.md section coverage, and ADR
   # numbering/index completeness. See scripts/check-docs.mjs,
   # scripts/check-adrs.mjs, ROADMAP.md ("doc sync") and PLAN.md.
+  # Commit messages drive releases (release-please reads them), so they are
+  # linted like code. PR-only: master receives squash/rebase merges whose
+  # messages GitHub derives from PR titles — lint the PR commits, not merges.
+  commits:
+    name: Conventional commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Lint commit messages
+        run: |
+          npx commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to "${{ github.event.pull_request.head.sha }}" \
+            --verbose
+
   hygiene:
     name: Docs & ADR hygiene
     runs-on: ubuntu-latest

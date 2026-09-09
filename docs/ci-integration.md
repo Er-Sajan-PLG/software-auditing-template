@@ -128,18 +128,32 @@ improvement — the thing a single audit can never do.
 
 USAT audits itself with the full stack — copy what fits:
 
-| Workflow           | What it does                                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ci.yml`           | lint+format+typecheck · Vitest with coverage thresholds · build + CLI smoke · rule-pack validation · npm audit + gitleaks + license scan · **hygiene** (`check-adrs` + `check-docs`) |
-| `self-audit.yml`   | `usat audit . --depth deep --fail-on critical` on every PR, score as PR comment                                                                                                      |
-| `scorecard.yml`    | OpenSSF Scorecard monthly + on push (API-verified hygiene; SARIF to Security tab)                                                                                                    |
-| `automerge.yml`    | Dependabot patch/minor auto-merge once CI is green (majors stay manual)                                                                                                              |
-| `gitleaks-pin.yml` | Monthly check that the curl-pinned gitleaks binary in `ci.yml` is current (no bot watches it) — opens a deduped issue when stale                                                     |
-| `release.yml`      | Tag push `v*` → OIDC trusted publishing (no long-lived token) + `--provenance` + CycloneDX SBOM artifact                                                                             |
+| Workflow              | What it does                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ci.yml`              | lint+format+typecheck · Vitest with coverage thresholds · build + CLI smoke · rule-pack validation · npm audit + gitleaks + license scan · **hygiene** (`check-adrs` + `check-docs`) |
+| `self-audit.yml`      | `usat audit . --depth deep --fail-on critical` on every PR, score as PR comment                                                                                                      |
+| `scorecard.yml`       | OpenSSF Scorecard monthly + on push (API-verified hygiene; SARIF to Security tab)                                                                                                    |
+| `automerge.yml`       | Dependabot patch/minor auto-merge once CI is green (majors stay manual)                                                                                                              |
+| `gitleaks-pin.yml`    | Monthly check that the curl-pinned gitleaks binary in `ci.yml` is current (no bot watches it) — opens a deduped issue when stale                                                     |
+| `release.yml`         | Tag push `v*` → OIDC trusted publishing (no long-lived token) + `--provenance` + CycloneDX SBOM artifact                                                                             |
+| `release-please.yml`  | Conventional commits → open Release PR (bump + CHANGELOG as reviewable diff); merging it cuts the tag that fires `release.yml`                                                       |
+| `commits` in `ci.yml` | Lints PR commit messages (commitlint) — releases are computed from history, so history must parse                                                                                    |
 
 Release setup note: trusted publishing needs a one-time owner step on
 npmjs.com (package Settings → Trusted Publisher → this repo + workflow)
 before the first OIDC publish succeeds.
+
+## How a release happens (developer-style, no manual versioning)
+
+1. Land PRs with Conventional Commits titles (`feat:`, `fix:`, `docs:`,
+   `refactor:` …) — squash-merge so the title becomes the commit.
+   `feat` → minor bump, `fix` → patch, `BREAKING CHANGE:` footer → major.
+   Anything else (docs, chore, test) rides along without bumping.
+2. release-please keeps one open **Release PR** updated: version bump in
+   `package.json` + CHANGELOG entries, as a diff you review like code.
+3. Merge the Release PR → tag `vX.Y.Z` is cut → `release.yml` publishes
+   via OIDC with provenance + SBOM. Tags are the release act; never push
+   `v*` tags by hand (first bootstrap tag `v1.0.0` excepted).
 
 ## Choosing a depth in CI
 
