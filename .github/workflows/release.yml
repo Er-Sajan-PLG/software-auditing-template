@@ -27,7 +27,8 @@ jobs:
       - run: npm run build
       # Provenance is public, verifiable build metadata on the registry —
       # what USAT's own S3 rules demand of others (SUP-005..007, S3).
-      - run: npm publish --provenance
+      # --access public is mandatory: scoped packages default to restricted.
+      - run: npm publish --provenance --access public
 
       # CycloneDX SBOM for the shipped tarball. Same preach/practice logic:
       # USAT audits SBOM publication (SUP-014), so it ships one. `npm sbom`

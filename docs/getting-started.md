@@ -3,9 +3,9 @@
 ## Install
 
 ```bash
-npx usat audit .          # zero-install
-npm i -g usat             # or globally
-npm i -D usat             # or per project, so CI and laptops agree
+npx @xenos1996/usat audit .          # zero-install
+npm i -g @xenos1996/usat             # or globally
+npm i -D @xenos1996/usat             # or per project, so CI and laptops agree
 ```
 
 Requires Node 20+. No network access is needed at audit time, and USAT never

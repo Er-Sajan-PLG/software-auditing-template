@@ -23,7 +23,7 @@ jobs:
 
       - name: Run USAT
         id: usat
-        run: npx --yes usat@latest audit . --depth standard --out AUDIT.md
+        run: npx --yes @xenos1996/usat@1 audit . --depth standard --out AUDIT.md
 
       - name: Publish to job summary
         if: always()
@@ -41,7 +41,7 @@ jobs:
 
 ```yaml
 - name: Quality gate
-  run: npx --yes usat@latest audit . --fail-on high
+  run: npx --yes @xenos1996/usat@1 audit . --fail-on high
 ```
 
 | Exit | Meaning                                   |
@@ -83,7 +83,7 @@ usat-audit:
   image: node:20
   stage: test
   script:
-    - npx --yes usat@latest audit . --out usat-report.md --fail-on critical
+    - npx --yes @xenos1996/usat@1 audit . --out usat-report.md --fail-on critical
   artifacts:
     when: always
     paths: [usat-report.md]
@@ -108,10 +108,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - run: npx --yes usat@latest audit . --out reports/$(date +%Y-%m).md
+      - run: npx --yes @xenos1996/usat@1 audit . --out reports/$(date +%Y-%m).md
       - run: |
           PREV=$(ls reports/*.md | tail -2 | head -1)
-          npx --yes usat@latest diff "$PREV" "reports/$(date +%Y-%m).md" --out DIFF.md || true
+          npx --yes @xenos1996/usat@1 diff "$PREV" "reports/$(date +%Y-%m).md" --out DIFF.md || true
           cat DIFF.md >> "$GITHUB_STEP_SUMMARY"
       - uses: peter-evans/create-pull-request@v6
         with:
@@ -157,7 +157,7 @@ before the first OIDC publish succeeds.
   anything, which is why it is safe on private repositories.
 - **`--allow-commands` in CI.** Only if you trust the target repo — it shells out for
   checks like `npm audit`. Off by default; those rules report ❓ NEEDS REVIEW instead.
-- **Pin the version** in production pipelines (`usat@1.0.0`, not `usat@latest`) so a
+- **Pin the version** in production pipelines (`@xenos1996/usat@1`, not `@latest`) so a
   rule-pack change cannot fail your build without a commit.
 - **Commit `.usat.yaml`.** Suppressions and overrides without a commit are invisible
   decisions, and they are the first thing a reviewer asks about.

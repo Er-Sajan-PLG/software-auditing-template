@@ -1,11 +1,11 @@
 {
-  "name": "usat",
+  "name": "@xenos1996/usat",
   "version": "1.0.0",
   "description": "Universal Software Audit Template — an open-source, self-adapting audit framework for any project, any stack, any stage",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "usat": "./dist/cli.js"
+    "usat": "dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

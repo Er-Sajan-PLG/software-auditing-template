@@ -59,9 +59,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        PKG="usat"
+        PKG="@xenos1996/usat"
         if [ "${{ inputs.version }}" != "latest" ]; then
-          PKG="usat@${{ inputs.version }}"
+          PKG="@xenos1996/usat@${{ inputs.version }}"
         fi
 
         ARGS=(audit "${{ inputs.path }}"

@@ -7,7 +7,7 @@
 **An open-source, self-adapting audit framework for any project, any stack, any stage.**
 
 [![CI](https://github.com/Er-Sajan-PLG/software-auditing-template/actions/workflows/ci.yml/badge.svg)](https://github.com/Er-Sajan-PLG/software-auditing-template/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/usat)](https://www.npmjs.com/package/usat)
+[![npm](https://img.shields.io/npm/v/@xenos1996/usat)](https://www.npmjs.com/package/@xenos1996/usat)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Rules](https://img.shields.io/badge/rules-200%2B-blue)](rules/)
 
@@ -36,16 +36,16 @@ It is two things, and you should use both:
 
 ```bash
 # Audit any project — no install, no config, no network
-npx usat audit .
+npx @xenos1996/usat audit .
 
 # See what it detected before you trust the report
-npx usat detect .
+npx @xenos1996/usat detect .
 
 # Deep audit, graded against the production bar
-npx usat audit ~/code/api --depth deep --profile production
+npx @xenos1996/usat audit ~/code/api --depth deep --profile production
 
 # Fail the build on HIGH or worse
-npx usat audit . --fail-on high
+npx @xenos1996/usat audit . --fail-on high
 ```
 
 That writes `AUDIT.md` — a single self-contained Markdown file you can commit, paste
@@ -267,7 +267,7 @@ Add to any workflow ([`action.yml`](action.yml) is a composite action if you pre
 
 ```yaml
 - name: USAT audit
-  run: npx usat audit . --fail-on high
+  run: npx @xenos1996/usat audit . --fail-on high
 
 - name: Publish report
   if: always()
