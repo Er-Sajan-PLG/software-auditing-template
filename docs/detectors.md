@@ -32,7 +32,23 @@ usat detect .            # what USAT thinks your project is
 | `implies: [fact]`                  | derived — all listed facts must hold             |
 
 Several detectors may emit the same fact; the fact is set if **any** of them fires
-(OR semantics). `implies` chains resolve over two passes, so order does not matter.
+(OR semantics). `implies` chains resolve to a fixed point (bounded by
+detector count + 1 passes, early exit), so chains of any length resolve
+regardless of declaration order.
+
+Request-serving frameworks imply their platform: `fw:express` …
+`fw:sveltekit` (24 frameworks) each derive `platform:server`, so a bare
+framework app with no Dockerfile still gets the platform-gated rules
+(SEC-003 et al.). Task queues, static builders, and desktop/mobile packs
+deliberately imply nothing — see the comment block in
+`rules/detectors.yaml`.
+
+Manifest queries are section-scoped where sections exist: a dotted key
+(`tool.poetry.dependencies`) matches a full header segment
+(case-insensitive; `[dev-dependencies]` is not `[dependencies]`), the leaf
+matches on word boundaries, and `contains` is checked against the matched
+block — never the whole file. Flat files with no headers keep whole-text
+search. See ADR-0010.
 
 ## Prose, tests, and examples are excluded from `content` scans
 
@@ -40,10 +56,16 @@ A repo whose README mentions Postgres does not have a Postgres dependency. Every
 `content:` scan automatically skips:
 
 ```
-**/*.md  **/*.mdx  **/*.txt  **/*.rst  docs/**  examples/**
-templates/**  fixtures/**  __mocks__/**  test/**  tests/**
-*.test.*  *.spec.*  test_*   *_test.*   LICENSE*   CHANGELOG*
+**/*.md  **/*.mdx  **/*.rst  README*  docs/**  doc/**  examples/**
+example/**  templates/**  fixtures/**  __mocks__/**  test/**  tests/**
+__tests__/**  spec/**  *.test.*  *.spec.*  *.stories.*  test_*
+*_test.*  LICENSE*  CHANGELOG*
 ```
+
+Deliberately **not** excluded: `**/*.txt` — `requirements.txt` is a
+manifest, not prose. This list mirrors `CONTENT_EXCLUDES` in
+`src/detect/index.ts`; if they drift, the code wins and this doc is a bug —
+file it.
 
 Everything else in the tree is fair game. If a project's own config comments are
 still producing noise, add the file to `ignore:` in `.usat.yaml` — that is what

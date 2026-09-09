@@ -8,6 +8,7 @@ export { detect, loadDetectors, classifyMaturity, loadDetectorFile } from './det
 export {
   loadRulePacks,
   applyRuleOverrides,
+  validatePredicate,
   DEFAULT_WEIGHT,
   SEVERITY_LADDER,
 } from './engine/loader.js';

@@ -124,6 +124,23 @@ improvement — the thing a single audit can never do.
 
 ---
 
+## Reference: this repo's own CI (`.github/workflows/`)
+
+USAT audits itself with the full stack — copy what fits:
+
+| Workflow           | What it does                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ci.yml`           | lint+format+typecheck · Vitest with coverage thresholds · build + CLI smoke · rule-pack validation · npm audit + gitleaks + license scan · **hygiene** (`check-adrs` + `check-docs`) |
+| `self-audit.yml`   | `usat audit . --depth deep --fail-on critical` on every PR, score as PR comment                                                                                                      |
+| `scorecard.yml`    | OpenSSF Scorecard monthly + on push (API-verified hygiene; SARIF to Security tab)                                                                                                    |
+| `automerge.yml`    | Dependabot patch/minor auto-merge once CI is green (majors stay manual)                                                                                                              |
+| `gitleaks-pin.yml` | Monthly check that the curl-pinned gitleaks binary in `ci.yml` is current (no bot watches it) — opens a deduped issue when stale                                                     |
+| `release.yml`      | Tag push `v*` → OIDC trusted publishing (no long-lived token) + `--provenance` + CycloneDX SBOM artifact                                                                             |
+
+Release setup note: trusted publishing needs a one-time owner step on
+npmjs.com (package Settings → Trusted Publisher → this repo + workflow)
+before the first OIDC publish succeeds.
+
 ## Choosing a depth in CI
 
 | Depth      | Rules                                          | Runtime (≈10k files) | Use for              |

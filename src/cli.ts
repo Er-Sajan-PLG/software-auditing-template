@@ -84,6 +84,19 @@ const COMMANDS: Record<string, (args: Args) => number> = {
 
 export function main(argv: string[]): number {
   const args = parseArgs(argv);
+  // GNU-style flags never reach `_` (the parser files them under flags), so
+  // check them before the command dispatch: without this, `usat --help`
+  // falls through to the default `audit` command and audits the tree
+  // instead of printing help. The `version`/`--version` cases below exist
+  // for the positional forms (`usat version`); the flags are handled here.
+  if (bool(args, 'help')) {
+    console.log(HELP);
+    return 0;
+  }
+  if (bool(args, 'version')) {
+    console.log(`usat ${VERSION}`);
+    return 0;
+  }
   const cmd = (args._[0] ?? 'audit') as string;
 
   const run = COMMANDS[cmd];

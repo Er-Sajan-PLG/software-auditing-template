@@ -99,6 +99,7 @@ and the fact that `AGENTS.md` is executable-ish instruction that commits like co
 | `SEC-001` No hardcoded credentials          | ASVS 2.10.4 · CWE-798 · OWASP A02:2021                  |
 | `SEC-005` SQL not built by concatenation    | ASVS 5.3.4 · CWE-89 · OWASP A03:2021                    |
 | `SEC-011` Modern adaptive password hash     | ASVS 2.4.1 · CWE-916                                    |
+| `SEC-025` Adaptive hash present where auth  | ASVS 2.4.1 · CWE-916                                    |
 | `SEC-015` Authorization per request         | ASVS 4.2.1 · CWE-639 · OWASP A01:2021                   |
 | `SEC-013` No `alg:none`                     | ASVS 3.2.3 · CWE-347                                    |
 | `SUP-001` Lockfile committed                | OpenSSF Pinned-Dependencies · SSDF PS.3.2 · SLSA Source |
