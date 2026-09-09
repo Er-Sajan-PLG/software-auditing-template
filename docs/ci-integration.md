@@ -141,7 +141,8 @@ USAT audits itself with the full stack — copy what fits:
 
 Release setup note: trusted publishing needs a one-time owner step on
 npmjs.com (package Settings → Trusted Publisher → this repo + workflow)
-before the first OIDC publish succeeds.
+before the first OIDC publish succeeds. Full lifecycle, setups, rotation,
+and every failure met so far: [release.md](release.md).
 
 ## How a release happens (developer-style, no manual versioning)
 
