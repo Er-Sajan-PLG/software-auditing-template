@@ -449,6 +449,7 @@ Activated by detection. Each lives in [`rules/stacks/`](rules/stacks).
 | `containers`      | Dockerfile / compose                                   | Non-root, multi-stage, pinned base, `.dockerignore`, no baked secrets, healthchecks, K8s limits, image signing                 |
 | `iac`             | Terraform / K8s / Pulumi                               | Public exposure, encryption at rest, validate+scan in CI, remote locked state, least-privilege IAM, no privileged pods         |
 | `solidity`        | `.sol` / Foundry / Hardhat                             | Reentrancy, compiler ≥0.8, access control, `tx.origin`, unchecked calls, timestamp dependence, pause, invariants, audit        |
+| `swift`           | Swift / SwiftPM / Vapor                                | Force-unwrap discipline, ATS policy, `Package.resolved` for apps, Keychain review                                              |
 | `ml-ai`           | torch / notebooks / models                             | Data & model versioning, reproducibility, drift monitoring, prediction logging, bias evaluation, notebook-to-pipeline, cost    |
 | `cli`             | `bin` / `[project.scripts]` / `cmd/`                   | `--help`, exit codes, `--dry-run`, input validation, idempotency, stderr/stdout, `--json`                                      |
 | `data`            | database / ORM / migrations                            | Migrations, constraints, indexes, N+1, pagination, pooling, transactions, row-level scoping                                    |

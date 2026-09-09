@@ -2,7 +2,15 @@ import { parse as parseYaml } from 'yaml';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { UsatConfig } from './types.js';
-import { asMap, maps, str, strList } from './util/yaml.js';
+import { asMap, maps, num, str, strList } from './util/yaml.js';
+
+function parseLimits(v: unknown): UsatConfig['limits'] {
+  const m = asMap(v);
+  const maxFiles = num(m.max_files);
+  const maxBytes = num(m.max_bytes);
+  if (maxFiles === undefined && maxBytes === undefined) return undefined;
+  return { max_files: maxFiles, max_bytes: maxBytes };
+}
 
 export const CONFIG_FILE = '.usat.yaml';
 
@@ -33,6 +41,7 @@ export function loadConfig(target: string, explicit?: string): UsatConfig {
       ignore: strList(doc.ignore),
       facts: strList(doc.facts),
       sections: strList(doc.sections),
+      limits: parseLimits(doc.limits),
     };
   } catch (err) {
     throw new Error(`Could not parse ${file}: ${(err as Error).message}`, { cause: err });
@@ -70,4 +79,11 @@ ignore: []
 
 # Assert facts detection could not infer. Useful for non-standard layouts.
 facts: []
+
+# Indexing caps for bigger-than-comfortable trees (defaults: 60000 files,
+# 2 MiB per file). Raise deliberately for monorepos; the audit warns when
+# caps truncate coverage. CLI flags (--max-files, --max-bytes) win.
+# limits:
+#   max_files: 120000
+#   max_bytes: 4194304
 `;

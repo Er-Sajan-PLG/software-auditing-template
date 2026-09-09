@@ -130,6 +130,14 @@ interface AuditCliOptions {
   out: string;
   failOn: string;
   quiet: boolean;
+  maxFiles?: number;
+  maxBytes?: number;
+}
+
+function parseCountFlag(v: string | undefined): number | undefined {
+  if (v === undefined) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 function readAuditOptions(args: Args): AuditCliOptions {
@@ -141,6 +149,8 @@ function readAuditOptions(args: Args): AuditCliOptions {
     out: str(args, 'out', 'AUDIT.md') ?? 'AUDIT.md',
     failOn: (str(args, 'fail-on', 'none') ?? 'none').toLowerCase(),
     quiet: bool(args, 'quiet'),
+    maxFiles: parseCountFlag(str(args, 'max-files')),
+    maxBytes: parseCountFlag(str(args, 'max-bytes')),
   };
 }
 
@@ -149,6 +159,8 @@ function validateAuditOptions(o: AuditCliOptions): string | null {
   if (o.profileArg !== 'auto' && !MATURITIES.includes(o.profileArg as Maturity)) {
     return `--profile must be auto or one of ${MATURITIES.join('|')}`;
   }
+  if (o.maxFiles !== undefined && !(o.maxFiles > 0)) return '--max-files must be a positive number';
+  if (o.maxBytes !== undefined && !(o.maxBytes > 0)) return '--max-bytes must be a positive number';
   return null;
 }
 
@@ -184,6 +196,8 @@ function cmdAudit(args: Args): number {
     usatVersion: VERSION,
     includePacks: list(args, 'include'),
     excludePacks: list(args, 'exclude'),
+    maxFiles: o.maxFiles,
+    maxBytes: o.maxBytes,
   });
 
   for (const w of warnings) console.error(`warning: ${w}`);
@@ -452,6 +466,8 @@ audit options
   --allow-commands    Run \`command:\` checks (shells out; off by default)
   --fail-on <sev>     Exit 1 on findings >= sev: critical|high|medium|low|none
   --quiet             Only errors
+  --max-files <n>     Index at most n files (overrides config; default 60000)
+  --max-bytes <n>     Skip files larger than n bytes (overrides config; default 2 MiB)
 
 bootstrap options
   --out <file|dir>    Write pack files instead of printing (default: print)

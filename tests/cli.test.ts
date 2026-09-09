@@ -45,4 +45,13 @@ describe('global flags', () => {
     expect(r.code).toBe(2);
     expect(r.err).toContain('Unknown command');
   });
+
+  it('rejects non-positive --max-files/--max-bytes', () => {
+    const badFiles = run(['audit', '.', '--max-files', 'abc']);
+    expect(badFiles.code).toBe(2);
+    expect(badFiles.err).toContain('--max-files must be a positive number');
+    const badBytes = run(['audit', '.', '--max-bytes', '0']);
+    expect(badBytes.code).toBe(2);
+    expect(badBytes.err).toContain('--max-bytes must be a positive number');
+  });
 });

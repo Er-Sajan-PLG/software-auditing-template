@@ -681,6 +681,18 @@ detectors:
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:nuxt'] }
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:remix'] }
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:sveltekit'] }
+  # Swift ecosystem, graduated from the bootstrap proof on vapor/vapor:
+  # framework identity, executable-vs-library shape (Package.resolved is
+  # only meaningful for apps), and the platform consequence. See ADR-0012.
+  - fact: 'fw:vapor'
+    category: framework
+    title: Vapor
+    match: { content: { include: ['Package.swift'], pattern: '[Vv]apor' } }
+  - fact: 'swift:executable'
+    category: type
+    title: Swift executable target
+    match: { content: { include: ['Package.swift'], pattern: '\.executableTarget\s*\(' } }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:vapor'] }
   - {
       fact: 'platform:evm',
       category: platform,

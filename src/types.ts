@@ -203,6 +203,8 @@ export interface UsatConfig {
   facts?: string[];
   /** Restrict the report to these sections. */
   sections?: string[];
+  /** Indexing caps for bigger-than-comfortable trees (validated, else defaults). */
+  limits?: { max_files?: number; max_bytes?: number };
 }
 
 /* ------------------------------------------------------------------ score -- */

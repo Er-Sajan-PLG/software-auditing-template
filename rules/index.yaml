@@ -39,3 +39,4 @@ packs:
   - stacks/api-backend.yaml
   - stacks/compliance.yaml
   - stacks/ai-era.yaml
+  - stacks/swift.yaml

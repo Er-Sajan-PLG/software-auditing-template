@@ -49,6 +49,9 @@ const COVERED_LANGS: Record<string, string> = {
   kotlin: 'stacks/jvm',
   scala: 'stacks/jvm',
   solidity: 'stacks/solidity',
+  // Graduated: swift shipped as stacks/swift.yaml (proven on vapor/vapor)
+  // and was removed from the bootstrap catalog — covered, not proposed.
+  swift: 'stacks/swift',
 };
 
 export function bootstrapPacks(facts: Facts): BootstrapOutcome {

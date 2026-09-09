@@ -87,6 +87,21 @@ npm run build && node dist/cli.js audit . --depth deep # self-audit: expect 100/
 node dist/cli.js diff <previous-AUDIT> AUDIT.md        # expect no regressions
 ```
 
+## Graduation round (standing rule: bigger repos permanently expand the template)
+
+- [x] REPO-003 history scan: type-annotation exclusion (`Key: TypeName`),
+      quoted-value recall added (quoted secrets were invisible), shell-quoting
+      correctness — proven on Vapor history vs planted secrets
+- [x] Engine upgrades: configurable index caps (config + CLI, validated),
+      thin-history warnings (non-git + single-commit), bounded LRU content
+      cache (1000 entries, behavior-identical eviction)
+- [x] Swift graduated to shipped `stacks/swift.yaml` (library-scoped
+      SW-003 via new `swift:executable` fact); `fw:vapor` + platform mapping
+      added; swift removed from the bootstrap catalog (replaced, not forked)
+- [x] Vapor stress matrix: standard/deep/quick, production profile,
+      --allow-commands, fail-on gates — 18 newly-applicable rules via the
+      platform cascade, zero regressions
+
 ## Self-extension round (this program)
 
 - [x] Honest scale: `MAX_FILES` truncation flag + oversize counter, both

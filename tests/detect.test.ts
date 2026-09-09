@@ -258,3 +258,41 @@ describe('framework facts imply their platform', () => {
     expect(d.facts.flags).not.toContain('platform:server');
   });
 });
+
+describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
+  const vapidPkg = (extra: Record<string, string> = {}) => ({
+    'Package.swift': [
+      '// swift-tools-version: 5.9',
+      'import PackageDescription',
+      'let package = Package(',
+      '    name: "vapor-test",',
+      '    dependencies: [.package(url: "https://github.com/vapor/vapor.git", from: "4.0.0")],',
+      ...Object.values(extra),
+      ')',
+    ].join('\n'),
+  });
+
+  it('detects vapor framework and server platform', () => {
+    const root = build({
+      ...vapidPkg(),
+      'Sources/App/routes.swift': 'import Vapor\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).toContain('fw:vapor');
+    expect(d.facts.flags).toContain('platform:server');
+  });
+
+  it('detects executable targets, absent in pure libraries', () => {
+    const app = build({
+      ...vapidPkg({ exe: '    targets: [.executableTarget(name: "App")],' }),
+      'Sources/App/main.swift': 'print("hi")\n',
+    });
+    expect(detectAt(app).facts.flags).toContain('swift:executable');
+
+    const lib = build({
+      ...vapidPkg(),
+      'Sources/Lib/lib.swift': 'public func f() {}\n',
+    });
+    expect(detectAt(lib).facts.flags).not.toContain('swift:executable');
+  });
+});

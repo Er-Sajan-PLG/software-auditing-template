@@ -37,11 +37,13 @@ detector count + 1 passes, early exit), so chains of any length resolve
 regardless of declaration order.
 
 Request-serving frameworks imply their platform: `fw:express` …
-`fw:sveltekit` (24 frameworks) each derive `platform:server`, so a bare
-framework app with no Dockerfile still gets the platform-gated rules
-(SEC-003 et al.). Task queues, static builders, and desktop/mobile packs
-deliberately imply nothing — see the comment block in
-`rules/detectors.yaml`.
+`fw:sveltekit` plus `fw:vapor` (25 frameworks) each derive
+`platform:server`, so a bare framework app with no Dockerfile still gets
+the platform-gated rules (SEC-003 et al.). Task queues, static builders,
+and desktop/mobile packs deliberately imply nothing — see the comment
+block in `rules/detectors.yaml`. SwiftPM executable targets additionally
+derive the `swift:executable` type fact, which scopes app-only rules like
+SW-003 (libraries must not commit `Package.resolved`).
 
 Manifest queries are section-scoped where sections exist: a dotted key
 (`tool.poetry.dependencies`) matches a full header segment
@@ -91,6 +93,7 @@ Node backend: `express` `fastify` `nest` `hono` `koa`
 Python: `django` `flask` `fastapi` `celery` `airflow` `streamlit`
 Go: `gin` `echo` `fiber` `chi` · Rust: `axum` `actix` `rocket`
 JVM: `spring` `quarkus` · Ruby: `rails` · PHP: `laravel` `symfony` · .NET: `dotnet`
+Swift: `vapor`
 Mobile/desktop: `react-native` `expo` `flutter` `electron` `tauri`
 
 ### `project:*` — archetype

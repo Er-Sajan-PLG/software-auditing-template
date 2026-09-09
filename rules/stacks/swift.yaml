@@ -1,0 +1,69 @@
+id: stacks/swift
+title: Swift
+section: S15
+section_title: Platform-Specific
+description: 'Activated when Swift is detected. Graduated from a bootstrap proposal proven against vapor/vapor — see ADR-0012.'
+version: '1.0'
+skip_when:
+  all:
+    - { fact: 'lang:swift', op: 'absent' }
+
+rules:
+  - id: SW-001
+    title: No force-unwrap or force-try in application code
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: correctness
+    check:
+      kind: grep_wrong
+      pattern: '(try!\s|as!\s)'
+      include: ['**/*.swift']
+      exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/Tests/**']
+      flags: i
+    why: 'try!/as! turn recoverable failures into crashes. Tests may keep them; shipped code should not.'
+    remediation: 'Handle errors with do/catch or propagate with try; replace as! with as? plus a guard.'
+    references: ['CWE-754']
+
+  - id: SW-002
+    title: App Transport Security is not disabled
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(NSAllowsArbitraryLoads|NSExceptionAllowsInsecureHTTPLoads)'
+      include: ['**/*.plist', '**/*.swift']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'Disabling ATS reopens plaintext HTTP for the whole app or exception domains.'
+    remediation: 'Remove the exception keys; pin exception domains narrowly with justification if truly required.'
+    references: ['CWE-319']
+
+  - id: SW-003
+    title: Application dependencies are pinned
+    section: S15
+    section_title: Platform-Specific
+    severity: MEDIUM
+    class: supply-chain
+    applies_when: { fact: 'swift:executable' }
+    check:
+      kind: file_exists
+      files: ['Package.resolved']
+    why: 'An unpinned Package.swift resolves newest compatibles at build time. Scoped to executable targets: libraries must NOT commit Package.resolved (the resolver ignores it for library products).'
+    remediation: 'Commit Package.resolved so every build resolves identically.'
+    references: ['CWE-829']
+
+  - id: SW-004
+    title: Secrets live in the Keychain with data protection
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: manual
+    why: 'UserDefaults/plist storage of tokens and missing file-protection classes need a human to confirm.'
+    remediation: 'Store credentials via SecItem with kSecAttrAccessibleWhenUnlockedThisDeviceOnly or stronger; set NSFileProtectionComplete.'
+    evidence: 'SecItem call sites file:line, UserDefaults keys inventory, file-protection settings.'
+    references: ['ASVS-2.4.1', 'MASVS-STORAGE']

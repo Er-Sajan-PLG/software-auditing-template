@@ -56,6 +56,9 @@ export interface AuditOptions {
   /** Force these pack ids on/off regardless of detection. */
   includePacks?: string[];
   excludePacks?: string[];
+  /** Indexing caps for bigger-than-comfortable trees (CLI wins over config). */
+  maxFiles?: number;
+  maxBytes?: number;
 }
 
 export interface AuditOutcome {
@@ -70,8 +73,13 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   const config = options.config ?? loadConfig(options.target);
   const opts = normalizeAuditOptions(options, config);
   const warnings: string[] = [];
-  const project = new Project(opts.target, config.ignore ?? []);
+  const project = new Project(
+    opts.target,
+    config.ignore ?? [],
+    resolveLimits(options, config, warnings),
+  );
   const git = project.gitInfo();
+  appendHistoryWarnings(git, warnings);
   const detectors = loadDetectorFile(opts.rulesDir);
   const detection = detect(project, detectors, git, config.facts ?? []);
 
@@ -236,6 +244,62 @@ function appendIndexWarnings(project: Project, warnings: string[]): void {
     warnings.push(
       `${project.skippedLarge} file(s) skipped for exceeding ${MAX_FILE_BYTES} bytes — ` +
         'content checks could not see them',
+    );
+  }
+}
+
+/**
+ * CLI flags win over config file; both are validated with warnings.
+ * Invalid values fall back to engine defaults (never zero, never infinite).
+ */
+function resolveLimits(
+  options: AuditOptions,
+  config: UsatConfig,
+  warnings: string[],
+): { maxFiles?: number; maxBytes?: number } {
+  return {
+    maxFiles: validatedLimit(
+      options.maxFiles ?? config.limits?.max_files,
+      'limits.max_files / --max-files',
+      warnings,
+    ),
+    maxBytes: validatedLimit(
+      options.maxBytes ?? config.limits?.max_bytes,
+      'limits.max_bytes / --max-bytes',
+      warnings,
+    ),
+  };
+}
+
+function validatedLimit(
+  v: number | undefined,
+  name: string,
+  warnings: string[],
+): number | undefined {
+  if (v === undefined) return undefined;
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.floor(v);
+  warnings.push(`invalid ${name} "${String(v)}" (must be a positive number) — using defaults`);
+  return undefined;
+}
+
+/**
+ * History-thin targets blind the history-dependent rules (REPO-003 scans
+ * `git log`, REL-002 needs tags, maturity signals need commits). The
+ * negation in REPO-003 even turns git errors into PASS — true only in the
+ * vacuous sense. Say so loudly instead of scoring blind confidence.
+ */
+function appendHistoryWarnings(git: ReturnType<Project['gitInfo']>, warnings: string[]): void {
+  if (!git.isRepo) {
+    warnings.push(
+      'not a git repository — history and provenance checks cannot verify anything; ' +
+        'treat history-dependent findings as vacuous',
+    );
+    return;
+  }
+  if (git.commits <= 1) {
+    warnings.push(
+      'single-commit history (shallow clone?) — maturity signals, tag checks, and ' +
+        'history scans are under-verified; prefer a full clone for release-grade audits',
     );
   }
 }

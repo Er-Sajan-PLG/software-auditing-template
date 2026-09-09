@@ -24,6 +24,16 @@ function tmpDir(): { dir: string; cleanup: () => void } {
 }
 
 describe('usat bootstrap', () => {
+  it('treats graduated swift as covered, not generated', () => {
+    const root = build({
+      'Package.swift': '// swift-tools-version: 5.9\nimport PackageDescription\n',
+      'Sources/App/App.swift': 'print("hi")\n',
+    });
+    const outcome = bootstrapPacks(detectAt(root).facts);
+    expect(outcome.coveredLangs).toContain('swift');
+    expect(outcome.packs.map((p) => p.packId)).not.toContain('stacks/swift');
+  });
+
   it('generates a php pack for a php project', () => {
     const root = build({
       'composer.json': JSON.stringify({ name: 't/t', require: { php: '>=8.0' } }),
@@ -66,7 +76,8 @@ describe('usat bootstrap', () => {
       'App.swift': 'print("hi")\n',
     });
     const outcome = bootstrapPacks(detectAt(root).facts);
-    expect(outcome.generatedLangs.sort()).toEqual(['cpp', 'csharp', 'php', 'ruby', 'swift']);
+    // swift graduated to a shipped pack — it must never be proposed again.
+    expect(outcome.generatedLangs.sort()).toEqual(['cpp', 'csharp', 'php', 'ruby']);
     const { dir, cleanup } = tmpDir();
     try {
       const index: string[] = [];
