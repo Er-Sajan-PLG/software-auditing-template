@@ -72,6 +72,10 @@ Deferred (in ROADMAP with rationale, not forgotten):
       semantic-release — rule content keeps its human gate; commitlint via hook
   - CI `commits` job; bootstrap-sha + manifest pin the 1.0.0 baseline;
     `.github/release.yml` categories retired as dead config)
+- [x] release-please authenticates with a repo-scoped PAT, not
+      GITHUB_TOKEN (bot-token tag pushes never fire release.yml — learned
+      when v1.1.0 tagged but nothing published); workflow_dispatch fallback
+      on release.yml for manual retries
 - [ ] SARIF/JSON renderers, per-rule fixtures, oracle ingestion (ROADMAP)
 - [ ] OpenSSF Scorecard action + badge (ROADMAP)
 
