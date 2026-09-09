@@ -465,3 +465,30 @@ rules:
     evidence: 'Sample log lines showing that tokens, emails, and identifiers are masked or hashed.'
     remediation: 'Add a serialiser that redacts a denylist of keys before writing; never log whole request bodies.'
     references: ['CWE-532', 'GDPR-Art.5']
+
+  - id: SEC-025
+    title: Adaptive password hashing is present where auth exists
+    section: S2
+    section_title: Security
+    severity: HIGH
+    class: security
+    applies_when:
+      any:
+        - { fact: 'auth:jwt' }
+        - { fact: 'auth:session' }
+        - { fact: 'auth:oauth' }
+        - { fact: 'auth:apikey' }
+    check:
+      kind: grep_present
+      # NOTE: companion to SEC-011, which only proves weak hashes are absent.
+      # Absence of md5 is not presence of bcrypt: plaintext password storage
+      # passed SEC-011 cleanly. This rule demands positive evidence of an
+      # adaptive function. HIGH, not CRITICAL: presence-grep cannot prove the
+      # hash actually guards the password path (that is judgement-queue work).
+      pattern: '(bcrypt|argon2(id)?|scrypt|pbkdf2|password_hash|BCryptPasswordEncoder|passlib|generate_password_hash|hashpw)'
+      include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,rb,php}']
+      exclude: ['**/*.test.*', '**/*.spec.*']
+      flags: i
+    why: 'No adaptive hash found anywhere auth exists. Either passwords are stored weakly (or plainly), or hashing lives outside the scanned tree — both need a human to confirm.'
+    remediation: 'Hash passwords with bcrypt (cost ≥12), scrypt, or argon2id at registration and verify on login. Never a plain digest, never reversible encryption.'
+    references: ['CWE-916', 'ASVS-2.4.1', 'OWASP-Password-Storage-Cheat-Sheet']

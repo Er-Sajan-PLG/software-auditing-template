@@ -33,6 +33,7 @@ describe('core/security rules', () => {
   const sec003 = ruleOf('core/security.yaml', 'SEC-003');
   const sec005 = ruleOf('core/security.yaml', 'SEC-005');
   const sec013 = ruleOf('core/security.yaml', 'SEC-013');
+  const sec025 = ruleOf('core/security.yaml', 'SEC-025');
 
   // SEC-003 once used `https?://` and failed every compliant https:// URL,
   // including this repo's own package.json. The `s?` must never come back.
@@ -76,6 +77,20 @@ describe('core/security rules', () => {
     expect(
       evaluateAt(mk('jwt.verify(token, secret, { algorithms: ["none"] });'), sec013.check).status,
     ).toBe('FAIL');
+  });
+
+  // Companion to SEC-011 (which only proves weak hashes are absent):
+  // plaintext password storage used to pass cleanly. Positive evidence
+  // of an adaptive function is now required where auth exists.
+  it('SEC-025 passes adaptive hashing, fails its absence', () => {
+    const ok = fixture({ 'src/auth.js': 'const h = await bcrypt.hash(pw, 12);\n' });
+    expect(evaluateAt(ok, sec025.check).status).toBe('PASS');
+    const argon = fixture({ 'src/auth.js': 'const ok = await argon2.verify(hash, pw);\n' });
+    expect(evaluateAt(argon, sec025.check).status).toBe('PASS');
+    const plain = fixture({ 'src/auth.js': 'db.users.insert({ name, password: req.body.pw });\n' });
+    expect(evaluateAt(plain, sec025.check).status).toBe('MISSING');
+    const weak = fixture({ 'src/auth.js': 'const h = createHash("sha256").update(pw);\n' });
+    expect(evaluateAt(weak, sec025.check).status).toBe('MISSING');
   });
 
   // A log line that merely talks about secrets is not a log line that leaks
