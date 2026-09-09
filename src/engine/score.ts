@@ -59,94 +59,136 @@ export function score(
   const severityCounts = EMPTY_SEVERITY();
   const sectionMap = new Map<string, SectionDef>(sections.map((s) => [s.id, s]));
 
-  const bySection = new Map<
-    string,
-    {
-      w: number;
-      credit: number;
-      applicable: number;
-      resolved: number;
-      passed: number;
-      failed: number;
-      unknown: number;
-    }
-  >();
-
-  let totalW = 0;
-  let totalCredit = 0;
-  let applicableAll = 0;
-  let resolvedAll = 0;
+  const acc: ScoreAccum = {
+    bySection: new Map(),
+    counts,
+    severityCounts,
+    totalW: 0,
+    totalCredit: 0,
+    applicableAll: 0,
+    resolvedAll: 0,
+  };
 
   for (const { rule, finding } of evaluated) {
-    if (finding.status === 'NOT_APPLICABLE') continue;
-
-    const sec = sectionMap.get(finding.section) ?? {
-      id: finding.section,
-      title: finding.sectionTitle,
-      weight: 1,
-    };
-    const bucket = bySection.get(sec.id) ?? {
-      w: 0,
-      credit: 0,
-      applicable: 0,
-      resolved: 0,
-      passed: 0,
-      failed: 0,
-      unknown: 0,
-    };
-    bucket.applicable++;
-    applicableAll++;
-
-    counts[finding.status]++;
-    if (finding.status !== 'PASS' && finding.status !== 'UNKNOWN') {
-      severityCounts[finding.severity]++;
-    }
-
-    if (finding.suppressedReason || finding.status === 'UNKNOWN') {
-      if (finding.status === 'UNKNOWN') bucket.unknown++;
-      bySection.set(sec.id, bucket);
-      continue;
-    }
-
-    const w = ruleWeight(rule) * sec.weight;
-    const credit = w * CREDIT[finding.status];
-    bucket.w += w;
-    bucket.credit += credit;
-    bucket.resolved++;
-    resolvedAll++;
-    if (finding.status === 'PASS') bucket.passed++;
-    else bucket.failed++;
-
-    totalW += w;
-    totalCredit += credit;
-    bySection.set(sec.id, bucket);
+    accumulateScoredRule(acc, sectionMap, rule, finding);
   }
 
   const sectionScores: SectionScore[] = sections
-    .filter((s) => bySection.has(s.id))
-    .map((s) => {
-      const b = bySection.get(s.id)!;
-      return {
-        id: s.id,
-        title: s.title,
-        score: b.w > 0 ? round1((10 * b.credit) / b.w) : null,
-        weight: s.weight,
-        applicable: b.applicable,
-        resolved: b.resolved,
-        passed: b.passed,
-        failed: b.failed,
-        unknown: b.unknown,
-        confidence: b.applicable > 0 ? round1((100 * b.resolved) / b.applicable) : 100,
-      };
-    });
+    .filter((s) => acc.bySection.has(s.id))
+    .map((s) => buildSectionScore(s, acc.bySection.get(s.id)!));
 
   return {
-    overall: totalW > 0 ? round1((100 * totalCredit) / totalW) : 0,
+    overall: acc.totalW > 0 ? round1((100 * acc.totalCredit) / acc.totalW) : 0,
     sections: sectionScores,
     counts,
     severityCounts,
-    automationCoverage: applicableAll > 0 ? round1((100 * resolvedAll) / applicableAll) : 0,
+    automationCoverage:
+      acc.applicableAll > 0 ? round1((100 * acc.resolvedAll) / acc.applicableAll) : 0,
     expectedBand: profile.expectedBand,
+  };
+}
+
+interface SectionBucket {
+  w: number;
+  credit: number;
+  applicable: number;
+  resolved: number;
+  passed: number;
+  failed: number;
+  unknown: number;
+}
+
+interface ScoreAccum {
+  bySection: Map<string, SectionBucket>;
+  counts: Record<Status, number>;
+  severityCounts: Record<Severity, number>;
+  totalW: number;
+  totalCredit: number;
+  applicableAll: number;
+  resolvedAll: number;
+}
+
+function emptyBucket(): SectionBucket {
+  return { w: 0, credit: 0, applicable: 0, resolved: 0, passed: 0, failed: 0, unknown: 0 };
+}
+
+function bucketFor(bySection: Map<string, SectionBucket>, id: string): SectionBucket {
+  let bucket = bySection.get(id);
+  if (!bucket) {
+    bucket = emptyBucket();
+    bySection.set(id, bucket);
+  }
+  return bucket;
+}
+
+function accumulateScoredRule(
+  acc: ScoreAccum,
+  sectionMap: Map<string, SectionDef>,
+  rule: Rule,
+  finding: Finding,
+): void {
+  if (finding.status === 'NOT_APPLICABLE') return;
+  const sec = sectionMap.get(finding.section) ?? {
+    id: finding.section,
+    title: finding.sectionTitle,
+    weight: 1,
+  };
+  const bucket = bucketFor(acc.bySection, sec.id);
+  bucket.applicable++;
+  acc.applicableAll++;
+
+  // Suppressed findings live under Accepted Risk only: counting them as open
+  // once produced "HIGH: 1" next to "No CRITICAL or HIGH findings. Nice."
+  // in the same report. Unsuppressed UNKNOWN still counts — the report
+  // narrative ("N checks need a human") is driven by counts.UNKNOWN.
+  if (finding.suppressedReason) {
+    if (finding.status === 'UNKNOWN') bucket.unknown++;
+    return;
+  }
+
+  acc.counts[finding.status]++;
+  if (finding.status !== 'PASS' && finding.status !== 'UNKNOWN') {
+    acc.severityCounts[finding.severity]++;
+  }
+
+  if (finding.status === 'UNKNOWN') {
+    bucket.unknown++;
+    return;
+  }
+  applyRuleCredit(acc, bucket, rule, finding, sec.weight);
+}
+
+function applyRuleCredit(
+  acc: ScoreAccum,
+  bucket: SectionBucket,
+  rule: Rule,
+  finding: Finding,
+  sectionWeight: number,
+): void {
+  const w = ruleWeight(rule) * sectionWeight;
+  const credit = w * CREDIT[finding.status];
+  bucket.w += w;
+  bucket.credit += credit;
+  bucket.resolved++;
+  acc.resolvedAll++;
+  if (finding.status === 'PASS') bucket.passed++;
+  else bucket.failed++;
+  acc.totalW += w;
+  acc.totalCredit += credit;
+}
+
+function buildSectionScore(s: SectionDef, b: SectionBucket): SectionScore {
+  return {
+    id: s.id,
+    title: s.title,
+    score: b.w > 0 ? round1((10 * b.credit) / b.w) : null,
+    weight: s.weight,
+    applicable: b.applicable,
+    resolved: b.resolved,
+    passed: b.passed,
+    failed: b.failed,
+    unknown: b.unknown,
+    confidence: b.applicable > 0 ? round1((100 * b.resolved) / b.applicable) : 100,
   };
 }
 

@@ -49,8 +49,8 @@ facts: # assert what detection could not infer
 | `maturity`            | stage                   | Overrides auto-detection; changes dampening and the expected band              |
 | `include`             | pack ids                | Force packs on even when `skip_when` says no                                   |
 | `exclude`             | pack ids                | Force packs off                                                                |
-| `rules.<id>.severity` | severity                | Re-grade one rule                                                              |
-| `rules.<id>.weight`   | number                  | Change how much it moves the score                                             |
+| `rules.<id>.severity` | severity                | Re-grade one rule (must be on the ladder, else ignored with a warning)         |
+| `rules.<id>.weight`   | number                  | Change how much it moves the score (finite, ≥ 0, else ignored with a warning)  |
 | `rules.<id>.disabled` | bool                    | Skip entirely (still listed as ➖ SKIPPED)                                     |
 | `rules.<id>.reason`   | string                  | **Required in practice** — an override with no reason is an unaudited decision |
 | `suppressions[]`      | `{rule, reason, until}` | Excluded from the score, listed under Accepted Risk                            |
@@ -91,6 +91,15 @@ facts: ['has:database', 'orm:prisma']
 
 **Prefer a suppression over disabling a rule.** A suppression stays visible in the
 report under Accepted Risk; a disabled rule disappears and takes its knowledge with it.
+
+**Waivers expire — and expiry fails closed.** An `until` date in the past, or
+one that cannot be parsed as a date, excludes the suppression with a warning
+and the finding reports normally. Use unambiguous ISO dates (`2026-12-31`).
+An audit must never silently honour dead risk acceptances (see ADR-0007).
+
+**`include` forces packs on wholesale.** A force-loaded pack applies all its
+rules regardless of depth and `applies_when` — that is the documented
+contract, and the operator is responsible for what they force on.
 
 **Keep `.usat.yaml` in the repo.** It is the audit trail for every exception you
 have taken. A reviewer should be able to read it and understand what the team decided.

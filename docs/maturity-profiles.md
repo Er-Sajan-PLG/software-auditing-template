@@ -36,6 +36,14 @@ Then:
 A `0.x` version with no tags is never promoted to _production_ — it downgrades to
 _beta_ with the reason recorded in the report.
 
+Boundary semantics, stated exactly because auditors must not hedge: staleness
+is exclusive (`> 365` and `> 540` days — exactly-365-days-stale counts as
+fresh); production needs score ≥ 7 **and** at least one tag (7.0 with zero
+tags is beta); prerelease detection reads the **root** `package.json` only,
+so monorepos and polyglot version files (`pyproject.toml`, `Cargo.toml`,
+`go.mod`) should assert maturity explicitly via `facts:` or `maturity:` if
+the auto-detection misreads them.
+
 Every signal and the resulting score are printed in the report appendix, so the
 classification can be argued with.
 

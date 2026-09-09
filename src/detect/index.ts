@@ -47,8 +47,11 @@ const CONTENT_EXCLUDES = [
   '**/__mocks__/**',
   '**/test/**',
   '**/tests/**',
+  '**/__tests__/**',
+  '**/spec/**',
   '**/*.test.*',
   '**/*.spec.*',
+  '**/*.stories.*',
   '**/test_*',
   '**/*_test.*',
   'LICENSE*',
@@ -95,24 +98,17 @@ export function detect(
 
   const fired: DetectionResult['detectorsFired'] = [];
 
-  // Two passes so `implies` chains resolve regardless of declaration order.
-  for (let pass = 0; pass < 2; pass++) {
+  // Fixed-point resolution: `implies` chains of any length resolve regardless
+  // of declaration order. Bounded by detectors.length + 1 passes (each pass
+  // must fire at least one new fact to continue), so a malformed registry
+  // cannot hang detection. Two hardcoded passes silently dropped chains of
+  // length 3+ declared worst-first, inflating score and confidence.
+  for (let pass = 0; pass <= detectors.length; pass++) {
+    let changed = false;
     for (const d of detectors) {
-      if (flags.has(d.fact)) continue;
-      let hit = false;
-      if (d.implies?.length) {
-        hit = d.implies.every((f) => flags.has(f));
-      }
-      if (!hit && d.match) {
-        hit = evalMatch(d.match, project, flags, metrics);
-      }
-      if (hit) {
-        flags.add(d.fact);
-        if (!fired.some((f) => f.fact === d.fact)) {
-          fired.push({ fact: d.fact, title: d.title, category: d.category });
-        }
-      }
+      if (processDetector(d, project, flags, metrics, fired)) changed = true;
     }
+    if (!changed) break;
   }
 
   const { maturity, signals } = classifyMaturity(flags, metrics, project);
@@ -121,34 +117,96 @@ export function detect(
   return { facts: { flags, metrics }, detectorsFired: fired, maturity, maturitySignals: signals };
 }
 
+function processDetector(
+  d: Detector,
+  project: Project,
+  flags: Set<string>,
+  metrics: Record<string, number>,
+  fired: DetectionResult['detectorsFired'],
+): boolean {
+  if (flags.has(d.fact)) return false;
+  let hit = false;
+  if (d.implies?.length) {
+    hit = d.implies.every((f) => flags.has(f));
+  }
+  if (!hit && d.match) {
+    hit = evalMatch(d.match, project, flags, metrics);
+  }
+  if (!hit) return false;
+  flags.add(d.fact);
+  if (!fired.some((f) => f.fact === d.fact)) {
+    fired.push({ fact: d.fact, title: d.title, category: d.category });
+  }
+  return true;
+}
+
 function evalMatch(
   m: DetectorMatch,
   project: Project,
   flags: Set<string>,
   metrics: Record<string, number>,
 ): boolean {
-  const checks: boolean[] = [];
-
-  if (m.any_file?.length) checks.push(project.anyFile(m.any_file));
-  if (m.file_exists?.length) checks.push(m.file_exists.some((f) => project.glob([f]).length > 0));
-  if (m.dir_exists?.length) checks.push(m.dir_exists.some((d) => project.dirExists(d)));
-  if (m.content) {
-    const { include, pattern } = m.content;
-    checks.push(project.grep(pattern, include, CONTENT_EXCLUDES).length > 0);
-  }
-  if (m.manifest) {
-    checks.push(manifestHas(project, m.manifest));
-  }
-  if (m.metric) {
-    const v = metrics[m.metric.name] ?? 0;
-    if (m.metric.min !== undefined && v < m.metric.min) checks.push(false);
-    else if (m.metric.max !== undefined && v > m.metric.max) checks.push(false);
-    else checks.push(true);
-  }
-  if (m.any_of?.length) checks.push(m.any_of.some((c) => evalMatch(c, project, flags, metrics)));
-  if (m.all_of?.length) checks.push(m.all_of.every((c) => evalMatch(c, project, flags, metrics)));
+  const checks = [
+    ...matchAnyFile(m, project),
+    ...matchFileExists(m, project),
+    ...matchDirExists(m, project),
+    ...matchContent(m, project),
+    ...matchManifest(m, project),
+    ...matchMetric(m, metrics),
+    ...matchAnyOf(m, project, flags, metrics),
+    ...matchAllOf(m, project, flags, metrics),
+  ];
 
   return checks.length > 0 && checks.every(Boolean);
+}
+
+/** Each matcher returns [] when its clause is absent, else a single verdict. */
+function matchAnyFile(m: DetectorMatch, project: Project): boolean[] {
+  return m.any_file?.length ? [project.anyFile(m.any_file)] : [];
+}
+
+function matchFileExists(m: DetectorMatch, project: Project): boolean[] {
+  return m.file_exists?.length ? [m.file_exists.some((f) => project.glob([f]).length > 0)] : [];
+}
+
+function matchDirExists(m: DetectorMatch, project: Project): boolean[] {
+  return m.dir_exists?.length ? [m.dir_exists.some((d) => project.dirExists(d))] : [];
+}
+
+function matchContent(m: DetectorMatch, project: Project): boolean[] {
+  if (!m.content) return [];
+  const { include, pattern } = m.content;
+  return [project.grep(pattern, include, CONTENT_EXCLUDES).length > 0];
+}
+
+function matchManifest(m: DetectorMatch, project: Project): boolean[] {
+  return m.manifest ? [manifestHas(project, m.manifest)] : [];
+}
+
+function matchMetric(m: DetectorMatch, metrics: Record<string, number>): boolean[] {
+  if (!m.metric) return [];
+  const v = metrics[m.metric.name] ?? 0;
+  if (m.metric.min !== undefined && v < m.metric.min) return [false];
+  if (m.metric.max !== undefined && v > m.metric.max) return [false];
+  return [true];
+}
+
+function matchAnyOf(
+  m: DetectorMatch,
+  project: Project,
+  flags: Set<string>,
+  metrics: Record<string, number>,
+): boolean[] {
+  return m.any_of?.length ? [m.any_of.some((c) => evalMatch(c, project, flags, metrics))] : [];
+}
+
+function matchAllOf(
+  m: DetectorMatch,
+  project: Project,
+  flags: Set<string>,
+  metrics: Record<string, number>,
+): boolean[] {
+  return m.all_of?.length ? [m.all_of.every((c) => evalMatch(c, project, flags, metrics))] : [];
 }
 
 /** Dotted key lookup across JSON manifests, with a TOML/YAML text fallback. */
@@ -160,55 +218,102 @@ function manifestHas(
   if (matches.length === 0) return false;
   const file = matches[0]!;
   const parts = m.key.split('.');
-  const leaf = parts[parts.length - 1]!;
-  const sections = parts.slice(0, -1);
+  return file.endsWith('.json')
+    ? manifestHasJson(project, file, parts, m.contains)
+    : manifestHasText(project, file, parts, m.contains);
+}
 
-  if (file.endsWith('.json')) {
-    const json = project.readJson(file);
-    const rawPath = parts.join('.');
-    let value = deepGet(json, rawPath);
-    if (value === undefined && sections.length > 0) {
-      value = deepGet(json, leaf);
-    }
-    if (value === undefined) return false;
-    if (m.contains === undefined) return true;
-    return String(value).includes(m.contains);
-  }
+function manifestHasJson(
+  project: Project,
+  file: string,
+  parts: string[],
+  contains: string | undefined,
+): boolean {
+  const json = project.readJson(file);
+  const value = deepGet(json, parts.join('.'));
+  // No root-leaf fallback: when sections were specified (`a.b.c`) but the
+  // full path missed, a root-level key equal to the leaf (`{"c": …}`) must
+  // not count as a section-scoped hit. That fallback fired on any JSON with
+  // a coincidentally named top-level key.
+  if (value === undefined) return false;
+  if (contains === undefined) return true;
+  return String(value).includes(contains);
+}
 
+function manifestHasText(
+  project: Project,
+  file: string,
+  parts: string[],
+  contains: string | undefined,
+): boolean {
   // TOML / YAML / go.mod: section-scoped text search.
   const text = project.read(file);
   if (text === null) return false;
-  const escaped = escapeRe(leaf);
-  const leafRe = new RegExp(`["']?${escaped}["']?\\s*[=:]`, 'm');
+  const leaf = parts[parts.length - 1]!;
+  const sections = parts.slice(0, -1);
+  // Word boundaries on both sides: without the leading one, leaf `test`
+  // matches inside `latest = …`; without the trailing one, similar affix
+  // collisions apply. Manifest keys are identifiers, so \b is the right gate.
+  const leafRe = new RegExp(`["']?\\b${escapeRe(leaf)}\\b["']?\\s*[=:]`, 'm');
 
   if (sections.length > 0) {
     const secName = sections[sections.length - 1]!;
     const block = extractSection(text, secName);
-    if (block && leafRe.test(block)) return containsOk(text, m.contains);
+    if (block) {
+      // The section exists: decide solely on its content. A dependency named
+      // elsewhere (comments, other sections) must not satisfy a
+      // section-scoped query, and `contains` is checked against the block.
+      return leafRe.test(block) && containsOk(block, contains);
+    }
+    // No such section block. In a section-structured file (TOML/INI) that
+    // means the requested structure is absent — fail, don't rummage the
+    // whole file. In a flat file (YAML, go.mod) there are no blocks to
+    // match, so fall through to the whole-text search below.
+    if (hasSectionHeaders(text)) return false;
   }
-  if (leafRe.test(text)) return containsOk(text, m.contains);
+  if (leafRe.test(text)) return containsOk(text, contains);
   return false;
+}
+
+/** True when the text contains at least one `[section]`-style header. */
+function hasSectionHeaders(text: string): boolean {
+  return /^\s*\[[^\]]*\]\s*$/m.test(text);
 }
 
 function containsOk(text: string, contains?: string): boolean {
   return contains === undefined || text.includes(contains);
 }
 
-/** Grabs the body of an ini/TOML section like `[dependencies]` or `[tool.poetry]`. */
+/** Grabs the bodies of ini/TOML sections like `[dependencies]` or `[tool.poetry]`. */
 function extractSection(text: string, section: string): string | null {
   const lines = text.split(/\r?\n/);
-  const headerRe = new RegExp(`^\\s*\\[[^\\]]*\\b${escapeRe(section)}\\b[^\\]]*\\]\\s*$`);
+  const want = section.toLowerCase();
   let collecting = false;
+  let found = false;
   let out = '';
   for (const line of lines) {
-    if (/^\s*\[/.test(line)) {
-      if (collecting) break;
-      collecting = headerRe.test(line);
+    const header = /^\s*\[([^\]]*)\]\s*$/.exec(line);
+    if (header) {
+      collecting = isWantedSection(header[1]!, want);
+      if (collecting) found = true;
       continue;
     }
     if (collecting) out += line + '\n';
   }
-  return collecting ? out : null;
+  return found ? out : null;
+}
+
+/**
+ * The requested name must equal a full dot-segment of the header,
+ * case-insensitively. The old `\bname\b` substring test matched
+ * `[dev-dependencies]` for `dependencies` (`-` is a non-word char) and missed
+ * `[tool.Poetry]` for `poetry` (case). All matching blocks are gathered, not
+ * just the first — a repeated section later in the file counts too.
+ */
+function isWantedSection(headerBody: string, want: string): boolean {
+  const segments = headerBody.split('.').map((s) => s.trim().replace(/^["']|["']$/g, ''));
+  const last = segments[segments.length - 1] ?? '';
+  return last.toLowerCase() === want;
 }
 
 function deepGet(obj: unknown, dotted: string): unknown {
@@ -263,22 +368,9 @@ export function classifyMaturity(
   const stale = typeof days === 'number' && days > 365;
   const abandoned = typeof days === 'number' && days > 540;
 
-  let maturity: Maturity;
-  if (abandoned) {
-    maturity = 'legacy';
-    signals.push(`legacy: last commit ${days}d ago`);
-  } else if (stale && !flags.has('has:ci')) {
-    maturity = 'legacy';
-    signals.push(`legacy: ${days}d since last commit and no CI`);
-  } else if (score >= 7 && metrics['tags']! > 0) {
-    maturity = 'production';
-  } else if (score >= 5) {
-    maturity = 'beta';
-  } else if (score >= 2.5) {
-    maturity = 'mvp';
-  } else {
-    maturity = 'prototype';
-  }
+  const stage = decideMaturityStage(score, metrics['tags']!, days, stale, abandoned, flags);
+  let maturity = stage.maturity;
+  if (stage.signal) signals.push(stage.signal);
 
   // A 0.x version with no tags is never "production".
   if (maturity === 'production' && project && isPrereleaseVersion(project)) {
@@ -288,6 +380,26 @@ export function classifyMaturity(
 
   signals.push(`maturity score ${score.toFixed(1)}/7.5 → ${maturity}`);
   return { maturity, signals };
+}
+
+function decideMaturityStage(
+  score: number,
+  tags: number,
+  days: number | undefined,
+  stale: boolean,
+  abandoned: boolean,
+  flags: Set<string>,
+): { maturity: Maturity; signal?: string } {
+  if (abandoned) {
+    return { maturity: 'legacy', signal: `legacy: last commit ${days}d ago` };
+  }
+  if (stale && !flags.has('has:ci')) {
+    return { maturity: 'legacy', signal: `legacy: ${days}d since last commit and no CI` };
+  }
+  if (score >= 7 && tags > 0) return { maturity: 'production' };
+  if (score >= 5) return { maturity: 'beta' };
+  if (score >= 2.5) return { maturity: 'mvp' };
+  return { maturity: 'prototype' };
 }
 
 function isPrereleaseVersion(project: Project): boolean {

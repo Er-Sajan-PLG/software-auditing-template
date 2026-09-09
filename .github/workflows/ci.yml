@@ -100,6 +100,30 @@ jobs:
         run: |
           node dist/cli.js detect . | grep -q 'maturity:'
 
+  # Docs rot faster than code, and ADRs rot fastest of all (ADR-0001 says so
+  # explicitly). These two scripts assert the machine-checkable invariants:
+  # the README rule-count floor, USAT.md section coverage, and ADR
+  # numbering/index completeness. See scripts/check-docs.mjs,
+  # scripts/check-adrs.mjs, ROADMAP.md ("doc sync") and PLAN.md.
+  hygiene:
+    name: Docs & ADR hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: ADR index and numbering
+        run: node scripts/check-adrs.mjs
+
+      - name: Doc sync (rule counts, section coverage)
+        run: node scripts/check-docs.mjs
+
   # USAT audits supply-chain hygiene on other people's repos, so it runs the
   # same three scanners on itself. These are the checks behind SUP-005..007.
   security:

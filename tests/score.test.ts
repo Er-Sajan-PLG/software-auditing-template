@@ -189,3 +189,48 @@ describe('maturity dampening', () => {
     expect(profiles.prototype.expectedBand[0]).toBeLessThan(profiles.beta.expectedBand[0]!);
   });
 });
+
+describe('suppression accounting (Accepted Risk must agree with Findings Summary)', () => {
+  const profile = loadProfiles('rules').production;
+
+  it('excludes suppressed findings from counts and severity tallies', () => {
+    const r = score(
+      [
+        {
+          rule: rule('A', 'HIGH'),
+          finding: { ...finding('A', 'FAIL', 'HIGH'), suppressedReason: 'accepted risk' },
+        },
+        { rule: rule('B'), finding: finding('B', 'PASS') },
+      ],
+      DEFAULT_SECTIONS,
+      profile,
+    );
+    expect(r.counts.FAIL).toBe(0);
+    expect(r.severityCounts.HIGH).toBe(0);
+    expect(r.counts.PASS).toBe(1);
+  });
+
+  it('still counts unsuppressed UNKNOWN in the review-queue total', () => {
+    const r = score(
+      [
+        { rule: rule('A'), finding: finding('A', 'UNKNOWN') },
+        { rule: rule('B'), finding: finding('B', 'PASS') },
+      ],
+      DEFAULT_SECTIONS,
+      profile,
+    );
+    expect(r.counts.UNKNOWN).toBe(1);
+  });
+});
+
+describe('dampen input validation', () => {
+  const profiles = loadProfiles('rules');
+
+  it('ignores fractional dampen steps (full severity, never undefined)', () => {
+    const hacked = {
+      ...profiles.production,
+      dampen: { ...profiles.production.dampen, security: 1.5 },
+    };
+    expect(dampen('HIGH', 'security', hacked)).toEqual({ severity: 'HIGH', dampened: false });
+  });
+});

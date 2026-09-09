@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-USAT is a pre-1.0 tool distributed as a CLI and a set of YAML rule packs. We patch the
+USAT is distributed as a CLI and a set of YAML rule packs. We patch the
 latest release.
 
 | Version | Supported |

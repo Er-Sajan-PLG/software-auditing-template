@@ -1,0 +1,41 @@
+name: Gitleaks pin freshness
+
+# The gitleaks binary version is curl-pinned in ci.yml — invisible to
+# Dependabot (no ecosystem manager watches it). This monthly check opens one
+# deduped issue when upstream moves on, instead of letting the scanner rot.
+on:
+  schedule:
+    - cron: '0 9 1 * *' # monthly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare pinned vs latest gitleaks release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PINNED="$(grep -oP '^ *VERSION=\K[0-9.]+' .github/workflows/ci.yml | head -1)"
+          LATEST="$(gh api repos/gitleaks/gitleaks/releases/latest --jq .tag_name | sed 's/^v//')"
+          echo "pinned=$PINNED latest=$LATEST"
+          if [ "$PINNED" = "$LATEST" ]; then
+            echo "gitleaks pin is current."
+            exit 0
+          fi
+          TITLE="[automation] gitleaks pin is stale ($PINNED → $LATEST)"
+          if gh issue list --search "$TITLE in:title" --state open --json title \
+              --jq -e '. | length | . > 0' >/dev/null; then
+            echo "stale-pin issue already open."
+            exit 0
+          fi
+          gh issue create --title "$TITLE" \
+            --body "ci.yml pins \`VERSION=$PINNED\`; upstream is at \`$LATEST\`. Bump the pin and confirm \`npm test\` (gitleaks-filter fixtures) still passes." \
+            --label dependencies

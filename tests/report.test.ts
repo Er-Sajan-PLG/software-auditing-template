@@ -183,7 +183,17 @@ describe('markdown report', () => {
     expect(raw).not.toBeNull();
     expect(raw).toContain('schema: usat-report-v1');
     expect(raw).toContain('overall: 71.4');
-    expect(raw).toContain('SEC-001: {status: PASS');
+    // Rule IDs are YAML-quoted: pack-author-controlled keys must not corrupt
+    // the machine-parsed trailer (colons, hashes, newlines, fences).
+    expect(raw).toContain('"SEC-001": {status: PASS');
+  });
+
+  it('quotes hostile rule IDs in the trailer so the YAML stays valid', () => {
+    const report = baseReport([finding({ ruleId: 'X\n```\nY: #', status: 'FAIL' })]);
+    const md = renderMarkdown(report, profile);
+    const raw = parseTrailer(md);
+    expect(raw).not.toBeNull();
+    expect(raw).toContain('"X\\n```\\nY: #": {status: FAIL');
   });
 
   it('escapes pipes in table cells', () => {

@@ -120,3 +120,19 @@ describe('usat diff', () => {
     expect(out).toContain('No net movement');
   });
 });
+
+describe('judgement-queue transitions are visible', () => {
+  it('shows UNKNOWN → PASS as fixed (resolved by review)', () => {
+    const b = md([finding('SEC-015', 'UNKNOWN')], 70);
+    const a = md([finding('SEC-015', 'PASS')], 71);
+    const out = diffReports(parseTrailer(b)!, parseTrailer(a)!);
+    expect(out).toMatch(/SEC-015 — UNKNOWN → PASS \(resolved by review\)/);
+  });
+
+  it('shows PASS → UNKNOWN as regressed (needs review)', () => {
+    const b = md([finding('SEC-015', 'PASS')], 71);
+    const a = md([finding('SEC-015', 'UNKNOWN')], 70);
+    const out = diffReports(parseTrailer(b)!, parseTrailer(a)!);
+    expect(out).toMatch(/SEC-015 — PASS → UNKNOWN \(needs review\)/);
+  });
+});

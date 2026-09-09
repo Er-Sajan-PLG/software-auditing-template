@@ -27,46 +27,81 @@ export interface EvalContext {
 
 export function evalPredicate(p: Predicate | undefined, facts: Facts): boolean {
   if (!p) return true;
+  // Programmatic callers can hand us anything (the loader validates
+  // file-loaded packs and warns). Malformed applicability fails closed —
+  // a rule no one can parse must not silently apply to every repo.
+  if (typeof p !== 'object') return false;
+  if (Object.keys(p).length === 0) return true;
+  return evalPredicateKeys(p, facts);
+}
+
+function evalPredicateKeys(p: Predicate, facts: Facts): boolean {
   if ('all' in p && Array.isArray(p.all)) return p.all.every((x) => evalPredicate(x, facts));
   if ('any' in p && Array.isArray(p.any)) return p.any.some((x) => evalPredicate(x, facts));
   if ('not' in p && p.not) return !evalPredicate(p.not, facts);
   if ('fact' in p && typeof p.fact === 'string') return evalFact(p, facts);
-  return true;
+  return false;
 }
+
+interface FactOperands {
+  isMetric: boolean;
+  present: boolean;
+  metric: number | undefined;
+  value: unknown;
+}
+
+/** One predicate operator per entry — adding an operator means adding a line. */
+const OP_HANDLERS: Record<string, (o: FactOperands) => boolean> = {
+  absent: (o) => (o.isMetric ? o.metric === undefined : !o.present),
+  exists: (o) => (o.isMetric ? o.metric !== undefined : o.present),
+  eq: (o) => (o.isMetric ? o.metric === Number(o.value) : o.present === Boolean(o.value)),
+  neq: (o) => (o.isMetric ? o.metric !== Number(o.value) : o.present !== Boolean(o.value)),
+  in: (o) => {
+    // Membership only means something for metric facts (numbers). Flag facts
+    // are presence-only — there is no value to test membership against.
+    if (!o.isMetric || !Array.isArray(o.value)) return false;
+    return o.value.some((v) => v === o.metric || String(v) === String(o.metric ?? ''));
+  },
+  includes: (o) => {
+    // Same contract as `in`: the metric value must appear in the listed
+    // values. Presence alone never satisfies a value comparison.
+    if (!o.isMetric || !Array.isArray(o.value)) return false;
+    return o.value.some((v) => v === o.metric || String(v) === String(o.metric ?? ''));
+  },
+  gt: (o) => typeof o.metric === 'number' && o.metric > Number(o.value ?? 0),
+  lt: (o) => typeof o.metric === 'number' && o.metric < Number(o.value ?? 0),
+  matches: (o) => {
+    if (typeof o.value !== 'string') return false;
+    try {
+      return new RegExp(o.value).test(String(o.metric ?? ''));
+    } catch {
+      // Invalid regex fails closed; the loader warns at pack load time.
+      return false;
+    }
+  },
+};
 
 function evalFact(p: Extract<Predicate, { fact: string }>, facts: Facts): boolean {
   const { fact, op = 'exists', value } = p;
   const isMetric = fact.startsWith('metric:');
   const key = isMetric ? fact.slice('metric:'.length) : fact;
-  const present = facts.flags.has(fact);
-  const metric = facts.metrics[key];
-
-  switch (op) {
-    case 'absent':
-      return isMetric ? metric === undefined : !present;
-    case 'exists':
-      return isMetric ? metric !== undefined : present;
-    case 'eq':
-      return isMetric ? metric === Number(value) : present === Boolean(value);
-    case 'neq':
-      return isMetric ? metric !== Number(value) : present !== Boolean(value);
-    case 'in':
-      return Array.isArray(value) ? value.includes(String(metric ?? '')) : false;
-    case 'includes':
-      return Array.isArray(value) && present;
-    case 'gt':
-      return typeof metric === 'number' && metric > Number(value ?? 0);
-    case 'lt':
-      return typeof metric === 'number' && metric < Number(value ?? 0);
-    case 'matches':
-      return typeof value === 'string' && new RegExp(value).test(String(metric ?? ''));
-    default:
-      return present;
-  }
+  // Unknown operators fail closed (rule skipped), never silently applied.
+  // The loader warns at pack load time; this is the programmatic-API backstop.
+  const handler = OP_HANDLERS[op] ?? (() => false);
+  return handler({
+    isMetric,
+    present: facts.flags.has(fact),
+    metric: facts.metrics[key],
+    value,
+  });
 }
 
 export function ruleApplies(rule: Rule, facts: Facts, depth: Depth, includeAll = false): boolean {
-  if (!includeAll && rule.depths && rule.depths.length > 0 && !rule.depths.includes(depth)) {
+  // Forced packs apply wholesale — that is the documented contract of
+  // `include` ("always load, even if appliesWhen says no"). Depth *and*
+  // applicability are both bypassed when the operator forces a pack on.
+  if (includeAll) return true;
+  if (rule.depths && rule.depths.length > 0 && !rule.depths.includes(depth)) {
     return false;
   }
   return evalPredicate(rule.appliesWhen, facts);
@@ -121,217 +156,282 @@ export function evaluateRule(rule: Rule, ctx: EvalContext): Finding {
   return finding;
 }
 
+type CheckOutcome = { status: Status; message: string; locations: Location[] };
+
+interface CheckHelpers {
+  project: Project;
+  allowCommands: boolean;
+  missing: (detail: string) => CheckOutcome;
+  pass: (detail: string, locations?: Location[]) => CheckOutcome;
+}
+
+function missingOutcome(detail: string): CheckOutcome {
+  return { status: 'MISSING', message: `Not detected — ${detail}.`, locations: [] };
+}
+
+function passOutcome(detail: string, locations: Location[] = []): CheckOutcome {
+  return { status: 'PASS', message: `Verified — ${detail}.`, locations };
+}
+
+function unknownOutcome(message: string): CheckOutcome {
+  return { status: 'UNKNOWN', message, locations: [] };
+}
+
+type GrepCheck = Extract<
+  Check,
+  { kind: 'grep_present' | 'grep_absent' | 'grep_wrong' | 'grep_deprecated' }
+>;
+
+function queryGrep(project: Project, check: GrepCheck) {
+  return project.grep(check.pattern, check.include, check.exclude ?? [], check.flags ?? '');
+}
+
+function checkManual(_check: Extract<Check, { kind: 'manual' }>, _h: CheckHelpers): CheckOutcome {
+  return unknownOutcome('Requires judgement — no automated evidence recorded.');
+}
+
+function checkInfo(_check: Extract<Check, { kind: 'info' }>, _h: CheckHelpers): CheckOutcome {
+  return { status: 'NOT_APPLICABLE', message: 'Context only.', locations: [] };
+}
+
+function checkFileExists(
+  check: Extract<Check, { kind: 'file_exists' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const found = check.files.flatMap((f) => h.project.glob([f]));
+  if (found.length === 0) return h.missing(`none of [${check.files.join(', ')}] found`);
+  return h.pass(`found ${found.slice(0, 5).join(', ')}`, found.slice(0, 5).map(toLocation));
+}
+
+function checkFileAbsent(
+  check: Extract<Check, { kind: 'file_absent' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const found = check.files.flatMap((f) => h.project.glob([f]));
+  if (found.length === 0) return h.pass(`none of [${check.files.join(', ')}] present`);
+  return {
+    status: 'FAIL',
+    message: `${found.length} forbidden path(s) present: ${found.slice(0, 5).join(', ')}.`,
+    locations: found.slice(0, 5).map(toLocation),
+  };
+}
+
+function checkAnyFile(check: Extract<Check, { kind: 'any_file' }>, h: CheckHelpers): CheckOutcome {
+  const found = h.project.glob(check.patterns);
+  if (found.length === 0) return h.missing(`no files matching ${check.patterns.join(', ')}`);
+  return h.pass(
+    `${found.length} file(s) matching ${check.patterns.join(', ')}`,
+    found.slice(0, 5).map(toLocation),
+  );
+}
+
+function checkGrepPresent(
+  check: Extract<Check, { kind: 'grep_present' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const hits = queryGrep(h.project, check);
+  if (hits.length === 0) return h.missing(`pattern not found in ${check.include.join(', ')}`);
+  return h.pass(`${hits.length} match(es)`, toLocations(hits));
+}
+
+function checkGrepAbsent(
+  check: Extract<Check, { kind: 'grep_absent' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const hits = queryGrep(h.project, check);
+  if (hits.length === 0) return h.pass(`no matches in ${check.include.join(', ')}`);
+  return {
+    status: 'FAIL',
+    message: `${hits.length} occurrence(s)${describedBy(hits)}`,
+    locations: toLocations(hits),
+  };
+}
+
+function checkGrepWrong(
+  check: Extract<Check, { kind: 'grep_wrong' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const hits = queryGrep(h.project, check);
+  if (hits.length === 0) return h.pass(`no incorrect usage of \`${trimPattern(check.pattern)}\``);
+  return {
+    status: 'WRONG',
+    message: `${hits.length} instance(s) of an incorrect implementation${describedBy(hits)}`,
+    locations: toLocations(hits),
+  };
+}
+
+function checkGrepDeprecated(
+  check: Extract<Check, { kind: 'grep_deprecated' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const hits = queryGrep(h.project, check);
+  if (hits.length === 0) return h.pass('no deprecated usage detected');
+  return {
+    status: 'DEPRECATED',
+    message: `${hits.length} deprecated usage(s) detected.`,
+    locations: toLocations(hits),
+  };
+}
+
+function checkFileLinesMax(
+  check: Extract<Check, { kind: 'file_lines_max' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const offenders: Location[] = [];
+  for (const file of h.project.glob(check.patterns)) {
+    const text = h.project.read(file);
+    if (text === null) continue;
+    const lines = text.split('\n').length;
+    if (lines > check.max_lines) offenders.push({ file, excerpt: `${lines} lines` });
+  }
+  if (offenders.length === 0) {
+    return h.pass(`no file over ${check.max_lines} lines`);
+  }
+  // A god object is a violation (FAIL, 0 credit), not a partial
+  // implementation: WRONG would award 0.15 credit for failing modularity.
+  return {
+    status: 'FAIL',
+    message: `${offenders.length} file(s) exceed ${check.max_lines} lines — likely god objects.`,
+    locations: offenders.slice(0, 8),
+  };
+}
+
+function checkTrackedPresent(
+  check: Extract<Check, { kind: 'tracked_present' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const found = h.project.trackedGlob(check.patterns);
+  if (found.length === 0)
+    return h.missing(`nothing matching ${check.patterns.join(', ')} is tracked by git`);
+  return h.pass(`${found.length} tracked file(s)`, found.slice(0, 5).map(toLocation));
+}
+
+function checkTrackedAbsent(
+  check: Extract<Check, { kind: 'tracked_absent' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const found = h.project.trackedGlob(check.patterns);
+  if (found.length === 0) return h.pass(`no tracked files matching ${check.patterns.join(', ')}`);
+  return {
+    status: 'FAIL',
+    message: `${found.length} tracked file(s) should not be committed: ${found.slice(0, 5).join(', ')}.`,
+    locations: found.slice(0, 5).map(toLocation),
+  };
+}
+
+function checkJsonPath(
+  check: Extract<Check, { kind: 'json_path' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const files = h.project.glob([check.file]);
+  if (files.length === 0) return h.missing(`${check.file} not found`);
+  const json = h.project.readJson(files[0]!);
+  if (json === null) return h.missing(`${check.file} unreadable`);
+  const value = resolvePath(json, check.path);
+  if (value === undefined) return h.missing(`\`${check.path}\` not set in ${check.file}`);
+  if (check.equals !== undefined && value !== check.equals) {
+    return {
+      status: 'WRONG',
+      message: `\`${check.path}\` is ${JSON.stringify(value)}, expected ${JSON.stringify(check.equals)}.`,
+      locations: [toLocation(files[0]!)],
+    };
+  }
+  return h.pass(`\`${check.path}\` is ${JSON.stringify(value)}`, [toLocation(files[0]!)]);
+}
+
+function checkCountMin(
+  check: Extract<Check, { kind: 'count_min' }>,
+  h: CheckHelpers,
+): CheckOutcome {
+  const n = h.project.count(check.patterns);
+  if (n >= check.min) return h.pass(`${n} file(s), threshold ${check.min}`);
+  // Below threshold means required files are absent — MISSING, not FAIL.
+  // FAIL is a violated condition; MISSING is an absent one (see types.ts).
+  return h.missing(
+    `Found ${n} file(s) matching ${check.patterns.join(', ')} — expected at least ${check.min}.`,
+  );
+}
+
+function runShellCheck(
+  project: Project,
+  run: string,
+  expected: number,
+  pass: CheckHelpers['pass'],
+): CheckOutcome {
+  try {
+    // NOTE: pack-supplied shell runs synchronously in the audit loop with a
+    // 60 s timeout and a 10 MB output cap. Pack authors get arbitrary shell
+    // by design (opt-in via --allow-commands, UNKNOWN otherwise) — review
+    // third-party packs like production dependencies before enabling.
+    const out = execFileSync('sh', ['-c', run], {
+      cwd: project.root,
+      encoding: 'utf8',
+      timeout: 60_000,
+      maxBuffer: 10 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+    if (expected === 0) {
+      return pass(
+        `\`${run}\` succeeded${out ? `: ${truncate(out.replace(/\s+/g, ' '), 160)}` : ''}`,
+      );
+    }
+    return {
+      status: 'FAIL',
+      message: `\`${run}\` exited 0 but ${expected} was expected.`,
+      locations: [],
+    };
+  } catch (err) {
+    if (expected !== 0) return pass(`\`${run}\` exited non-zero as expected`);
+    const detail = err instanceof Error ? truncate(err.message.replace(/\s+/g, ' '), 200) : '';
+    return {
+      status: 'FAIL',
+      message: `\`${run}\` failed${detail ? `: ${detail}` : ''}.`,
+      locations: [],
+    };
+  }
+}
+
+function checkCommand(check: Extract<Check, { kind: 'command' }>, h: CheckHelpers): CheckOutcome {
+  if (!h.allowCommands) {
+    return unknownOutcome('Shell check skipped (enable with --allow-commands).');
+  }
+  return runShellCheck(h.project, check.run, check.expect_exit ?? 0, h.pass);
+}
+
+/** One check kind per entry — adding a kind means adding a line, not a branch. */
+const CHECK_HANDLERS: {
+  [K in Check['kind']]: (check: Extract<Check, { kind: K }>, h: CheckHelpers) => CheckOutcome;
+} = {
+  manual: checkManual,
+  info: checkInfo,
+  file_exists: checkFileExists,
+  file_absent: checkFileAbsent,
+  any_file: checkAnyFile,
+  grep_present: checkGrepPresent,
+  grep_absent: checkGrepAbsent,
+  grep_wrong: checkGrepWrong,
+  grep_deprecated: checkGrepDeprecated,
+  file_lines_max: checkFileLinesMax,
+  tracked_present: checkTrackedPresent,
+  tracked_absent: checkTrackedAbsent,
+  json_path: checkJsonPath,
+  count_min: checkCountMin,
+  command: checkCommand,
+};
+
 function runCheck(
-  rule: Rule,
+  _rule: Rule,
   ctx: EvalContext,
   check: Check,
 ): { status: Status; message: string; locations: Location[] } {
-  const project = ctx.project;
-  const missing = (detail: string) => ({
-    status: 'MISSING' as Status,
-    message: `Not detected — ${detail}.`,
-    locations: [],
-  });
-  const pass = (detail: string, locations: Location[] = []) => ({
-    status: 'PASS' as Status,
-    message: `Verified — ${detail}.`,
-    locations,
-  });
-
-  switch (check.kind) {
-    case 'manual':
-      return {
-        status: 'UNKNOWN',
-        message: 'Requires judgement — no automated evidence recorded.',
-        locations: [],
-      };
-
-    case 'info':
-      return { status: 'NOT_APPLICABLE', message: 'Context only.', locations: [] };
-
-    case 'file_exists': {
-      const found = check.files.flatMap((f) => project.glob([f]));
-      if (found.length === 0) return missing(`none of [${check.files.join(', ')}] found`);
-      return pass(`found ${found.slice(0, 5).join(', ')}`, found.slice(0, 5).map(toLocation));
-    }
-
-    case 'file_absent': {
-      const found = check.files.flatMap((f) => project.glob([f]));
-      if (found.length === 0) return pass(`none of [${check.files.join(', ')}] present`);
-      return {
-        status: 'FAIL',
-        message: `${found.length} forbidden path(s) present: ${found.slice(0, 5).join(', ')}.`,
-        locations: found.slice(0, 5).map(toLocation),
-      };
-    }
-
-    case 'any_file': {
-      const found = project.glob(check.patterns);
-      if (found.length === 0) return missing(`no files matching ${check.patterns.join(', ')}`);
-      return pass(
-        `${found.length} file(s) matching ${check.patterns.join(', ')}`,
-        found.slice(0, 5).map(toLocation),
-      );
-    }
-
-    case 'grep_present': {
-      const hits = project.grep(
-        check.pattern,
-        check.include,
-        check.exclude ?? [],
-        check.flags ?? '',
-      );
-      if (hits.length === 0) return missing(`pattern not found in ${check.include.join(', ')}`);
-      return pass(`${hits.length} match(es)`, toLocations(hits));
-    }
-
-    case 'grep_absent': {
-      const hits = project.grep(
-        check.pattern,
-        check.include,
-        check.exclude ?? [],
-        check.flags ?? '',
-      );
-      if (hits.length === 0) return pass(`no matches in ${check.include.join(', ')}`);
-      return {
-        status: 'FAIL',
-        message: `${hits.length} occurrence(s)${describedBy(hits)}`,
-        locations: toLocations(hits),
-      };
-    }
-
-    case 'grep_wrong': {
-      const hits = project.grep(
-        check.pattern,
-        check.include,
-        check.exclude ?? [],
-        check.flags ?? '',
-      );
-      if (hits.length === 0) return pass(`no incorrect usage of \`${trimPattern(check.pattern)}\``);
-      return {
-        status: 'WRONG',
-        message: `${hits.length} instance(s) of an incorrect implementation${describedBy(hits)}`,
-        locations: toLocations(hits),
-      };
-    }
-
-    case 'grep_deprecated': {
-      const hits = project.grep(
-        check.pattern,
-        check.include,
-        check.exclude ?? [],
-        check.flags ?? '',
-      );
-      if (hits.length === 0) return pass('no deprecated usage detected');
-      return {
-        status: 'DEPRECATED',
-        message: `${hits.length} deprecated usage(s) detected.`,
-        locations: toLocations(hits),
-      };
-    }
-
-    case 'file_lines_max': {
-      const offenders: Location[] = [];
-      for (const file of project.glob(check.patterns)) {
-        const text = project.read(file);
-        if (text === null) continue;
-        const lines = text.split('\n').length;
-        if (lines > check.max_lines) offenders.push({ file, excerpt: `${lines} lines` });
-      }
-      if (offenders.length === 0) {
-        return pass(`no file over ${check.max_lines} lines`);
-      }
-      return {
-        status: 'WRONG',
-        message: `${offenders.length} file(s) exceed ${check.max_lines} lines — likely god objects.`,
-        locations: offenders.slice(0, 8),
-      };
-    }
-
-    case 'tracked_present': {
-      const found = project.trackedGlob(check.patterns);
-      if (found.length === 0)
-        return missing(`nothing matching ${check.patterns.join(', ')} is tracked by git`);
-      return pass(`${found.length} tracked file(s)`, found.slice(0, 5).map(toLocation));
-    }
-
-    case 'tracked_absent': {
-      const found = project.trackedGlob(check.patterns);
-      if (found.length === 0) return pass(`no tracked files matching ${check.patterns.join(', ')}`);
-      return {
-        status: 'FAIL',
-        message: `${found.length} tracked file(s) should not be committed: ${found.slice(0, 5).join(', ')}.`,
-        locations: found.slice(0, 5).map(toLocation),
-      };
-    }
-
-    case 'json_path': {
-      const files = project.glob([check.file]);
-      if (files.length === 0) return missing(`${check.file} not found`);
-      const json = project.readJson(files[0]!);
-      if (json === null) return missing(`${check.file} unreadable`);
-      const value = resolvePath(json, check.path);
-      if (value === undefined) return missing(`\`${check.path}\` not set in ${check.file}`);
-      if (check.equals !== undefined && value !== check.equals) {
-        return {
-          status: 'WRONG',
-          message: `\`${check.path}\` is ${JSON.stringify(value)}, expected ${JSON.stringify(check.equals)}.`,
-          locations: [toLocation(files[0]!)],
-        };
-      }
-      return pass(`\`${check.path}\` is ${JSON.stringify(value)}`, [toLocation(files[0]!)]);
-    }
-
-    case 'count_min': {
-      const n = project.count(check.patterns);
-      if (n >= check.min) return pass(`${n} file(s), threshold ${check.min}`);
-      return {
-        status: 'FAIL',
-        message: `Found ${n} file(s) matching ${check.patterns.join(', ')} — expected at least ${check.min}.`,
-        locations: [],
-      };
-    }
-
-    case 'command': {
-      if (!ctx.allowCommands) {
-        return {
-          status: 'UNKNOWN',
-          message: 'Shell check skipped (enable with --allow-commands).',
-          locations: [],
-        };
-      }
-      const expected = check.expect_exit ?? 0;
-      try {
-        const out = execFileSync('sh', ['-c', check.run], {
-          cwd: project.root,
-          encoding: 'utf8',
-          timeout: 60_000,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        }).trim();
-        if (expected === 0) {
-          return pass(
-            `\`${check.run}\` succeeded${out ? `: ${truncate(out.replace(/\s+/g, ' '), 160)}` : ''}`,
-          );
-        }
-        return {
-          status: 'FAIL',
-          message: `\`${check.run}\` exited 0 but ${expected} was expected.`,
-          locations: [],
-        };
-      } catch (err) {
-        if (expected !== 0) return pass(`\`${check.run}\` exited non-zero as expected`);
-        const detail = err instanceof Error ? truncate(err.message.replace(/\s+/g, ' '), 200) : '';
-        return {
-          status: 'FAIL',
-          message: `\`${check.run}\` failed${detail ? `: ${detail}` : ''}.`,
-          locations: [],
-        };
-      }
-    }
-
-    default:
-      return { status: 'UNKNOWN', message: 'Unsupported check.', locations: [] };
-  }
+  const h: CheckHelpers = {
+    project: ctx.project,
+    allowCommands: ctx.allowCommands,
+    missing: missingOutcome,
+    pass: passOutcome,
+  };
+  const handler = CHECK_HANDLERS[check.kind] as (check: Check, h: CheckHelpers) => CheckOutcome;
+  return handler(check, h);
 }
 
 /* ----------------------------------------------------------------- helpers */
