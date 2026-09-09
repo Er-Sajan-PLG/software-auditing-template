@@ -71,6 +71,20 @@ Lockfiles **are** indexed (a rule asking "is a lockfile committed?" has to see t
 but are never grepped — they are huge and full of false positives. Files over 2 MB
 and anything with a NUL byte in the first 8 KB are skipped as binary.
 
+## Scale limits (honest, not silent)
+
+Two caps bound every audit, and both report instead of absorbing:
+
+- **60,000 files** — indexing stops and the audit warns that the tree is
+  bigger than it can see. Treat PASS verdicts as partial; split the target
+  (e.g. per-package audits) rather than trusting full coverage.
+- **2 MB per file** — oversized files are skipped, counted once each, and
+  reported (`N file(s) skipped for exceeding …`). Content checks cannot
+  see them; a secret in a 9 MB amalgamation will not be found.
+
+Both warnings print on stderr and ride with the report. An auditor that
+silently truncates is an auditor that invents confidence — see ADR-0009.
+
 Build-output checks therefore use `tracked_absent`, which asks git what is tracked
 rather than what is on disk:
 

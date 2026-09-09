@@ -10,6 +10,7 @@ import { Project } from './util/project.js';
 import { detect } from './detect/index.js';
 import { renderMarkdown, parseTrailer } from './report/markdown.js';
 import { diffReports } from './engine/diff.js';
+import { bootstrapPacks, writeBootstrapPacks } from './bootstrap/index.js';
 import { EXAMPLE_CONFIG, loadConfig } from './config.js';
 import { evaluateGate } from './engine/gate.js';
 
@@ -80,6 +81,7 @@ const COMMANDS: Record<string, (args: Args) => number> = {
   explain: cmdExplain,
   diff: cmdDiff,
   init: cmdInit,
+  bootstrap: cmdBootstrap,
 };
 
 export function main(argv: string[]): number {
@@ -342,6 +344,48 @@ function cmdDiff(args: Args): number {
   }
 }
 
+/* -------------------------------------------------------------- bootstrap -- */
+
+function cmdBootstrap(args: Args): number {
+  const target = (args._[1] as string | undefined) ?? '.';
+  const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
+  const config = loadConfig(target, str(args, 'config'));
+  // Honour `ignore:` — same project view the audit itself uses.
+  const project = new Project(target, config.ignore ?? []);
+  const git = project.gitInfo();
+  const detection = detect(project, loadDetectorFile(rulesDir), git, [
+    ...list(args, 'fact'),
+    ...(config.facts ?? []),
+  ]);
+  const outcome = bootstrapPacks(detection.facts);
+  if (outcome.packs.length === 0) {
+    console.log('No uncovered stacks: every detected language already has a pack.');
+    return 0;
+  }
+  const out = str(args, 'out');
+  if (!out) {
+    printBootstrap(outcome);
+    return 0;
+  }
+  try {
+    writeBootstrapPacks(outcome, out);
+  } catch (err) {
+    console.error((err as Error).message);
+    return 2;
+  }
+  console.log(`wrote ${outcome.packs.length} pack(s) to ${out}`);
+  for (const note of outcome.notes) console.log(`- ${note}`);
+  return 0;
+}
+
+function printBootstrap(outcome: ReturnType<typeof bootstrapPacks>): void {
+  for (const pack of outcome.packs) {
+    console.log(`--- ${pack.filename} ---`);
+    console.log(pack.yaml);
+  }
+  for (const note of outcome.notes) console.log(`- ${note}`);
+}
+
 /* ------------------------------------------------------------------- init -- */
 
 function cmdInit(args: Args): number {
@@ -394,6 +438,7 @@ usat — Universal Software Audit Template
   usat explain <RULE-ID>         Show everything about one rule
   usat diff <before> <after>     Compare two previously generated reports
   usat init [path]               Scaffold .usat.yaml + a GitHub Actions workflow
+  usat bootstrap [path]          Propose rule packs for stacks USAT cannot audit yet
 
 audit options
   --out <file>        Report path (default AUDIT.md)
@@ -408,8 +453,12 @@ audit options
   --fail-on <sev>     Exit 1 on findings >= sev: critical|high|medium|low|none
   --quiet             Only errors
 
+bootstrap options
+  --out <file|dir>    Write pack files instead of printing (default: print)
+
 examples
   usat audit . --depth deep
+  usat bootstrap ~/code/legacy-php-app --out /tmp/packs
   usat audit ../api --profile production --fail-on high
   usat audit . --out reports/audit-$(date +%F).md
 `.trim();

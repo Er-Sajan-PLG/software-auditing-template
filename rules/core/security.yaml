@@ -136,7 +136,9 @@ rules:
       # bare alternative also matched `regex.exec(body)`, and a bare `body`
       # matched document.body / res.body — both flagged ordinary code. The
       # lookbehind drops the method-call form; req./params/input keep signal.
-      pattern: '\b(eval\s*\(|new Function\s*\(|execSync\s*\(\s*[^\n)]*\$\{|(?<!\.)exec\s*\(\s*[^\n)]*(req\.|params|input)|setTimeout\s*\(\s*[''"`])'
+      # The quote lookbehind on `eval` drops prose mentions ('eval() does X'
+      # in docs and rule descriptions); real calls are never quote-prefixed.
+      pattern: '\b((?<![''"`])eval\s*\(|new Function\s*\(|execSync\s*\(\s*[^\n)]*\$\{|(?<!\.)exec\s*\(\s*[^\n)]*(req\.|params|input)|setTimeout\s*\(\s*[''"`])'
       include: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,php,rs}']
       exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**', '**/scripts/**']
     why: 'eval and friends turn untrusted strings into executable code. Almost every RCE starts here.'

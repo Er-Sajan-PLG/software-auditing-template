@@ -113,3 +113,45 @@ describe('Project index', () => {
     expect(p.anyFile(['**/*.rs'])).toBe(false);
   });
 });
+
+describe('scale honesty', () => {
+  it('tracks oversize files and starts untruncated', () => {
+    const { root, cleanup } = makeProject({
+      'small.ts': 'export const a = 1;\n',
+      'big.ts': 'x'.repeat(2 * 1024 * 1024 + 10) + '\n',
+    });
+    try {
+      const project = new Project(root);
+      expect(project.truncated).toBe(false);
+      expect(project.skippedLarge).toBe(0);
+      expect(project.read('small.ts')).not.toBeNull();
+      expect(project.read('big.ts')).toBeNull();
+      expect(project.skippedLarge).toBe(1);
+      // Cached: re-reads do not double-count.
+      expect(project.read('big.ts')).toBeNull();
+      expect(project.skippedLarge).toBe(1);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('audit warns about skipped oversize files', async () => {
+    const { runAudit } = await import('../src/engine/audit.js');
+    const { root, cleanup } = makeProject({
+      'package.json': JSON.stringify({ name: 'big' }),
+      'huge.ts': 'y'.repeat(2 * 1024 * 1024 + 10) + '\n',
+    });
+    try {
+      const { warnings } = runAudit({
+        target: root,
+        rulesDir: 'rules',
+        depth: 'quick',
+        profile: 'auto',
+        config: { version: 1 },
+      });
+      expect(warnings.some((w) => w.includes('exceeding') && w.includes('skipped'))).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
+});
