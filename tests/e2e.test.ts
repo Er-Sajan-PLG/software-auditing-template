@@ -5,6 +5,7 @@ import { makeProject, auditAt, loadedPacks } from './helpers.js';
 import { renderMarkdown } from '../src/report/markdown.js';
 import { parseTrailer } from '../src/report/markdown.js';
 import { loadProfiles } from '../src/engine/maturity.js';
+import { validatePredicate } from '../src/engine/loader.js';
 
 const cleanups: (() => void)[] = [];
 const build = (files: Record<string, string>) => {
@@ -23,6 +24,34 @@ describe('rule packs', () => {
     expect(packs.length).toBeGreaterThanOrEqual(20);
     const total = packs.reduce((n, p) => n + p.rules.length, 0);
     expect(total).toBeGreaterThan(180);
+  });
+
+  it('every grep pattern compiles and every predicate validates', () => {
+    // A rule whose regex throws (or whose applies_when is malformed) fails
+    // closed at runtime — silently skipping or crashing the audit. Catch the
+    // rot at CI time instead, across all 270+ shipped rules.
+    const { packs } = loadedPacks();
+    const warnings: string[] = [];
+    let checked = 0;
+    for (const pack of packs) {
+      for (const rule of pack.rules) {
+        const check = rule.check as { kind: string; pattern?: string };
+        if (typeof check.pattern === 'string') {
+          checked++;
+          expect(
+            () => new RegExp(check.pattern as string),
+            `${rule.id}: check pattern does not compile`,
+          ).not.toThrow();
+        }
+        validatePredicate(
+          (rule as unknown as { applies_when?: unknown }).applies_when,
+          `${pack.id} ${rule.id}`,
+          warnings,
+        );
+      }
+    }
+    expect(checked).toBeGreaterThan(50);
+    expect(warnings).toEqual([]);
   });
 
   it('rule ids are unique across packs', () => {

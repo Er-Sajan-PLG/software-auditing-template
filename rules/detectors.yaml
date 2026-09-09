@@ -652,6 +652,35 @@ detectors:
     }
   - { fact: 'platform:desktop', category: platform, title: Desktop, implies: ['fw:electron'] }
   - { fact: 'platform:desktop', category: platform, title: Desktop, implies: ['fw:tauri'] }
+  # A request-serving framework IS a server, with or without a Dockerfile:
+  # without these, a bare Express/FastAPI/Rails app skipped every
+  # platform-gated rule (SEC-003 et al.) for lack of platform:server.
+  # Deliberately request handlers only — task queues (celery, airflow),
+  # static builders (astro, vite), and desktop/mobile packs imply nothing.
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:express'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:fastify'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:nest'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:hono'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:koa'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:django'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:flask'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:fastapi'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:gin'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:echo'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:fiber'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:chi'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:axum'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:actix'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:rocket'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:spring'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:quarkus'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:rails'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:laravel'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:symfony'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:next'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:nuxt'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:remix'] }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:sveltekit'] }
   - {
       fact: 'platform:evm',
       category: platform,
