@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.1.0...v1.2.0) (2026-09-09)
+
+
+### Features
+
+* mirror releases to GitHub Packages ([#22](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/22)) ([aeb3102](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/aeb3102ecdc91fb51bb79fd37eed66ac32c59edb))
+
+
+### Bug Fixes
+
+* release-please uses PAT; release.yml gains manual dispatch ([#20](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/20)) ([84ec763](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/84ec763a363612255ec49354cb48fb1d303fc766))
+
 ## [1.1.0](https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.0.0...v1.1.0) (2026-09-09)
 
 
