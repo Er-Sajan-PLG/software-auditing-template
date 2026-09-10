@@ -4,7 +4,7 @@ Everything the CLI does is available as a library. Types are exported from the
 package root.
 
 ```ts
-import { runAudit, detect, Project, renderMarkdown, diffReports } from 'usat';
+import { runAudit, detect, Project, renderMarkdown, diffReports } from 'usa';
 ```
 
 ## `runAudit(options): AuditOutcome`
@@ -13,14 +13,14 @@ Runs a full audit. Only `target` is required — every other option falls back t
 the same default the CLI uses.
 
 ```ts
-import { runAudit } from 'usat';
+import { runAudit } from 'usa';
 
 const { report, profile, warnings } = runAudit({
   // synchronous — no await needed
   target: '/path/to/project',
   depth: 'standard', // 'quick' | 'standard' | 'deep'
   profile: 'auto', // 'auto' | 'prototype' | 'mvp' | 'beta' | 'production' | 'legacy'
-  config: { version: 1, ignore: ['vendor/**'] }, // or omit to read .usat.yaml
+  config: { version: 1, ignore: ['vendor/**'] }, // or omit to read .usa.yaml
   allowCommands: false, // let `command` checks execute
   includePacks: ['stacks/node-typescript'],
   excludePacks: ['stacks/solidity'],
@@ -36,9 +36,9 @@ console.log(warnings); // malformed packs — never throws
 | `rulesDir`                      | `string`             | `rules/` inside the installed package |
 | `depth`                         | `Depth`              | `'standard'`                          |
 | `profile`                       | `Maturity \| 'auto'` | `'auto'`                              |
-| `config`                        | `UsatConfig`         | parsed from `<target>/.usat.yaml`     |
+| `config`                        | `UsaConfig`          | parsed from `<target>/.usa.yaml`      |
 | `allowCommands`                 | `boolean`            | `false`                               |
-| `usatVersion`                   | `string`             | version from `package.json`           |
+| `usaVersion`                    | `string`             | version from `package.json`           |
 | `includePacks` / `excludePacks` | `string[]`           | `undefined`                           |
 
 Returns `{ report: AuditReport, profile: MaturityProfile, warnings: string[] }`.
@@ -48,12 +48,12 @@ Returns `{ report: AuditReport, profile: MaturityProfile, warnings: string[] }`.
 Turns a tree into a fact set.
 
 ```ts
-import { Project, detect, loadDetectorFile } from 'usat';
+import { Project, detect, loadDetectorFile } from 'usa';
 
 const project = new Project('/path/to/project', ['vendor/**']);
 const detection = detect(
   project,
-  loadDetectorFile('node_modules/usat/rules/detectors.yaml'),
+  loadDetectorFile('node_modules/usa/rules/detectors.yaml'),
   project.gitInfo(),
   ['monorepo'], // facts asserted by the caller
 );
@@ -94,7 +94,7 @@ pack produces a warning and is skipped — the audit continues rather than
 failing, because one broken pack should not cost you the other twenty-six.
 
 ```ts
-import { loadRulePacks, applyRuleOverrides } from 'usat';
+import { loadRulePacks, applyRuleOverrides } from 'usa';
 
 const { packs, warnings } = loadRulePacks('rules');
 applyRuleOverrides(packs, { 'SEC-042': { severity: 'LOW' } });
@@ -105,7 +105,7 @@ applyRuleOverrides(packs, { 'SEC-042': { severity: 'LOW' } });
 Evaluates a single rule. Useful for testing a pack without running an audit.
 
 ```ts
-import { evaluateRule, ruleApplies, packApplies } from 'usat';
+import { evaluateRule, ruleApplies, packApplies } from 'usa';
 
 if (ruleApplies(rule, facts, depth)) {
   const finding = evaluateRule(rule, ctx);
@@ -116,7 +116,7 @@ if (ruleApplies(rule, facts, depth)) {
 ## `score(evaluated, sections, profile): ScoreCard`
 
 ```ts
-import { score } from 'usat';
+import { score } from 'usa';
 
 const card = score(evaluated, sections, profile);
 card.overall; // 88.7 — 0 when nothing resolved (never null; see below)
@@ -142,7 +142,7 @@ the trailer are YAML-quoted, so pack-author-controlled IDs cannot corrupt
 the machine-parsed channel.
 
 ```ts
-import { renderMarkdown, parseTrailer, trailer } from 'usat';
+import { renderMarkdown, parseTrailer, trailer } from 'usa';
 
 const md = renderMarkdown(report, profile);
 const yaml = trailer(report); // the YAML string embedded in the trailer fences
@@ -158,10 +158,10 @@ first-class: `UNKNOWN → PASS` lists as fixed _(resolved by review)_ and
 `PASS → UNKNOWN` as regressed _(needs review)_.
 
 ```ts
-import { diffReports, parseTrailer } from 'usat';
+import { diffReports, parseTrailer } from 'usa';
 
 const md = diffReports(parseTrailer(beforeMd)!, parseTrailer(afterMd)!);
-console.log(md); // # 🔁 USAT Audit Diff …
+console.log(md); // # 🔁 USA Audit Diff …
 ```
 
 ## `validatePredicate(p, where, warnings): void`
@@ -172,16 +172,16 @@ push a named warning. Use it when authoring packs programmatically —
 evaluation fails closed (rule skipped) on anything this flags.
 
 ```ts
-import { validatePredicate } from 'usat';
+import { validatePredicate } from 'usa';
 
 const warnings: string[] = [];
 validatePredicate({ fact: 'has:ci', op: 'bogus' }, 'my-pack MY-001', warnings);
 // warnings: ['my-pack MY-001: unknown predicate op "bogus" — rule will never apply']
 ```
 
-## `loadConfig(target, explicitPath?): UsatConfig`
+## `loadConfig(target, explicitPath?): UsaConfig`
 
-Reads `.usat.yaml`. A missing file is not an error — it returns an empty config.
+Reads `.usa.yaml`. A missing file is not an error — it returns an empty config.
 A malformed one throws, loudly, because silent config loss produces an audit
 that quietly disagrees with the user's intent.
 
@@ -189,5 +189,5 @@ that quietly disagrees with the user's intent.
 
 `Severity` · `Status` · `RuleClass` · `Depth` · `Maturity` · `Location` ·
 `Finding` · `Predicate` · `FactOp` · `Check` · `Rule` · `RulePack` ·
-`AuditReport` · `UsatConfig` · `SectionDef` · `MaturityProfile` ·
+`AuditReport` · `UsaConfig` · `SectionDef` · `MaturityProfile` ·
 `ScoredRule` · `EvalContext`

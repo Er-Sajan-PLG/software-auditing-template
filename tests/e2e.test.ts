@@ -246,7 +246,9 @@ describe('end-to-end audits', () => {
       'Sources/App/main.swift': 'print("hi")\n',
     };
     const appMissing = auditAt(build(appFiles), {});
-    expect(appMissing.report.findings.find((f) => f.ruleId === 'SW-003')!.status).toBe('MISSING');
+    const finding = appMissing.report.findings.find((f) => f.ruleId === 'SW-003');
+    expect(finding).toBeDefined();
+    expect(finding?.status).toBe('MISSING');
 
     const appPinned = auditAt(build({ ...appFiles, 'Package.resolved': '{"version": 1}\n' }), {});
     expect(appPinned.report.findings.find((f) => f.ruleId === 'SW-003')!.status).toBe('PASS');

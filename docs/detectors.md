@@ -5,7 +5,7 @@ maps file patterns to **facts**, and rule packs select themselves on those facts
 Add a signal and every pack that cares starts applying — no TypeScript required.
 
 ```bash
-usat detect .            # what USAT thinks your project is
+usa detect .            # what USA thinks your project is
 ```
 
 ## How a detector works
@@ -70,8 +70,8 @@ manifest, not prose. This list mirrors `CONTENT_EXCLUDES` in
 file it.
 
 Everything else in the tree is fair game. If a project's own config comments are
-still producing noise, add the file to `ignore:` in `.usat.yaml` — that is what
-[`../.usat.yaml`](../.usat.yaml) does with `rules/`.
+still producing noise, add the file to `ignore:` in `.usa.yaml` — that is what
+[`../.usa.yaml`](../.usa.yaml) does with `rules/`.
 
 ## Fact namespaces
 
@@ -181,9 +181,9 @@ Metrics, referenced as `metric:<name>` in predicates:
 3. Verify against a project that uses the technology and one that does not:
 
 ```bash
-usat detect ~/code/uses-hono
-usat detect ~/code/does-not
+usa detect ~/code/uses-hono
+usa detect ~/code/does-not
 ```
 
 4. If detection is right but a project still eludes it, users can assert facts in
-   `.usat.yaml` — but if you find yourself doing that often, the detector is wrong.
+   `.usa.yaml` — but if you find yourself doing that often, the detector is wrong.

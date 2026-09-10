@@ -1,8 +1,8 @@
 # =============================================================================
-# USAT — Auto-detection signal registry  (schema: usat-detectors-v1)
+# USA — Auto-detection signal registry  (schema: usa-detectors-v1)
 # -----------------------------------------------------------------------------
 # Every rule pack declares `applies_when` over the FACTS produced here, so
-# USAT "adapts to the project" purely by data. Add a signal, and every pack
+# USA "adapts to the project" purely by data. Add a signal, and every pack
 # that cares about it starts applying — no code change required.
 #
 # Fact namespaces
@@ -700,7 +700,7 @@ detectors:
   - fact: 'swift:executable'
     category: type
     title: Swift executable target
-    match: { content: { include: ['Package.swift'], pattern: '\\.executableTarget\\s*\\(' } }
+    match: { content: { include: ['Package.swift'], pattern: 'executableTarget' } }
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:vapor'] }
   - {
       fact: 'platform:evm',

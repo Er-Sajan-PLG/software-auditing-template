@@ -1,6 +1,6 @@
 # Architecture
 
-USAT is a **rule interpreter**, not a linter. Nothing about any particular
+USA is a **rule interpreter**, not a linter. Nothing about any particular
 language, framework, or standard is hard-coded in TypeScript. The engine knows
 how to walk a directory, match a glob, grep a file, and do arithmetic on
 weights. Everything _opinionated_ lives in `rules/`, as YAML.
@@ -59,15 +59,15 @@ A rule that checks something needs to know when it is relevant. The naive
 approach — `if (hasFile('package.json'))` — is a decision hard-coded in the
 rule, invisible to the reader and impossible to override.
 
-USAT separates the two. Detectors produce **facts** (`lang:typescript`,
+USA separates the two. Detectors produce **facts** (`lang:typescript`,
 `fw:next`, `maturity:mvp`, `has:ci`). Rules declare **predicates over facts**
 (`applies_when`). The consequence:
 
 - Detection is shared. Two hundred rules can key off `lang:typescript`
   without re-deriving it.
-- Users can inject facts (`--fact monorepo`, or `facts:` in `.usat.yaml`)
+- Users can inject facts (`--fact monorepo`, or `facts:` in `.usa.yaml`)
   when detection guesses wrong.
-- `usat detect` prints the fact set, so a wrong audit is _debuggable_ — you
+- `usa detect` prints the fact set, so a wrong audit is _debuggable_ — you
   can see exactly what the engine believes before you argue with it.
 
 ## Why severity dampening exists
@@ -76,7 +76,7 @@ A prototype with no rate limiting and a payment service with no rate limiting
 are not the same finding. Most scanners report both as HIGH, which teaches
 teams to ignore the scanner.
 
-USAT keeps the _rule's_ severity (the intrinsic badness) and computes a
+USA keeps the _rule's_ severity (the intrinsic badness) and computes a
 _reported_ severity from the project's lifecycle stage. The rule never lies
 about what it found; the report just stops shouting about the wrong things
 right now. CRITICAL is exempt — a hardcoded credential is a hardcoded
@@ -97,23 +97,23 @@ Grep excludes lockfiles, minified bundles, source maps, and generated files,
 which is where the bytes are. A repository of 10k files audits in a couple of
 seconds; the cost is `O(patterns × matching files)`, not `O(patterns × repo)`.
 
-## What USAT deliberately does not do
+## What USA deliberately does not do
 
 - **No plugins.** Packs are data. Data can be forked, diffed, reviewed, and
   vendored; a plugin ABI cannot.
 - **No network calls.** Ever. An audit must be reproducible offline.
-- **No auto-fixing.** USAT reports; humans decide. (It does print the exact
+- **No auto-fixing.** USA reports; humans decide. (It does print the exact
   remediation text, which is the part that actually helps.)
 - **No daemon, no database, no config server.** One process, one tree, one
   Markdown file.
 
 ## Extension points
 
-| To add…                          | You touch…                                                                        |
-| -------------------------------- | --------------------------------------------------------------------------------- |
-| A check                          | any `rules/**/*.yaml`                                                             |
-| A technology USAT must recognise | `rules/detectors.yaml`                                                            |
-| A lifecycle profile              | `rules/profiles/maturity.yaml`                                                    |
-| A new check _kind_               | `src/engine/evaluate.ts` + `src/types.ts` — the only change that needs TypeScript |
+| To add…                         | You touch…                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| A check                         | any `rules/**/*.yaml`                                                             |
+| A technology USA must recognise | `rules/detectors.yaml`                                                            |
+| A lifecycle profile             | `rules/profiles/maturity.yaml`                                                    |
+| A new check _kind_              | `src/engine/evaluate.ts` + `src/types.ts` — the only change that needs TypeScript |
 
 See [`adr/`](adr/) for the decisions behind each of these.

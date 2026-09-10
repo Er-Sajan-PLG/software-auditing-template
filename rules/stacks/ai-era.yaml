@@ -3,7 +3,7 @@ title: AI / LLM-Era Risks
 section: S14
 section_title: AI / LLM-Era Risks
 description: >
-  New in USAT. Your application may be deterministic while depending on a
+  New in USA. Your application may be deterministic while depending on a
   component that is not. Mapped to the OWASP Top 10 for LLM Applications
   (2026) and the OWASP Top 10 for Agentic AI (ASI, 2026).
 version: '1.0'

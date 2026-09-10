@@ -4,7 +4,7 @@ section: S12
 section_title: Documentation & Knowledge
 description: >
   Documentation is the only part of the system that ships to every future
-  maintainer. USAT checks the artefacts exist and then asks whether they are true.
+  maintainer. USA checks the artefacts exist and then asks whether they are true.
 version: '1.0'
 
 rules:

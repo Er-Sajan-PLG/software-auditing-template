@@ -1,16 +1,16 @@
-# 🧠 USAT — Universal Software Audit Template
+# 🧠 USA — Universal Software Auditor
 
 ### _A self-adapting audit framework: any project, any stack, any stage_
 
-**USAT is two things at once.**
+**USA is two things at once.**
 
-1. **A prompt/process template** — this document. Point any coding agent at a repository and say _"audit this with USAT"_, and it will detect what it is looking at, activate the relevant sections, skip the rest, and produce a severity-tagged report.
-2. **A deterministic rule engine** — `rules/` plus the `usat` CLI. Everything that can be settled by looking at a file is settled by the tool, so the agent spends its budget on the things only judgement can settle.
+1. **A prompt/process template** — this document. Point any coding agent at a repository and say _"audit this with USA"_, and it will detect what it is looking at, activate the relevant sections, skip the rest, and produce a severity-tagged report.
+2. **A deterministic rule engine** — `rules/` plus the `usa` CLI. Everything that can be settled by looking at a file is settled by the tool, so the agent spends its budget on the things only judgement can settle.
 
 Run both. The tool gives you a reproducible number; the agent gives you the reasoning. Neither is complete alone.
 
 ```
-usat audit .                      # 1. deterministic pass → AUDIT.md
+usa audit .                      # 1. deterministic pass → AUDIT.md
 # then hand AUDIT.md + this file to your agent for the judgement queue
 ```
 
@@ -20,9 +20,9 @@ usat audit .                      # 1. deterministic pass → AUDIT.md
 
 | Step | Action                                                    | Output                         |
 | ---- | --------------------------------------------------------- | ------------------------------ |
-| 1    | Run `usat detect <path>` (or read `rules/detectors.yaml`) | The project's **facts**        |
+| 1    | Run `usa detect <path>` (or read `rules/detectors.yaml`)  | The project's **facts**        |
 | 2    | Match facts against `applies_when` in `rules/`            | The **applicable rule set**    |
-| 3    | Run `usat audit <path>`                                   | Deterministic findings + score |
+| 3    | Run `usa audit <path>`                                    | Deterministic findings + score |
 | 4    | Work the **Judgement Queue** in the generated report      | Evidence-backed findings       |
 | 5    | Emit the [Section 14 report](#14--report-output-template) | The deliverable                |
 
@@ -45,7 +45,7 @@ usat audit .                      # 1. deterministic pass → AUDIT.md
 
 ## The severity model
 
-Most checklists conflate two different axes. USAT keeps them separate, which is what makes the scoring reproducible.
+Most checklists conflate two different axes. USA keeps them separate, which is what makes the scoring reproducible.
 
 **Severity — how bad, if violated.** Set by the rule, not by the auditor.
 
@@ -77,7 +77,7 @@ Most checklists conflate two different axes. USAT keeps them separate, which is 
 
 The same repository deserves a different report at different ages. Grading a three-day prototype against a production bar produces a wall of noise nobody reads; grading production with prototype standards produces a false all-clear.
 
-USAT detects a lifecycle stage and **dampens** severity accordingly.
+USA detects a lifecycle stage and **dampens** severity accordingly.
 
 | Stage             | Detected when                                 | Security | Docs/Style | Expected score |
 | ----------------- | --------------------------------------------- | -------- | ---------- | -------------- |
@@ -94,7 +94,7 @@ USAT detects a lifecycle stage and **dampens** severity accordingly.
 Two consequences worth internalising:
 
 - A low score on a prototype is **not** an indictment. Check the band, not the number.
-- Use `usat audit . --profile production` to grade against the full bar regardless of detected age. This is the "what would it take to ship this?" view.
+- Use `usa audit . --profile production` to grade against the full bar regardless of detected age. This is the "what would it take to ship this?" view.
 
 ---
 
@@ -123,7 +123,7 @@ Sections are activated by detection, not by the auditor's attention span. `S15 �
 
 The machine-readable version of every section lives in [`rules/core/`](rules/core), [`rules/stacks/`](rules/stacks), and [`rules/sections.yaml`](rules/sections.yaml).
 
-### What USAT added to the classic 14-section audit
+### What USA added to the classic 14-section audit
 
 The original checklist this project grew from covered sections S1–S13 well. Four additions:
 
@@ -412,7 +412,7 @@ The original checklist this project grew from covered sections S1–S13 well. Fo
 
 ## 14 · AI / LLM-Era Risks
 
-> New in USAT. Mapped to **OWASP Top 10 for LLM Applications (2026)** and
+> New in USA. Mapped to **OWASP Top 10 for LLM Applications (2026)** and
 > **OWASP Top 10 for Agentic AI — ASI (2026)**.
 
 | Ref                   | Risk                                          | Check                                                                                                                                      |
@@ -474,7 +474,7 @@ All 🔵 `FUTURE` — these are plans, not defects, and they never block a relea
 
 ## 14 · Report Output Template
 
-> The `usat` CLI emits exactly this structure. If you are an agent writing it by hand, match it — a report that looks the same every time is a report you can diff.
+> The `usa` CLI emits exactly this structure. If you are an agent writing it by hand, match it — a report that looks the same every time is a report you can diff.
 
 ```
 ══════════════════════════════════════════════════════════
@@ -483,7 +483,7 @@ All 🔵 `FUTURE` — these are plans, not defects, and they never block a relea
 Project      : [name]
 Repository   : [url]
 Commit       : [sha] ([ref])
-Audited by   : USAT [version] + [agent/human]
+Audited by   : USA [version] + [agent/human]
 Date         : [ISO-8601]
 Detected type: [auto]        Stack: [auto]
 Platform     : [auto]        Maturity: [auto-detected stage]
@@ -547,7 +547,7 @@ DEFERRED (this stage): what the maturity profile says to ignore
 ```
 
 Every generated report also embeds a machine-readable trailer, so
-`usat diff previous.md current.md` turns the next audit into a progress report.
+`usa diff previous.md current.md` turns the next audit into a progress report.
 
 ---
 
@@ -569,10 +569,10 @@ section  = 10 × Σ(weightᵢ × CREDIT[statusᵢ]) / Σ weightᵢ
 
 ---
 
-## Using USAT as an agent skill
+## Using USA as an agent skill
 
 ```
-skills/usat-audit/SKILL.md      # drop into ~/.claude/skills, .cursor/skills, …
+skills/usa-audit/SKILL.md      # drop into ~/.claude/skills, .cursor/skills, …
 templates/AGENTS.audit.md       # paste into a target repo as AGENTS.md
 ```
 
@@ -580,7 +580,7 @@ Both follow the Agent Skills convention (YAML frontmatter + `references/`), so t
 
 ---
 
-## What USAT is not
+## What USA is not
 
 Stated plainly, because an audit tool that oversells itself is worse than none:
 

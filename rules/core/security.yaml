@@ -5,7 +5,7 @@ section_title: Security
 description: >
   Universal security baseline. Severity is never dampened here below CRITICAL,
   and security-class rules carry the heaviest multiplier in the score.
-  USAT is not a penetration test — it finds the doors that were left open.
+  USA is not a penetration test — it finds the doors that were left open.
 version: '1.0'
 
 rules:

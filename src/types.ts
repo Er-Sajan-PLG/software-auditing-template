@@ -1,14 +1,14 @@
 /**
- * USAT — Universal Software Audit Template
+ * USA — Universal Software Auditor
  * Core type definitions.
  *
- * Design note: USAT deliberately separates two orthogonal axes that most audit
+ * Design note: USA deliberately separates two orthogonal axes that most audit
  * checklists conflate:
  *
  *   SEVERITY  = how bad it is *if this rule is violated* (impact).
  *   STATUS    = what the audit actually observed (outcome).
  *
- * The emoji tags in USAT.md map onto these two axes (see `TAG_TABLE`) so the
+ * The emoji tags in USA.md map onto these two axes (see `TAG_TABLE`) so the
  * report still reads like a classic severity-tagged audit while the underlying
  * model stays machine-checkable and scoreable.
  */
@@ -182,7 +182,7 @@ export interface Suppression {
   until?: string;
 }
 
-export interface UsatConfig {
+export interface UsaConfig {
   version: 1;
   /** Override auto-detection: force a maturity stage. */
   maturity?: Maturity;
@@ -236,9 +236,9 @@ export interface ScoreCard {
 }
 
 export interface AuditReport {
-  schema: 'usat-report-v1';
+  schema: 'usa-report-v1';
   generatedAt: string;
-  usatVersion: string;
+  usaVersion: string;
   target: {
     path: string;
     name: string;

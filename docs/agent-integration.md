@@ -1,6 +1,6 @@
 # Agent integration
 
-USAT is built to be driven by an AI agent. The division of labour is explicit:
+USA is built to be driven by an AI agent. The division of labour is explicit:
 
 |                      | Who           | Why                                                                             |
 | -------------------- | ------------- | ------------------------------------------------------------------------------- |
@@ -14,12 +14,12 @@ job is the remaining 30% — the interesting 30%.
 ## The workflow
 
 ```bash
-usat audit . --out AUDIT.md    # 1. deterministic pass
+usa audit . --out AUDIT.md    # 1. deterministic pass
 ```
 
 Then, to the agent:
 
-> Read `USAT.md` and `AUDIT.md`.
+> Read `USA.md` and `AUDIT.md`.
 > Work the **Judgement Queue** at the bottom of the report.
 > For each item, find the evidence and record `file:line` plus one sentence of
 > reasoning. Do not mark anything ✅ without evidence (Rule 4).
@@ -30,7 +30,7 @@ Then, to the agent:
 A bare prompt produces three failure modes, and the template exists to prevent all
 three:
 
-| Failure                                                             | How USAT prevents it                                                              |
+| Failure                                                             | How USA prevents it                                                               |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Confident invention** — "✅ MFA is implemented" with no such code | Rule 4: no ✅ without evidence; every judgement item states what proof looks like |
 | **Wrong scope** — Solidity reentrancy checks on a Next.js blog      | Detection + `applies_when`; non-applicable sections are skipped silently (Rule 1) |
@@ -41,8 +41,8 @@ three:
 ### Agent Skills (`SKILL.md`)
 
 ```bash
-cp -r skills/usat-audit ~/.claude/skills/       # Claude Code
-cp -r skills/usat-audit .cursor/skills/         # Cursor
+cp -r skills/usa-audit ~/.claude/skills/       # Claude Code
+cp -r skills/usa-audit .cursor/skills/         # Cursor
 ```
 
 Follows the Agent Skills convention — YAML frontmatter with `name` and `description`,
@@ -53,7 +53,7 @@ The same directory works across Claude Code, Cursor, Codex, Gemini CLI, Copilot,
 ### `AGENTS.md` for a target repository
 
 ```bash
-usat init .
+usa init .
 cp templates/AGENTS.audit.md AGENTS.md
 ```
 
@@ -65,14 +65,14 @@ are executable-ish: they commit as easily as code and agents follow them literal
 ## Prompt you can paste
 
 ```
-You are auditing this repository with USAT (Universal Software Audit Template).
+You are auditing this repository with USA (Universal Software Auditor).
 
-1. Run: usat detect .
+1. Run: usa detect .
    Confirm the detected facts. If any are wrong, say so and note the correct ones.
 
-2. Run: usat audit . --out AUDIT.md
+2. Run: usa audit . --out AUDIT.md
 
-3. Read USAT.md (the framework) and AUDIT.md (the deterministic results).
+3. Read USA.md (the framework) and AUDIT.md (the deterministic results).
 
 4. Work the Judgement Queue in AUDIT.md. For each item:
    - locate the relevant code
@@ -80,7 +80,7 @@ You are auditing this repository with USAT (Universal Software Audit Template).
    - record file:line evidence and one sentence of reasoning
    - if you cannot determine it, say UNKNOWN and say what you would need
 
-5. Produce a final report that follows the Section 14 template in USAT.md:
+5. Produce a final report that follows the Section 14 template in USA.md:
    - CRITICAL and HIGH findings first, with location and fix
    - then section-by-section
    - then the roadmap
@@ -96,7 +96,7 @@ Rules:
 ## Using the API directly
 
 ```ts
-import { runAudit, renderMarkdown, loadProfiles } from 'usat';
+import { runAudit, renderMarkdown, loadProfiles } from 'usa';
 
 const { report, profile, warnings } = runAudit({
   target: process.cwd(),
@@ -105,7 +105,7 @@ const { report, profile, warnings } = runAudit({
   profile: 'auto',
   config: { version: 1 },
   allowCommands: false,
-  usatVersion: '1.0.0',
+  usaVersion: '1.0.0',
 });
 
 console.log(report.score.overall); // 71.4

@@ -1,4 +1,4 @@
-# USAT Roadmap
+# USA Roadmap
 
 Short, dated, explicitly non-committal. Rule-coverage direction first (this
 is an audit template — the packs _are_ the product), automation second.
@@ -9,7 +9,7 @@ Items graduate to ADRs when decided and to `CHANGELOG.md` when shipped.
 
 ## Next: rule coverage (the product)
 
-- [x] **`usat bootstrap` self-extension** — curated starter packs for
+- [x] **`usa bootstrap` self-extension** — curated starter packs for
       uncovered stacks (php/ruby/cpp/csharp/swift + fallback), fail-closed
       per ADR-0012, proven on Vapor. _(shipped)_
 - [x] **Honest scale limits** — truncation/oversize warnings instead of
@@ -19,7 +19,7 @@ Items graduate to ADRs when decided and to `CHANGELOG.md` when shipped.
       _(shipped — the standing rule: every bigger repo expands the template)_
 
 - [ ] **SARIF + JSON renderers** — findings already carry file/line/severity/
-      rule identity; add renderers so USAT composes with dashboards and code
+      rule identity; add renderers so USA composes with dashboards and code
       scanning. Engine unchanged. _(S)_
 - [ ] **Per-rule expected-finding fixtures** — positive/negative fixture per
       rule run in CI (`codeql test` model). Rule packs are the highest FP/FN
@@ -67,7 +67,7 @@ verify` success, attestation/VSA presence where network allows; existence
 ## Deliberately not planned
 
 - CVE database / lockfile resolver / reachability analysis (ADR-0011)
-- Interprocedural analysis, DAST, fuzzing (see "What USAT is not")
-- Compliance certification (USAT maps to standards; auditors certify)
+- Interprocedural analysis, DAST, fuzzing (see "What USA is not")
+- Compliance certification (USA maps to standards; auditors certify)
 - Full DORA platform (no deployment to measure at this scale)
 - Renovate migration (no problem to solve at ~10 dependencies)

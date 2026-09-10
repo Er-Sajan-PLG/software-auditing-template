@@ -1,5 +1,5 @@
 /**
- * USAT — Universal Software Audit Template
+ * USA — Universal Software Auditor
  * Programmatic API. Everything the CLI does is available here.
  */
 

@@ -5,8 +5,8 @@
 
 ## Context
 
-USAT consumes untrusted, hand-written input at three boundaries: rule packs
-(third-party YAML), `.usat.yaml` project config, and `applies_when`
+USA consumes untrusted, hand-written input at three boundaries: rule packs
+(third-party YAML), `.usa.yaml` project config, and `applies_when`
 predicates evaluated in the audit hot loop. Each boundary once had a silent
 failure mode, and every one of them corrupted results rather than stopping:
 

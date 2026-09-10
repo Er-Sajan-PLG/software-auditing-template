@@ -4,7 +4,7 @@ section: S13
 section_title: Accessibility, i18n & Compliance
 description: >
   Accessibility, internationalisation, and regulatory obligations. Most of
-  these are judgement calls — USAT records what it can and asks for evidence
+  these are judgement calls — USA records what it can and asks for evidence
   on the rest.
 version: '1.0'
 skip_when: { fact: 'maturity:prototype' }

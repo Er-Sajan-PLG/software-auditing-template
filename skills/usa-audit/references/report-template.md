@@ -73,19 +73,19 @@ DEFERRED (this stage) : what the maturity profile says to ignore
 4. **Skip non-applicable sections without comment.**
 5. **⚠️ WRONG above 🚫 MISSING** within a severity band. Wrong is worse than absent because it looks finished.
 6. **Match the structure exactly.** It is what makes two reports diffable — and
-   `usat diff` depends on it.
+   `usa diff` depends on it.
 
 ## Machine-readable trailer
 
-If you are writing the report by hand, end with this so `usat diff` works:
+If you are writing the report by hand, end with this so `usa diff` works:
 
 ````markdown
-<!-- USAT:TRAILER:BEGIN -->
+<!-- USA:TRAILER:BEGIN -->
 
 ```yaml
-schema: usat-report-v1
+schema: usa-report-v1
 generated_at: 2026-09-08T00:00:00.000Z
-usat_version: 1.0.0
+usa_version: 1.0.0
 overall: 71.4
 sections:
   S1: { score: 8.4, open: 2, review: 2 }
@@ -97,7 +97,7 @@ rules:
   SEC-015: { status: UNKNOWN, severity: HIGH, section: S2 }
 ```
 
-<!-- USAT:TRAILER:END -->
+<!-- USA:TRAILER:END -->
 ````
 
 Status values: `PASS` · `FAIL` · `WRONG` · `MISSING` · `DEPRECATED` · `EXPERIMENTAL` ·

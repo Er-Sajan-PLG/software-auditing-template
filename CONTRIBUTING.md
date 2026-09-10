@@ -1,4 +1,4 @@
-# Contributing to USAT
+# Contributing to USA
 
 Thanks for helping make software audits less terrible.
 
@@ -8,21 +8,21 @@ TypeScript, no build step. If you have ever run an audit checklist and thought
 
 ## Ways to contribute
 
-| Contribution                            | Difficulty | Where                                           |
-| --------------------------------------- | ---------- | ----------------------------------------------- |
-| A new rule in an existing pack          | Easy       | `rules/core/*.yaml`, `rules/stacks/*.yaml`      |
-| A whole new stack pack                  | Easy       | `rules/stacks/<name>.yaml` + `rules/index.yaml` |
-| A detector for a technology USAT misses | Easy       | `rules/detectors.yaml`                          |
-| A false positive you actually hit       | Easy       | open an issue with the reproducer               |
-| Fixing a rule that over-fires           | Medium     | the pack + a test in `tests/`                   |
-| Engine work                             | Medium     | `src/`                                          |
-| Docs and standards mapping              | Easy       | `docs/`, `USAT.md`                              |
+| Contribution                           | Difficulty | Where                                           |
+| -------------------------------------- | ---------- | ----------------------------------------------- |
+| A new rule in an existing pack         | Easy       | `rules/core/*.yaml`, `rules/stacks/*.yaml`      |
+| A whole new stack pack                 | Easy       | `rules/stacks/<name>.yaml` + `rules/index.yaml` |
+| A detector for a technology USA misses | Easy       | `rules/detectors.yaml`                          |
+| A false positive you actually hit      | Easy       | open an issue with the reproducer               |
+| Fixing a rule that over-fires          | Medium     | the pack + a test in `tests/`                   |
+| Engine work                            | Medium     | `src/`                                          |
+| Docs and standards mapping             | Easy       | `docs/`, `USA.md`                               |
 
 ## Development setup
 
 ```bash
-git clone https://github.com/Er-Sajan-PLG/software-auditing-template
-cd software-auditing-template
+git clone https://github.com/Er-Sajan-PLG/universal-software-auditor
+cd universal-software-auditor
 npm install
 
 npm test                 # vitest
@@ -34,10 +34,10 @@ npm run format           # prettier --write
 Run the CLI from source:
 
 ```bash
-npm run usat -- detect .
-npm run usat -- audit . --depth deep
-npm run usat -- rules --section S2
-npm run usat -- explain SEC-001
+npm run usa -- detect .
+npm run usa -- audit . --depth deep
+npm run usa -- rules --section S2
+npm run usa -- explain SEC-001
 ```
 
 Or build and run the compiled output:
@@ -87,7 +87,7 @@ CI enforces most of this (see `tests/e2e.test.ts`).
 | Complexity budget | Functions stay at cyclomatic complexity ≤ 10 (warn-only). Over? Split: one branch = one function, dispatch tables over switches | `eslint.config.mjs`, PR #10 pattern |
 | Coverage ratchet  | Thresholds sit at the measured number and only rise (`vitest.config.ts`). Lowering a threshold needs an ADR-level reason        | `npm run test:cov`                  |
 | ADR hygiene       | Filenames sequential, title numbers match, Date + Status present, index complete                                                | `node scripts/check-adrs.mjs`       |
-| Doc sync          | README rule-count floor holds; every section id appears in `USAT.md`; every `--flag` in docs exists in `--help`                 | `node scripts/check-docs.mjs`       |
+| Doc sync          | README rule-count floor holds; every section id appears in `USA.md`; every `--flag` in docs exists in `--help`                  | `node scripts/check-docs.mjs`       |
 | CLI reference     | `docs/reference/cli.md` is generated — never hand-edit it; regenerate and commit                                                | `node scripts/gen-cli-docs.mjs`     |
 
 **Fixing a rule that over/under-fires** (the highest-value rule contribution):
@@ -95,7 +95,7 @@ CI enforces most of this (see `tests/e2e.test.ts`).
 1. Prove it with a minimal reproducer first (FP line that fires, FN line that does not).
 2. Fix the pattern narrowly; add a `NOTE:` comment in the YAML naming the trap and what must never come back (see SEC-003, SEC-005, SEC-013).
 3. Add FP _and_ FN cases to `tests/rules.test.ts` following the `ruleOf` + `fixture` + `evaluateAt` pattern.
-4. Run the full suite — rule changes move the self-audit score, and `usat diff` against the previous report must show no unintended movement.
+4. Run the full suite — rule changes move the self-audit score, and `usa diff` against the previous report must show no unintended movement.
 
 ## Testing a rule
 
@@ -103,8 +103,8 @@ A rule that fires on its own documentation is worse than no rule. Test against t
 projects:
 
 ```bash
-npm run usat -- audit ~/code/project-with-the-problem
-npm run usat -- audit ~/code/project-without-it
+npm run usa -- audit ~/code/project-with-the-problem
+npm run usa -- audit ~/code/project-without-it
 ```
 
 The second run must stay clean. Then add a case to `tests/`:
@@ -139,9 +139,9 @@ it('does not flag an env-var reference as a hardcoded credential', () => {
 
 ## This repo audits itself
 
-`.github/workflows/self-audit.yml` runs USAT on USAT on every PR. If it fails, either
+`.github/workflows/self-audit.yml` runs USA on USA on every PR. If it fails, either
 the tool regressed or the repo picked up a real finding. If the finding is a deliberate
-decision, add it to `.usat.yaml` **with a reason** — that is exactly what the
+decision, add it to `.usa.yaml` **with a reason** — that is exactly what the
 suppression mechanism is for.
 
 ## Code of conduct

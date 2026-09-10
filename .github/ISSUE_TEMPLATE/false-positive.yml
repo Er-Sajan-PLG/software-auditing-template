@@ -15,7 +15,7 @@ body:
   - type: textarea
     id: what
     attributes:
-      label: What did USAT report?
+      label: What did USA report?
       description: Paste the finding, including the file:line it pointed at.
     validations:
       required: true
@@ -40,7 +40,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: USAT version
+      label: USA version
       placeholder: 1.0.0
     validations:
       required: true

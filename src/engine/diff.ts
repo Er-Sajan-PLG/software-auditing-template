@@ -4,7 +4,7 @@ import type { Severity, Status } from '../types.js';
 export interface TrailerData {
   schema?: string;
   generated_at?: string;
-  usat_version?: string;
+  usa_version?: string;
   overall?: number;
   sections?: Record<string, { score: number; open: number; review: number }>;
   severity_totals?: Record<string, number>;
@@ -13,7 +13,7 @@ export interface TrailerData {
 
 /**
  * An audit you can't compare against the last one is just a number.
- * `usat diff` reads the YAML trailer USAT embeds in every Markdown report and
+ * `usa diff` reads the YAML trailer USA embeds in every Markdown report and
  * reports movement: regressions, fixes, and drift.
  */
 export function diffReports(beforeRaw: string, afterRaw: string): string {
@@ -62,7 +62,7 @@ function renderDiffHeader(
   a: number,
   delta: number,
 ): void {
-  p('# 🔁 USAT Audit Diff');
+  p('# 🔁 USA Audit Diff');
   p();
   p('| | Before | After | Δ |');
   p('|---|---:|---:|---:|');
@@ -132,7 +132,7 @@ function classifyRuleChange(
 /**
  * Movements to or from the judgement queue. Previously these were dropped
  * entirely, so resolving the queue (the tool's headline workflow) was
- * invisible in `usat diff` — "No net movement… nothing changed" while a
+ * invisible in `usa diff` — "No net movement… nothing changed" while a
  * human did the most valuable work.
  */
 function classifyUnknownTransition(

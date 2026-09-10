@@ -25,18 +25,18 @@ describe('global flags', () => {
   it('--help prints usage and does not audit', () => {
     const r = run(['--help']);
     expect(r.code).toBe(0);
-    expect(r.out).toContain('usat audit [path]');
+    expect(r.out).toContain('usa audit [path]');
   });
 
   it('--version prints the version and does not audit', () => {
     const r = run(['--version']);
     expect(r.code).toBe(0);
-    expect(r.out).toMatch(/usat \d+\.\d+\.\d+/);
+    expect(r.out).toMatch(/usa \d+\.\d+\.\d+/);
   });
 
   it('positional help/version still work', () => {
     expect(run(['help']).code).toBe(0);
-    expect(run(['version']).out).toMatch(/usat \d+\.\d+\.\d+/);
+    expect(run(['version']).out).toMatch(/usa \d+\.\d+\.\d+/);
     expect(run(['-h']).code).toBe(0);
   });
 

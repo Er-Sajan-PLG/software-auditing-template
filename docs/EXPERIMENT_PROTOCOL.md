@@ -1,16 +1,16 @@
-# USAT Adaptive Audit Experiment Protocol
+# USA Adaptive Audit Experiment Protocol
 
 **Version:** 1.0  
 **Status:** Mandatory for all capability‑stress experiments  
-**Purpose:** Ensure every USAT adaptation experiment follows the same reproducible, logged, and evidence‑driven process.
+**Purpose:** Ensure every USA adaptation experiment follows the same reproducible, logged, and evidence‑driven process.
 
 ---
 
 ## 1. Scope
 
-This protocol applies whenever USAT is used to:
+This protocol applies whenever USA is used to:
 
-- Audit a repository substantially more complex than USAT itself
+- Audit a repository substantially more complex than USA itself
 - Discover capability gaps
 - Research and implement new capabilities
 - Test and permanently integrate those capabilities
@@ -24,10 +24,10 @@ It is **not** a routine audit procedure; it is an **experimental evolution** pro
 
 Before any change is made, capture and record the following in the experiment log:
 
-- USAT repository URL, commit SHA, branch, working‑tree state
+- USA repository URL, commit SHA, branch, working‑tree state
 - Target repository URL, commit SHA, branch/ref, submodule state
 - OS, architecture, runtime versions (Node, Python, etc.)
-- USAT configuration (`.usat.yaml`), rule packs version, capability registry version
+- USA configuration (`.usa.yaml`), rule packs version, capability registry version
 - Model provider, exact model identifier, reasoning configuration
 - Benchmark instructions (the exact prompt that initiated the experiment)
 - Start timestamp (ISO‑8601, UTC)
@@ -63,9 +63,9 @@ experiments/
     ├── decisions.jsonl
     ├── errors.log
     ├── repository-state.json
-    ├── usat-state-before.json
-    ├── usat-state-after-iteration-0.json
-    ├── usat-state-after-iteration-1.json
+    ├── usa-state-before.json
+    ├── usa-state-after-iteration-0.json
+    ├── usa-state-after-iteration-1.json
     ├── ...
     ├── iterations/
     │   ├── 0/
@@ -91,7 +91,7 @@ All tool calls, shell commands, file modifications, git operations, tests, and r
 
 Each iteration consists of:
 
-1. **Audit** the target using the current USAT state.
+1. **Audit** the target using the current USA state.
 2. **Classify** every finding as:
    - `VERIFIED` (pass with evidence)
    - `PARTIALLY_VERIFIED`
@@ -108,12 +108,12 @@ Each iteration consists of:
    - Selected approach and justification
 5. **Implement** the capability:
    - New detectors, rule packs, or engine enhancements
-   - Must be a permanent part of USAT (not a one‑off hack)
+   - Must be a permanent part of USA (not a one‑off hack)
    - Must be tested (unit/integration)
    - Must be registered in the capability registry
 6. **Test** the capability on both positive and negative fixtures.
 7. **Run regression** to ensure existing functionality is intact (`npm test`).
-8. **Permanently integrate** – commit the changes, update documentation, and record the new USAT state.
+8. **Permanently integrate** – commit the changes, update documentation, and record the new USA state.
 9. **Re‑audit** the target to measure improvement.
 10. **Log** the new completeness, capability count, and remaining gaps.
 
@@ -150,7 +150,7 @@ This metadata is maintained in `capabilities/registry.json` (or a similar persis
 
 - Never mark a finding as `VERIFIED` without file/line evidence or tool output.
 - Distinguish between:
-  - `USAT_CAPABILITY_GAP`
+  - `USA_CAPABILITY_GAP`
   - `MODEL_REASONING_FAILURE`
   - `AGENT_ORCHESTRATION_FAILURE`
   - `TOOL_FAILURE`
@@ -178,7 +178,7 @@ Record:
 Produce a report containing at least:
 
 1. Executive Summary
-2. Initial USAT Capability Baseline
+2. Initial USA Capability Baseline
 3. Target Repository details
 4. Initial Audit Result
 5. Capability Gaps Discovered
@@ -192,7 +192,7 @@ Produce a report containing at least:
 13. Generalization Results
 14. Remaining Limitations
 15. Model/Agent Limitations
-16. USAT Architectural Limitations
+16. USA Architectural Limitations
 17. Verified vs Inferred vs Unverifiable counts
 18. Reproducibility Information
 19. Final Assessment (Grade A–E)
@@ -205,7 +205,7 @@ The report must be **brutally honest** – the grade is earned by evidence, not 
 
 Before closing an experiment, confirm:
 
-- [ ] All commit SHAs are recorded (USAT and target)
+- [ ] All commit SHAs are recorded (USA and target)
 - [ ] All configuration files are captured
 - [ ] All tool outputs and logs are preserved
 - [ ] All capability metadata is updated
@@ -217,7 +217,7 @@ Before closing an experiment, confirm:
 
 ## 10. How to Use This Protocol
 
-Future agents (including this one) **must** follow this protocol when performing a USAT adaptive audit experiment.
+Future agents (including this one) **must** follow this protocol when performing a USA adaptive audit experiment.
 
 **To start a new experiment:**
 
@@ -228,10 +228,10 @@ Future agents (including this one) **must** follow this protocol when performing
 
 **To resume an interrupted experiment:**
 
-1. Restore the USAT state from the last saved checkpoint.
+1. Restore the USA state from the last saved checkpoint.
 2. Continue from the last incomplete iteration.
 
-All state changes (USAT modifications) must be committed incrementally and tagged with the experiment run ID.
+All state changes (USA modifications) must be committed incrementally and tagged with the experiment run ID.
 
 ---
 

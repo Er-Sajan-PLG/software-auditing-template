@@ -1,7 +1,7 @@
 import type { RuleClass, Severity } from '../types.js';
 
 /**
- * Bootstrap knowledge: starter checks for languages USAT detects but ships
+ * Bootstrap knowledge: starter checks for languages USA detects but ships
  * no stack pack for. Every entry is a *proposal*, never a verdict — the
  * generator emits packs for human review, and nothing it writes is
  * registered or trusted until reviewed (see ADR-0012).

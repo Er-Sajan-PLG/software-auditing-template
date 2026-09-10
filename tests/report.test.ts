@@ -19,9 +19,9 @@ const finding = (over: Partial<Finding>): Finding => ({
 });
 
 const baseReport = (findings: Finding[]): AuditReport => ({
-  schema: 'usat-report-v1',
+  schema: 'usa-report-v1',
   generatedAt: '2026-09-08T00:00:00.000Z',
-  usatVersion: '1.0.0',
+  usaVersion: '1.0.0',
   target: { path: '/tmp/proj', name: 'proj', commit: 'abc1234567890', ref: 'main' },
   detection: {
     maturity: 'beta',
@@ -178,10 +178,10 @@ describe('markdown report', () => {
   it('embeds a machine-readable trailer that round-trips', () => {
     const report = baseReport([finding({ ruleId: 'SEC-001', status: 'PASS' })]);
     const md = renderMarkdown(report, profile);
-    expect(md).toContain('<!-- USAT:TRAILER:BEGIN -->');
+    expect(md).toContain('<!-- USA:TRAILER:BEGIN -->');
     const raw = parseTrailer(md);
     expect(raw).not.toBeNull();
-    expect(raw).toContain('schema: usat-report-v1');
+    expect(raw).toContain('schema: usa-report-v1');
     expect(raw).toContain('overall: 71.4');
     // Rule IDs are YAML-quoted: pack-author-controlled keys must not corrupt
     // the machine-parsed trailer (colons, hashes, newlines, fences).
@@ -242,10 +242,10 @@ describe('markdown report', () => {
   // partial BEGIN markers; parseTrailer walks back from END for that reason.
   it('parses the trailer out of a document full of decoy markers', () => {
     const real = renderMarkdown(baseReport([finding({})]), profile);
-    const noise = `${'<!-- USAT:TRAILER:BEGIN -->'.repeat(200)}x`;
+    const noise = `${'<!-- USA:TRAILER:BEGIN -->'.repeat(200)}x`;
     const started = Date.now();
     const parsed = parseTrailer(`${noise}\n${real}\n${noise}`);
-    expect(parsed).toContain('schema: usat-report-v1');
+    expect(parsed).toContain('schema: usa-report-v1');
     expect(Date.now() - started).toBeLessThan(1000);
   });
 
@@ -253,7 +253,7 @@ describe('markdown report', () => {
     const { parse } = await import('yaml');
     const raw = parseTrailer(renderMarkdown(baseReport([finding({})]), profile))!;
     const doc = parse(raw) as any;
-    expect(doc.schema).toBe('usat-report-v1');
+    expect(doc.schema).toBe('usa-report-v1');
     expect(doc.overall).toBe(71.4);
     expect(doc.rules).toBeTypeOf('object');
   });

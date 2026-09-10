@@ -11,12 +11,12 @@ the conventional move and roughly quadruples the reporter surface.
 
 ## Decision
 
-USAT renders **Markdown only**.
+USA renders **Markdown only**.
 
 Two things make this sufficient:
 
 1. **Every report ends with a machine-readable YAML trailer** inside an HTML
-   comment (`<!-- USAT:TRAILER:BEGIN -->`). `usat diff` parses it to compare two
+   comment (`<!-- USA:TRAILER:BEGIN -->`). `usa diff` parses it to compare two
    runs; CI thresholds read it; a user who wants JSON can extract it in one line.
    The machine interface exists — it just lives inside the human document rather
    than beside it.
@@ -27,10 +27,10 @@ Two things make this sufficient:
 ## Consequences
 
 **Good:** one renderer, one set of golden tests, no format skew. The report
-committed to a repo stays readable forever without a viewer. `usat diff old.md
+committed to a repo stays readable forever without a viewer. `usa diff old.md
 new.md` works on any two reports ever generated.
 
-**Bad:** no native SARIF, so USAT findings do not appear in GitHub's **Security**
+**Bad:** no native SARIF, so USA findings do not appear in GitHub's **Security**
 tab as code-scanning alerts. For teams whose compliance workflow centres on the
 code-scanning API this is a genuine gap. The workaround is the PR comment plus
 `--fail-on`, which covers the enforcement case but not the dashboard case.

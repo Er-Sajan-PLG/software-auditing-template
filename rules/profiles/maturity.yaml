@@ -1,5 +1,5 @@
 # =============================================================================
-# USAT — Maturity profiles  (schema: usat-profiles-v1)
+# USA — Maturity profiles  (schema: usa-profiles-v1)
 # -----------------------------------------------------------------------------
 # The same repo at two different stages deserves two different reports.
 # A 3-day prototype should not be graded against a production bar, and a
@@ -12,7 +12,7 @@
 # a leaked credential. Everything else is negotiable with the calendar.
 # =============================================================================
 
-schema: usat-profiles-v1
+schema: usa-profiles-v1
 ladder: [FUTURE, LOW, MEDIUM, HIGH, CRITICAL]
 
 profiles:
@@ -90,7 +90,7 @@ profiles:
   production:
     label: Production / GA
     summary: >
-      Full bar. Nothing is dampened — this is the profile USAT grades
+      Full bar. Nothing is dampened — this is the profile USA grades
       against when you pass --profile production.
     dampen:
       security: 0

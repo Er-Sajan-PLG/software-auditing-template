@@ -1,6 +1,6 @@
 # Audit report template
 
-> USAT's CLI emits this structure automatically (`usat audit .`).
+> USA's CLI emits this structure automatically (`usa audit .`).
 > Use this file when you are writing a report by hand — or when an agent is
 > producing one without the tool. Matching the structure is what makes reports
 > diffable and comparable across time and teams.
@@ -14,7 +14,7 @@
 Project      : [name]
 Repository   : [url]
 Commit       : [sha] ([ref])
-Audited by   : USAT [version] + [agent / human]
+Audited by   : USA [version] + [agent / human]
 Date         : [ISO-8601]
 Detected type: [auto-detected]
 Platform     : [auto-detected]
@@ -127,15 +127,15 @@ WHAT MATTERS AT [STAGE]:
 - Use the emoji tags consistently — they are what makes a long report skimmable.
 - Keep the section order fixed (S1 → S16) so two reports can be compared line by line.
 - If you are an agent writing this by hand, end the file with the machine-readable
-  trailer so `usat diff` works on it:
+  trailer so `usa diff` works on it:
 
 ````markdown
-<!-- USAT:TRAILER:BEGIN -->
+<!-- USA:TRAILER:BEGIN -->
 
 ```yaml
-schema: usat-report-v1
+schema: usa-report-v1
 generated_at: 2026-09-08T00:00:00.000Z
-usat_version: 1.0.0
+usa_version: 1.0.0
 overall: 71.4
 sections:
   S1: { score: 8.4, open: 2, review: 2 }
@@ -151,5 +151,5 @@ rules:
   SEC-015: { status: UNKNOWN, severity: HIGH, section: S2 }
 ```
 
-<!-- USAT:TRAILER:END -->
+<!-- USA:TRAILER:END -->
 ````

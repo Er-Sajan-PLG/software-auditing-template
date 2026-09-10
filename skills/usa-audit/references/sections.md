@@ -55,5 +55,5 @@ section did (or did not) appear.
 ## Reading the report's applicability
 
 The appendix lists every rule pack loaded **and** every pack skipped as
-not-applicable. If a pack you expected is in the skipped list, check `usat detect .` —
+not-applicable. If a pack you expected is in the skipped list, check `usa detect .` —
 the fact it selects on is missing.

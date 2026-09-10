@@ -35,7 +35,7 @@ export function loadRulePacks(rulesDir: string): LoaderResult {
   const warnings: string[] = [];
   const indexPath = path.join(rulesDir, 'index.yaml');
   if (!fs.existsSync(indexPath)) {
-    throw new Error(`Rule index not found at ${indexPath}. Pass --rules-dir or run \`usat init\`.`);
+    throw new Error(`Rule index not found at ${indexPath}. Pass --rules-dir or run \`usa init\`.`);
   }
   let indexDoc: { packs?: (string | { file: string; enabled?: boolean })[] } | null;
   try {
@@ -114,7 +114,7 @@ function parsePack(
     if (firstSeen !== undefined) {
       // Duplicate rule IDs double-count weight in scoring and collide as
       // duplicate YAML keys in the report trailer (second silently wins in
-      // `usat diff`). First definition wins; the later one is dropped loudly.
+      // `usa diff`). First definition wins; the later one is dropped loudly.
       warnings.push(
         `duplicate rule id "${parsed.id}" in pack "${id}" (first defined in pack "${firstSeen}") — later rule ignored`,
       );

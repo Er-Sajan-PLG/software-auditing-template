@@ -1,12 +1,12 @@
 name: Rule request
-description: Suggest a new check for USAT
+description: Suggest a new check for USA
 title: '[RULE] short description'
 labels: ['rule-request', 'rules']
 body:
   - type: textarea
     id: check
     attributes:
-      label: What should USAT check for?
+      label: What should USA check for?
       description: One sentence, phrased as the desired state ("Tokens expire", not "Missing expiry").
     validations:
       required: true

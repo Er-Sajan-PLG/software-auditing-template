@@ -1,11 +1,11 @@
-# Standards mapping — how USAT compares to the state of the art
+# Standards mapping — how USA compares to the state of the art
 
-> _USAT did not invent most of these checks. It reorganised them so one tool can
+> _USA did not invent most of these checks. It reorganised them so one tool can
 > apply them to any project, at any stage, without a certification budget._
 
 ## The short version
 
-| Framework                               | What it is                                                                                                                                                      | What USAT takes                                                                             | What USAT adds                                                                                          |
+| Framework                               | What it is                                                                                                                                                      | What USA takes                                                                              | What USA adds                                                                                           |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **OWASP ASVS 5.0**                      | ~350 verification requirements across 17 chapters, levels L1–L3 [1](https://quality.arc42.org/standards/owasp-asvs)                                             | The requirement set behind most `SEC-*` rules; ASVS IDs in `references`                     | Executable versions of the mechanically-checkable subset; level selection replaced by maturity profiles |
 | **OpenSSF Scorecard**                   | 18 automated checks, 0–10, run against public repos [1](https://rywalker.com/research/openssf-scorecard)                                                        | The shape of S3 and S8; score-per-check                                                     | Runs on private repos and monorepos; mixes in code-level checks; adds the other 15 sections             |
@@ -21,7 +21,7 @@
 
 ---
 
-## Where USAT differs from the field
+## Where USA differs from the field
 
 ### 1 · It is stage-aware; they are not
 
@@ -29,12 +29,12 @@ ASVS asks you to pick L1/L2/L3 _before_ you start [2](https://www.securecodinghu
 Scorecard gives an absolute 0–10. Neither asks "how old is this project, and does
 that matter?"
 
-USAT detects the stage and dampens severity accordingly — while holding a hard floor
+USA detects the stage and dampens severity accordingly — while holding a hard floor
 on CRITICAL. [maturity-profiles.md](maturity-profiles.md)
 
 ### 2 · It is agent-executable, not just human-readable
 
-Every framework above is a document a human interprets. USAT ships:
+Every framework above is a document a human interprets. USA ships:
 
 - `rules/` — machine-readable versions of the same checks
 - a deterministic engine that settles ~70% of them
@@ -46,18 +46,18 @@ should be asked whether authorisation is enforced per resource.
 ### 3 · It separates "absent" from "wrong"
 
 Every framework above has a checkbox. None distinguishes 🚫 MISSING from ⚠️ WRONG —
-yet wrong is worse, because it looks finished. USAT gives WRONG its own status, its
+yet wrong is worse, because it looks finished. USA gives WRONG its own status, its
 own check kind (`grep_wrong`), and a score of 0.15 rather than 0.00.
 
 ### 4 · It reports confidence alongside score
 
-A 90/100 where only 40% of applicable rules could be verified is not a 90/100. USAT
+A 90/100 where only 40% of applicable rules could be verified is not a 90/100. USA
 prints confidence next to every dimension and marks unverifiable sections
 _"— not verified"_ instead of silently awarding 10/10.
 
 ### 5 · It is diffable
 
-Every report embeds a machine-readable trailer so `usat diff` turns the next audit
+Every report embeds a machine-readable trailer so `usa diff` turns the next audit
 into a progress report: fixed, regressed, newly applicable, net movement. None of the
 frameworks above give you a first-class way to show you improved.
 
@@ -71,9 +71,9 @@ and the fact that `AGENTS.md` is executable-ish instruction that commits like co
 
 ## Detailed mapping
 
-### USAT section → standards
+### USA section → standards
 
-| USAT                  | ASVS 5.0              | SSDF            | SLSA                | Scorecard                                                                                                       | Other                                                                    |
+| USA                   | ASVS 5.0              | SSDF            | SLSA                | Scorecard                                                                                                       | Other                                                                    |
 | --------------------- | --------------------- | --------------- | ------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | S1 Repository         | —                     | PO.3, PS.1      | Source L1–L2        | Binary-Artifacts, License, Security-Policy                                                                      | CII                                                                      |
 | S2 Security           | V2–V14 (all chapters) | PW.1–PW.8, RV.1 | —                   | —                                                                                                               | CWE, OWASP Top 10                                                        |
@@ -126,32 +126,32 @@ and the fact that `AGENTS.md` is executable-ish instruction that commits like co
 
 ## Deliberate gaps
 
-Things USAT intentionally does **not** do. An audit tool that oversells is worse than
+Things USA intentionally does **not** do. An audit tool that oversells is worse than
 none.
 
-| Not done                     | Why                                                | Do this instead                                                |
-| ---------------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
-| **Penetration testing**      | No dynamic analysis, no fuzzing, no exploit chains | OWASP ASVS L2/L3 assessment, a pentest                         |
-| **Deep SAST**                | Requires whole-program analysis                    | CodeQL, Semgrep, Snyk Code — USAT checks they are _configured_ |
-| **CVE lookup**               | Needs network + advisory databases                 | `npm audit`, `osv-scanner`, `trivy`, Dependabot                |
-| **Compliance certification** | Only an accredited auditor certifies               | Use USAT as the evidence checklist, then certify               |
-| **Runtime/DAST**             | Nothing is executed                                | OWASP ZAP, Burp, your staging environment                      |
-| **Formal verification**      | Out of scope for a checklist                       | Certora, Halmos, Kani                                          |
-| **Org-level maturity**       | USAT audits repositories                           | OWASP SAMM for programmes                                      |
+| Not done                     | Why                                                | Do this instead                                               |
+| ---------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| **Penetration testing**      | No dynamic analysis, no fuzzing, no exploit chains | OWASP ASVS L2/L3 assessment, a pentest                        |
+| **Deep SAST**                | Requires whole-program analysis                    | CodeQL, Semgrep, Snyk Code — USA checks they are _configured_ |
+| **CVE lookup**               | Needs network + advisory databases                 | `npm audit`, `osv-scanner`, `trivy`, Dependabot               |
+| **Compliance certification** | Only an accredited auditor certifies               | Use USA as the evidence checklist, then certify               |
+| **Runtime/DAST**             | Nothing is executed                                | OWASP ZAP, Burp, your staging environment                     |
+| **Formal verification**      | Out of scope for a checklist                       | Certora, Halmos, Kani                                         |
+| **Org-level maturity**       | USA audits repositories                            | OWASP SAMM for programmes                                     |
 
 ### On Scorecard specifically
 
-Scorecard is excellent and USAT's S3/S8 borrow its shape. Two honest caveats, both
+Scorecard is excellent and USA's S3/S8 borrow its shape. Two honest caveats, both
 documented by its own users: it measures **process hygiene, not code quality**, and
 peer-reviewed research found **no clean correlation** between high scores and fewer
 vulnerabilities [1](https://rywalker.com/research/openssf-scorecard). Scorecard also
-needs a public repo and network access. USAT is the offline, code-level,
+needs a public repo and network access. USA is the offline, code-level,
 private-repo complement — run both.
 
 ### On SARIF
 
 SARIF 2.1.0 is the right interchange format for static-analysis _results_, and most
-SAST tools emit it. USAT reports are prose-oriented — a scored, prioritised document
+SAST tools emit it. USA reports are prose-oriented — a scored, prioritised document
 for humans and agents, not a machine-ingestible findings stream. If you need to feed
 results into a dashboard, that is a small renderer away
 (`src/report/`); the internal model already carries file, line, severity, and rule

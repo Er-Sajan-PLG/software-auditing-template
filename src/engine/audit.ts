@@ -7,7 +7,7 @@ import type {
   Maturity,
   RulePack,
   Suppression,
-  UsatConfig,
+  UsaConfig,
 } from '../types.js';
 import type { SectionDef } from './sections.js';
 import { SEVERITY_LADDER } from './loader.js';
@@ -50,9 +50,9 @@ export interface AuditOptions {
   rulesDir?: string;
   depth?: Depth;
   profile?: Maturity | 'auto';
-  config?: UsatConfig;
+  config?: UsaConfig;
   allowCommands?: boolean;
-  usatVersion?: string;
+  usaVersion?: string;
   /** Force these pack ids on/off regardless of detection. */
   includePacks?: string[];
   excludePacks?: string[];
@@ -149,13 +149,13 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   return { report, warnings, profile };
 }
 
-function normalizeAuditOptions(options: AuditOptions, config: UsatConfig) {
+function normalizeAuditOptions(options: AuditOptions, config: UsaConfig) {
   return {
     rulesDir: options.rulesDir ?? DEFAULT_RULES_DIR,
     depth: options.depth ?? ('standard' as Depth),
     profile: options.profile ?? ('auto' as Maturity | 'auto'),
     allowCommands: options.allowCommands ?? false,
-    usatVersion: options.usatVersion ?? DEFAULT_VERSION,
+    usaVersion: options.usaVersion ?? DEFAULT_VERSION,
     target: options.target,
     config,
   };
@@ -210,7 +210,7 @@ function resolveMaturity(
   if (configMaturity === undefined) return detected;
   if ((MATURITIES as readonly string[]).includes(configMaturity)) return configMaturity;
   warnings.push(
-    `.usat.yaml: invalid maturity "${String(configMaturity)}" — using auto-detected ${detected}`,
+    `.usa.yaml: invalid maturity "${String(configMaturity)}" — using auto-detected ${detected}`,
   );
   return detected;
 }
@@ -224,7 +224,7 @@ function selectSections(
   if (!wanted || wanted.length === 0) return all;
   const known = new Set(all.map((s) => s.id));
   for (const id of wanted) {
-    if (!known.has(id)) warnings.push(`.usat.yaml: unknown section "${id}" in sections — ignored`);
+    if (!known.has(id)) warnings.push(`.usa.yaml: unknown section "${id}" in sections — ignored`);
   }
   return all.filter((s) => wanted.includes(s.id));
 }
@@ -254,7 +254,7 @@ function appendIndexWarnings(project: Project, warnings: string[]): void {
  */
 function resolveLimits(
   options: AuditOptions,
-  config: UsatConfig,
+  config: UsaConfig,
   warnings: string[],
 ): { maxFiles?: number; maxBytes?: number } {
   return {
@@ -306,7 +306,7 @@ function appendHistoryWarnings(git: ReturnType<Project['gitInfo']>, warnings: st
 
 function resolvePackSets(
   options: AuditOptions,
-  config: UsatConfig,
+  config: UsaConfig,
 ): { include: Set<string>; exclude: Set<string> } {
   return {
     include: new Set(options.includePacks ?? config.include ?? []),
@@ -317,7 +317,7 @@ function resolvePackSets(
 type RuleOverride = { severity?: Finding['severity']; weight?: number };
 
 function collectRuleSettings(
-  config: UsatConfig,
+  config: UsaConfig,
   warnings: string[],
 ): {
   disabled: Set<string>;
@@ -465,7 +465,7 @@ function buildReport(
     depth: Depth;
     profile: Maturity | 'auto';
     rulesDir: string;
-    usatVersion: string;
+    usaVersion: string;
   },
   git: ReturnType<Project['gitInfo']>,
   detection: ReturnType<typeof detect>,
@@ -477,9 +477,9 @@ function buildReport(
   packsSkipped: string[],
 ): AuditReport {
   return {
-    schema: 'usat-report-v1',
+    schema: 'usa-report-v1',
     generatedAt: new Date().toISOString(),
-    usatVersion: opts.usatVersion,
+    usaVersion: opts.usaVersion,
     target: {
       path: path.resolve(opts.target),
       name: path.basename(path.resolve(opts.target)) || opts.target,

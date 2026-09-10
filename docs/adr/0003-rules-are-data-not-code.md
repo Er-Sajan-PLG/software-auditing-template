@@ -19,7 +19,7 @@ hatch for anything a regex cannot honestly decide.
 
 ## Rationale
 
-1. **Forkability is the product.** USAT is a _template_. A user who wants their
+1. **Forkability is the product.** USA is a _template_. A user who wants their
    company's engineering standard should be able to fork `rules/`, delete what
    they disagree with, and commit. Data can be diffed, reviewed, vendored, and
    disagreed with in a pull request. A plugin ABI can only be _used_.

@@ -1,7 +1,7 @@
 # Demo app — deliberately vulnerable. Do not fix.
 
 This is a tiny Express service whose only job is to be bad. It exists so that
-[`examples/sample-report.md`](../sample-report.md) can show what a real USAT
+[`examples/sample-report.md`](../sample-report.md) can show what a real USA
 report looks like when a project has problems, instead of the self-congratulatory
 100/100 you get from auditing a well-maintained repo.
 
@@ -30,7 +30,7 @@ npm run build
 node dist/cli.js audit examples/demo-app --out examples/sample-report.md
 ```
 
-Expected: `usat 45.7/100 (prototype)` — 2 CRITICAL, 6 MEDIUM, 8 LOW, 10 FUTURE,
+Expected: `usa 45.7/100 (prototype)` — 2 CRITICAL, 6 MEDIUM, 8 LOW, 10 FUTURE,
 and 20 checks routed to the human judgement queue.
 
 ## Use it as a test target

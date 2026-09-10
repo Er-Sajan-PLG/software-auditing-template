@@ -4,7 +4,7 @@
 
 Most audit checklists merge "how bad is it" and "what did we find" into one column.
 That makes scoring impossible to reproduce — two auditors tag the same observation
-differently, and the totals diverge. USAT keeps them apart.
+differently, and the totals diverge. USA keeps them apart.
 
 ### Severity — a property of the rule
 
@@ -138,7 +138,7 @@ A rule participates when **all** of these hold:
 1. Its pack is not skipped (`skip_when` is false)
 2. `applies_when` evaluates true against the detected facts
 3. Its `depths` (if any) include the current `--depth`
-4. It is not disabled in `.usat.yaml`
+4. It is not disabled in `.usa.yaml`
 
 Two escape hatches, both loud: a force-included pack (`include:`) applies
 all its rules regardless of 2 and 3 — the operator asked for it — and a
@@ -190,7 +190,7 @@ inputs that can change a result between runs:
 - file contents (obviously)
 - the rule packs in `rules/`
 - `--depth`, `--profile`, `--allow-commands`
-- `.usat.yaml` suppressions and overrides
+- `.usa.yaml` suppressions and overrides
 
-This is what makes `usat diff` meaningful, and it is why the report records the
-commit SHA, the USAT version, and every option it ran with.
+This is what makes `usa diff` meaningful, and it is why the report records the
+commit SHA, the USA version, and every option it ran with.

@@ -37,13 +37,13 @@ const doc =
   'Regenerated from the built CLI. If this file disagrees with `--help`, ' +
   'the file is stale — run `node scripts/gen-cli-docs.mjs` and commit.\n' +
   '\n' +
-  '## `usat --help`\n' +
+  '## `usa --help`\n' +
   '\n' +
   '```\n' +
   run(['--help']).trimEnd() +
   '\n```\n' +
   '\n' +
-  '## `usat rules`\n' +
+  '## `usa rules`\n' +
   '\n' +
   '```\n' +
   run(['rules']).trimEnd() +

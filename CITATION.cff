@@ -1,15 +1,15 @@
 # This file is version-agnostic by design: no version field to sync.
 # Zenodo–GitHub bridge mints a DOI per release from the tag.
 cff-version: 1.2.0
-title: 'USAT: Universal Software Audit Template'
-message: 'If you use USAT, please cite it as below.'
+title: 'USA: Universal Software Auditor'
+message: 'If you use USA, please cite it as below.'
 type: software
 authors:
   - family-names: PLG
     given-names: Sajan
     alias: Er-Sajan-PLG
-repository-code: 'https://github.com/Er-Sajan-PLG/software-auditing-template'
-url: 'https://github.com/Er-Sajan-PLG/software-auditing-template'
+repository-code: 'https://github.com/Er-Sajan-PLG/universal-software-auditor'
+url: 'https://github.com/Er-Sajan-PLG/universal-software-auditor'
 license: MIT
 keywords:
   - software-audit

@@ -17,7 +17,7 @@ missing piece is a bridge from "detected but uncovered" to "drafted pack".
 
 ## Decision
 
-`usat bootstrap [path]` proposes starter packs for detected-but-uncovered
+`usa bootstrap [path]` proposes starter packs for detected-but-uncovered
 languages from a curated knowledge catalog (dangerous-function patterns,
 lockfiles, review prompts per language), or clearly-marked generic
 judgement prompts when the language is unknown even to the catalog.

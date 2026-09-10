@@ -3,7 +3,7 @@ title: Testing & Quality Assurance
 section: S7
 section_title: Testing & Quality Assurance
 description: >
-  Coverage is a weak proxy for confidence; USAT separates "tests exist",
+  Coverage is a weak proxy for confidence; USA separates "tests exist",
   "tests run in CI", and "tests actually cover the paths that matter".
 version: '1.0'
 
@@ -124,7 +124,7 @@ rules:
       kind: grep_present
       # NOTE: `coverage\s*:\s*\{` covers Vitest-style `coverage: { thresholds:
       # … }` blocks — the earlier `coverage\s*{` (no colon) missed exactly
-      # the config form this repo itself uses, so the rule failed USAT's own
+      # the config form this repo itself uses, so the rule failed USA's own
       # self-audit the week thresholds were added. Keep both alternatives.
       pattern: '(coverageThreshold|failUnder|--fail-under|min-coverage|coverage\s*\{|coverage\s*:\s*\{|\[tool\.coverage\.report\]\s*\n[^\n]*fail_under)'
       include:

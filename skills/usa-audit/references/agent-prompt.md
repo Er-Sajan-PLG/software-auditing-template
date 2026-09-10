@@ -4,12 +4,12 @@ Give this to any coding agent, in any tool, with the repository checked out.
 
 ---
 
-You are auditing this repository with USAT — the Universal Software Audit Template.
+You are auditing this repository with USA — the Universal Software Auditor.
 
 **Step 1 — detect.**
 
 ```bash
-npx @xenos1996/usat detect .
+npx @xenos1996/usa detect .
 ```
 
 Confirm the detected facts against what you see. If any are wrong, say which ones and
@@ -18,7 +18,7 @@ what the correct answer is.
 **Step 2 — deterministic pass.**
 
 ```bash
-npx @xenos1996/usat audit . --out AUDIT.md --depth standard
+npx @xenos1996/usa audit . --out AUDIT.md --depth standard
 ```
 
 This resolves every rule that can be settled by reading a file, with locations and a
@@ -69,10 +69,10 @@ Follow the Section 14 structure:
 ## Shorter version, for a quick pass
 
 ```
-Audit this repo with USAT:
-  npx @xenos1996/usat detect .
-  npx @xenos1996/usat audit . --depth standard --out AUDIT.md
-Then read USAT.md and AUDIT.md, work the Judgement Queue, and report the
+Audit this repo with USA:
+  npx @xenos1996/usa detect .
+  npx @xenos1996/usa audit . --depth standard --out AUDIT.md
+Then read USA.md and AUDIT.md, work the Judgement Queue, and report the
 CRITICAL and HIGH findings with file:line and a fix for each. Never mark
 anything ✅ without evidence. Say UNKNOWN when you cannot tell.
 ```

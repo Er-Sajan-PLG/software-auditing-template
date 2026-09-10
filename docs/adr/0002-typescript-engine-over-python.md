@@ -6,7 +6,7 @@
 
 ## Context
 
-USAT audits software projects. Most of those projects are JavaScript or
+USA audits software projects. Most of those projects are JavaScript or
 TypeScript, and the two natural candidate languages for the tool were:
 
 - **Python**, the traditional home of linters and security tooling
@@ -25,7 +25,7 @@ GitHub Action.
 ## Rationale
 
 1. **The audience is the runtime.** Anyone auditing a Node project already has
-   Node. `npx usat audit .` requires no interpreter negotiation, no virtualenv,
+   Node. `npx usa audit .` requires no interpreter negotiation, no virtualenv,
    no `pip install --user` foot-gun.
 2. **TypeScript's type system pays for itself here.** The engine is a
    tree-walker with fifteen check kinds and a scoring formula; those are exactly

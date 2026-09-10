@@ -17,7 +17,7 @@ rules:
     class: correctness
     check:
       kind: grep_wrong
-      pattern: '(try!\s|as!\s)'
+      pattern: '(try!\\s|as!\\s)'
       include: ['**/*.swift']
       exclude: ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/Tests/**']
       flags: i
@@ -67,6 +67,7 @@ rules:
     remediation: 'Store credentials via SecItem with kSecAttrAccessibleWhenUnlockedThisDeviceOnly or stronger; set NSFileProtectionComplete.'
     evidence: 'SecItem call sites file:line, UserDefaults keys inventory, file-protection settings.'
     references: ['ASVS-2.4.1', 'MASVS-STORAGE']
+
   - id: SW-005
     title: Request validation uses Validatable or a validation library
     section: S2
@@ -76,12 +77,13 @@ rules:
     applies_when: { fact: 'fw:vapor' }
     check:
       kind: grep_present
-      pattern: '\\bValidatable\\b|import Validation'
+      pattern: 'Validatable|import Validation'
       include: ['**/*.swift']
       exclude: ['**/*.test.*', '**/Tests/**']
     why: 'Without schema validation at the edge, untrusted input can cause injection, crashes, or unexpected behavior.'
     remediation: 'Conform request bodies to Validatable and call validate() before use.'
     references: ['CWE-20', 'ASVS-5.1.1']
+
   - id: SW-006
     title: Security headers middleware is configured
     section: S2

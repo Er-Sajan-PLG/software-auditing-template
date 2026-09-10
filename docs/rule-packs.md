@@ -1,6 +1,6 @@
 # Writing rule packs
 
-A rule pack is one YAML file. Register it in `rules/index.yaml`, and USAT decides at
+A rule pack is one YAML file. Register it in `rules/index.yaml`, and USA decides at
 audit time whether it applies.
 
 ```yaml
@@ -45,7 +45,7 @@ rules:
 | `title`         | ✅       |                                                       |
 | `section`       |          | Default section for rules that omit one               |
 | `section_title` |          |                                                       |
-| `description`   |          | Shown by `usat rules`                                 |
+| `description`   |          | Shown by `usa rules`                                  |
 | `skip_when`     |          | Predicate; pack is skipped when **true**              |
 | `provides`      |          | Facts to add when the pack applies — lets packs chain |
 | `rules`         | ✅       |                                                       |
@@ -187,7 +187,7 @@ check:
 ```
 
 **Skipped unless `--allow-commands`** — reported as ❓ NEEDS REVIEW otherwise.
-USAT never shells out without being asked.
+USA never shells out without being asked.
 
 ### `info`
 
@@ -236,14 +236,14 @@ ADR-0009. What to know as an author:
 - Duplicate rule IDs across packs: first definition wins, later ones warn.
 - Override `severity` must be on the ladder and `weight` a finite number
   ≥ 0, or the override is ignored with a warning. Run `node
-scripts/check-docs.mjs`-adjacent `usat rules` after editing: the shipped
+scripts/check-docs.mjs`-adjacent `usa rules` after editing: the shipped
   packs must load with **zero warnings** (enforced by `tests/e2e.test.ts`).
 
 ---
 
 ## Available facts
 
-Run `usat detect .` on any project to see them. Namespaces:
+Run `usa detect .` on any project to see them. Namespaces:
 
 `lang:*` `pm:*` `fw:*` `project:*` `platform:*` `db:*` `orm:*` `auth:*` `test:*`
 `ci:*` `infra:*` `api:*` `obs:*` `ai:*` `has:*` `doc:*` `practice:*` `maturity:*`
@@ -269,17 +269,17 @@ Full catalogue: [detectors.md](detectors.md).
 ## Testing your pack
 
 ```bash
-usat rules --section S15        # did it load?
-usat explain MOB-001            # did it parse as intended?
-usat audit . --include stacks/mobile --depth deep
+usa rules --section S15        # did it load?
+usa explain MOB-001            # did it parse as intended?
+usa audit . --include stacks/mobile --depth deep
 ```
 
 A pack with a YAML syntax error is skipped with a warning on stderr — the audit never
 crashes because of a bad rule file.
 
-## Starting from `usat bootstrap`
+## Starting from `usa bootstrap`
 
-For a language with no shipped pack, `usat bootstrap <path> [--out <dir>]`
+For a language with no shipped pack, `usa bootstrap <path> [--out <dir>]`
 drafts a starter pack from the curated catalog (or generic judgement
 prompts for unknown languages). The draft is a proposal, not a verdict —
 see ADR-0012. The acceptance ritual before registering it in
@@ -287,7 +287,7 @@ see ADR-0012. The acceptance ritual before registering it in
 
 1. Read every pattern; delete any that misfires on the target codebase.
 2. Audit one project WITH the problem and one WITHOUT it; both runs must
-   behave (`usat audit --rules-dir` accepts an unregistered pack dir, so
+   behave (`usa audit --rules-dir` accepts an unregistered pack dir, so
    the review never pollutes the shipped registry).
 3. Add FP _and_ FN regression tests to `tests/rules.test.ts`.
 4. Register the reviewed file in `rules/index.yaml` and watch the

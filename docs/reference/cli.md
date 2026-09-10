@@ -4,25 +4,25 @@
 
 Regenerated from the built CLI. If this file disagrees with `--help`, the file is stale — run `node scripts/gen-cli-docs.mjs` and commit.
 
-## `usat --help`
+## `usa --help`
 
 ```
-usat — Universal Software Audit Template
+usa — Universal Software Auditor
 
-  usat audit [path]              Audit a project and write a Markdown report
-  usat detect [path]             Print the auto-detected facts and maturity
-  usat rules [--section S2]      List all loaded rule packs and rules
-  usat explain <RULE-ID>         Show everything about one rule
-  usat diff <before> <after>     Compare two previously generated reports
-  usat init [path]               Scaffold .usat.yaml + a GitHub Actions workflow
-  usat bootstrap [path]          Propose rule packs for stacks USAT cannot audit yet
+  usa audit [path]              Audit a project and write a Markdown report
+  usa detect [path]             Print the auto-detected facts and maturity
+  usa rules [--section S2]      List all loaded rule packs and rules
+  usa explain <RULE-ID>         Show everything about one rule
+  usa diff <before> <after>     Compare two previously generated reports
+  usa init [path]               Scaffold .usa.yaml + a GitHub Actions workflow
+  usa bootstrap [path]          Propose rule packs for stacks USA cannot audit yet
 
 audit options
   --out <file>        Report path (default AUDIT.md)
   --depth <level>     quick | standard | deep          (default standard)
   --profile <stage>   auto | prototype | mvp | beta | production | legacy
   --rules-dir <dir>   Rule pack directory             (default bundled rules/)
-  --config <file>     Explicit .usat.yaml location
+  --config <file>     Explicit .usa.yaml location
   --include <packs>   Force these packs on (comma separated)
   --exclude <packs>   Force these packs off
   --fact <ns:value>   Assert a fact detection missed, e.g. --fact has:database
@@ -34,13 +34,13 @@ bootstrap options
   --out <file|dir>    Write pack files instead of printing (default: print)
 
 examples
-  usat audit . --depth deep
-  usat bootstrap ~/code/legacy-php-app --out /tmp/packs
-  usat audit ../api --profile production --fail-on high
-  usat audit . --out reports/audit-$(date +%F).md
+  usa audit . --depth deep
+  usa bootstrap ~/code/legacy-php-app --out /tmp/packs
+  usa audit ../api --profile production --fail-on high
+  usa audit . --out reports/audit-$(date +%F).md
 ```
 
-## `usat rules`
+## `usa rules`
 
 ```
 
@@ -67,7 +67,7 @@ examples
    REPO-018   LOW      documentation    Agent instruction file present (AGENTS.md / CLAUDE.md)
 
 ## core/security — Security (25 rules)
-   Universal security baseline. Severity is never dampened here below CRITICAL, and security-class rules carry the heaviest multiplier in the score. USAT is not a penetration test — it finds the doors that were left open.
+   Universal security baseline. Severity is never dampened here below CRITICAL, and security-class rules carry the heaviest multiplier in the score. USA is not a penetration test — it finds the doors that were left open.
 
    SEC-001    CRITICAL security         No hardcoded credentials in source
    SEC-002    HIGH     security         Sensitive data is not written to logs
@@ -96,7 +96,7 @@ examples
    SEC-025    HIGH     security         Adaptive password hashing is present where auth exists
 
 ## core/supply-chain — Supply Chain & Build Provenance (17 rules)
-   Promoted to its own section in USAT. You can write perfect code and still ship someone else's backdoor: these controls cover the path from a contributor's editor to the artifact your users run. Aligned with SLSA v1.2, NIST SSDF (SP 800-218), and the OpenSSF Scorecard.
+   Promoted to its own section in USA. You can write perfect code and still ship someone else's backdoor: these controls cover the path from a contributor's editor to the artifact your users run. Aligned with SLSA v1.2, NIST SSDF (SP 800-218), and the OpenSSF Scorecard.
 
    SUP-001    HIGH     supply-chain     A lockfile is committed
    SUP-002    MEDIUM   supply-chain     CI installs with a frozen lockfile
@@ -117,7 +117,7 @@ examples
    SUP-017    FUTURE   supply-chain     Build pipeline is reproducible from source
 
 ## core/architecture — Architecture & Design (10 rules)
-   Structure, boundaries, and the decisions behind them. Mostly judgement — USAT automates the parts that show up as files and flags the rest for review rather than pretending a regex can measure coupling.
+   Structure, boundaries, and the decisions behind them. Mostly judgement — USA automates the parts that show up as files and flags the rest for review rather than pretending a regex can measure coupling.
 
    ARCH-001   MEDIUM   documentation    Architecture is documented
    ARCH-002   LOW      documentation    Architecture decisions are recorded (ADRs)
@@ -148,7 +148,7 @@ examples
    CQ-013     FUTURE   maintainability  Complexity is measured
 
 ## core/testing — Testing & Quality Assurance (12 rules)
-   Coverage is a weak proxy for confidence; USAT separates "tests exist", "tests run in CI", and "tests actually cover the paths that matter".
+   Coverage is a weak proxy for confidence; USA separates "tests exist", "tests run in CI", and "tests actually cover the paths that matter".
 
    TEST-001   HIGH     correctness      A test suite exists
    TEST-002   HIGH     operations       Tests run in CI on every pull request
@@ -191,7 +191,7 @@ examples
    REL-007    MEDIUM   operations       There is a documented incident/runbook path
 
 ## core/dependencies — Dependencies & Third-Party (8 rules)
-   Every dependency is a bet on someone else's maintenance discipline. USAT scores the observable parts and hands the rest to review.
+   Every dependency is a bet on someone else's maintenance discipline. USA scores the observable parts and hands the rest to review.
 
    DEP-001    MEDIUM   supply-chain     Dependencies are declared in a manifest
    DEP-002    HIGH     supply-chain     No known-HIGH/CRITICAL vulnerabilities in dependencies
@@ -203,7 +203,7 @@ examples
    DEP-008    HIGH     security         Webhook payloads are signature-verified
 
 ## core/documentation — Documentation & Knowledge (7 rules)
-   Documentation is the only part of the system that ships to every future maintainer. USAT checks the artefacts exist and then asks whether they are true.
+   Documentation is the only part of the system that ships to every future maintainer. USA checks the artefacts exist and then asks whether they are true.
 
    DOC-001    MEDIUM   documentation    README covers what / install / run / contribute
    DOC-002    MEDIUM   documentation    Setup instructions have been verified recently
@@ -325,7 +325,7 @@ examples
    IAC-007    HIGH     security         Kubernetes manifests avoid privileged containers
 
 ## stacks/solidity — Blockchain / Smart Contracts (10 rules)
-   Activated when Solidity, Foundry, or Hardhat is detected. USAT is not a substitute for a third-party audit.
+   Activated when Solidity, Foundry, or Hardhat is detected. USA is not a substitute for a third-party audit.
    SOLID-001  CRITICAL security         Contracts are protected against reentrancy
    SOLID-002  HIGH     security         Compiler version is 0.8+ (or SafeMath is used)
    SOLID-003  CRITICAL security         Access control is explicit on privileged functions
@@ -384,7 +384,7 @@ examples
    API-008    LOW      operations       Health and readiness endpoints are unauthenticated but minimal
 
 ## stacks/compliance — Accessibility, i18n & Compliance (10 rules)
-   Accessibility, internationalisation, and regulatory obligations. Most of these are judgement calls — USAT records what it can and asks for evidence on the rest.
+   Accessibility, internationalisation, and regulatory obligations. Most of these are judgement calls — USA records what it can and asks for evidence on the rest.
 
    COMP-001   MEDIUM   compliance       Interactive elements are keyboard accessible
    COMP-002   MEDIUM   compliance       Form inputs have associated labels
@@ -398,7 +398,7 @@ examples
    COMP-010   LOW      compliance       Source files carry an SPDX license identifier
 
 ## stacks/ai-era — AI / LLM-Era Risks (12 rules)
-   New in USAT. Your application may be deterministic while depending on a component that is not. Mapped to the OWASP Top 10 for LLM Applications (2026) and the OWASP Top 10 for Agentic AI (ASI, 2026).
+   New in USA. Your application may be deterministic while depending on a component that is not. Mapped to the OWASP Top 10 for LLM Applications (2026) and the OWASP Top 10 for Agentic AI (ASI, 2026).
 
    AI-001     CRITICAL security         Untrusted content cannot override instructions
    AI-002     CRITICAL security         Model output is validated before it is executed
