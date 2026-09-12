@@ -59,6 +59,14 @@ export interface AuditOptions {
   /** Indexing caps for bigger-than-comfortable trees (CLI wins over config). */
   maxFiles?: number;
   maxBytes?: number;
+  /**
+   * Extra rule packs merged into the loaded set for this run only. This is how
+   * the evolution layer injects a *released* capability into a re-audit without
+   * mutating the on-disk `rules/` registry — the resolved capability set lives
+   * in `capabilitySetId`, not in the filesystem. The CLI never passes this, so
+   * `usa audit` behaviour is unchanged.
+   */
+  extraPacks?: RulePack[];
 }
 
 export interface AuditOutcome {
@@ -85,6 +93,8 @@ export function runAudit(options: AuditOptions): AuditOutcome {
 
   const { packs, warnings: packWarnings } = loadRulePacks(opts.rulesDir);
   warnings.push(...packWarnings);
+
+  mergeExtraPacks(packs, options.extraPacks);
 
   const { disabled, overrides } = collectRuleSettings(config, warnings);
   applyRuleOverrides(packs, overrides);
@@ -147,6 +157,23 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   );
 
   return { report, warnings, profile };
+}
+
+/**
+ * Merges an additional capability set into the loaded packs for a single run.
+ * A pack id already present in the base registry wins (the registry is the
+ * source of truth); duplicate ids from `extraPacks` are dropped silently so a
+ * released capability cannot shadow a shipped one.
+ */
+function mergeExtraPacks(packs: RulePack[], extra: RulePack[] | undefined): void {
+  if (!extra || extra.length === 0) return;
+  const seen = new Set(packs.map((p) => p.id));
+  for (const p of extra) {
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      packs.push(p);
+    }
+  }
 }
 
 function normalizeAuditOptions(options: AuditOptions, config: UsaConfig) {
