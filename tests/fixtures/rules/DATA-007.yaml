@@ -1,0 +1,14 @@
+rule: DATA-007
+negative:
+  files:
+    src/payments.ts: |
+      await db.$transaction(async (tx) => {
+        await tx.debit(a);
+        await tx.credit(b);
+      });
+positive:
+  files:
+    src/payments.ts: |
+      await db.debit(a);
+      await db.credit(b);
+  expect: MISSING

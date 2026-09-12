@@ -1,0 +1,10 @@
+rule: SEC-011
+negative:
+  files:
+    src/hash.ts: |
+      const h = crypto.createHash('sha512');
+positive:
+  files:
+    src/hash.ts: |
+      const h = crypto.createHash('sha256');
+  expect: FAIL

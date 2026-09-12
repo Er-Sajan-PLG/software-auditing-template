@@ -1,0 +1,10 @@
+rule: RS-005
+negative:
+  files:
+    src/lib.rs: |
+      pub fn run() -> u32 { 0 }
+positive:
+  files:
+    src/lib.rs: |
+      pub fn run() -> u32 { todo!() }
+  expect: WRONG

@@ -1,0 +1,23 @@
+rule: SUP-009
+negative:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      on: [push]
+      permissions: read-all
+      jobs:
+        build:
+          runs-on: ubuntu-latest
+          steps:
+            - run: echo ok
+positive:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      on: [push]
+      jobs:
+        build:
+          runs-on: ubuntu-latest
+          steps:
+            - run: echo ok
+  expect: MISSING

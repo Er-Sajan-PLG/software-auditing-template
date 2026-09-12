@@ -1,0 +1,10 @@
+rule: REPO-014
+negative:
+  files:
+    .github/CODEOWNERS: |
+      * @maintainer
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

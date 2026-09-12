@@ -1,0 +1,10 @@
+rule: SUP-001
+negative:
+  files:
+    package-lock.json: |
+      { "lockfileVersion": 3 }
+positive:
+  files:
+    package.json: |
+      { "name": "app" }
+  expect: MISSING

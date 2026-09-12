@@ -1,0 +1,10 @@
+rule: SEC-002
+negative:
+  files:
+    src/logger.ts: |
+      console.log('user authenticated');
+positive:
+  files:
+    src/logger.ts: |
+      console.log('password: ' + password);
+  expect: WRONG

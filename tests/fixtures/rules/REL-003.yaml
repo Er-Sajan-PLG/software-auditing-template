@@ -1,0 +1,14 @@
+rule: REL-003
+negative:
+  files:
+    .github/workflows/release.yml: |
+      name: Release
+      jobs:
+        notes:
+          steps:
+            - run: gh release create "$TAG" --generate-notes
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

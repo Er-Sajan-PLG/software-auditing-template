@@ -1,0 +1,10 @@
+rule: DATA-005
+negative:
+  files:
+    src/users.ts: |
+      const rows = await db.user.findMany({ take: 50 });
+positive:
+  files:
+    src/users.ts: |
+      const rows = await db.user.findMany({});
+  expect: MISSING

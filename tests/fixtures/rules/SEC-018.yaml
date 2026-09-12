@@ -1,0 +1,12 @@
+rule: SEC-018
+negative:
+  files:
+    src/app.ts: |
+      import helmet from 'helmet';
+      app.use(helmet());
+positive:
+  files:
+    src/app.ts: |
+      import express from 'express';
+      const app = express();
+  expect: MISSING

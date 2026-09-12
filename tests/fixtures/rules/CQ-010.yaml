@@ -1,0 +1,11 @@
+rule: CQ-010
+negative:
+  files:
+    src/index.ts: |
+      export function add(a: number, b: number) { return a + b; }
+positive:
+  files:
+    src/index.ts: |
+      // TODO: handle the error case properly
+      export const x = 1;
+  expect: WRONG

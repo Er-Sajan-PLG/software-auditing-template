@@ -1,0 +1,11 @@
+rule: REPO-004
+negative:
+  files:
+    README.md: |
+      # Project
+      Usage and docs.
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

@@ -1,0 +1,10 @@
+rule: RS-003
+negative:
+  files:
+    src/lib.rs: |
+      pub fn add(a: i32, b: i32) -> i32 { a + b }
+positive:
+  files:
+    src/lib.rs: |
+      pub fn read(p: *const u8) -> u8 { unsafe { *p } }
+  expect: WRONG

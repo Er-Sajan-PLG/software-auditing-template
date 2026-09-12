@@ -1,0 +1,10 @@
+rule: DATA-006
+negative:
+  files:
+    src/db.ts: |
+      const pool = new Pool({ max: 10 });
+positive:
+  files:
+    src/db.ts: |
+      const client = createClient(databaseUrl);
+  expect: MISSING

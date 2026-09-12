@@ -1,0 +1,10 @@
+rule: DATA-008
+negative:
+  files:
+    src/repos.sql: |
+      SELECT id, name FROM accounts;
+positive:
+  files:
+    src/repos.sql: |
+      SELECT * FROM accounts;
+  expect: WRONG

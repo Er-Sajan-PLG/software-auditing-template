@@ -1,0 +1,18 @@
+rule: RS-004
+negative:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      jobs:
+        lint:
+          steps:
+            - run: cargo clippy -- -D warnings
+positive:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      jobs:
+        build:
+          steps:
+            - run: cargo build
+  expect: MISSING

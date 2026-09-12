@@ -1,0 +1,14 @@
+rule: SUP-011
+negative:
+  files:
+    .github/workflows/deploy.yml: |
+      name: Deploy
+      env:
+        API_KEY: ${{ secrets.API_KEY }}
+positive:
+  files:
+    .github/workflows/deploy.yml: |
+      name: Deploy
+      env:
+        API_KEY: placeholder-token-0123456789
+  expect: FAIL

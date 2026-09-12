@@ -1,0 +1,10 @@
+rule: SW-002
+negative:
+  files:
+    Sources/App/AppTransport.swift: |
+      let allowsArbitraryLoads = false
+positive:
+  files:
+    Sources/App/AppTransport.swift: |
+      let key = "NSAllowsArbitraryLoads"
+  expect: WRONG

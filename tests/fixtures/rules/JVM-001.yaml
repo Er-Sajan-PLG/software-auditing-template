@@ -1,0 +1,16 @@
+rule: JVM-001
+negative:
+  files:
+    build.gradle: |
+      dependencies {
+        constraints {
+          implementation "org.example:lib:1.0.0"
+        }
+      }
+positive:
+  files:
+    build.gradle: |
+      plugins {
+        id "java"
+      }
+  expect: MISSING

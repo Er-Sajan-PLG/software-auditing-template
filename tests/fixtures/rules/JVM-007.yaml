@@ -1,0 +1,10 @@
+rule: JVM-007
+negative:
+  files:
+    src/main/java/com/example/Json.java: |
+      ObjectMapper mapper = new ObjectMapper();
+positive:
+  files:
+    src/main/java/com/example/Json.java: |
+      ObjectInputStream ois = new ObjectInputStream(input);
+  expect: FAIL

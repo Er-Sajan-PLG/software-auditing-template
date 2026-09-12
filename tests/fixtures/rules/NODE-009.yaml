@@ -1,0 +1,16 @@
+rule: NODE-009
+negative:
+  files:
+    package.json: |
+      {
+        "name": "app",
+        "scripts": { "test": "vitest run" }
+      }
+positive:
+  files:
+    package.json: |
+      {
+        "name": "app",
+        "scripts": { "start": "node index.js" }
+      }
+  expect: MISSING

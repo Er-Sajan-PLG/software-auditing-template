@@ -1,0 +1,12 @@
+rule: PY-001
+negative:
+  files:
+    pyproject.toml: |
+      [project]
+      name = "app"
+      dependencies = ["fastapi==0.115.0"]
+positive:
+  files:
+    main.py: |
+      print("hello")
+  expect: MISSING

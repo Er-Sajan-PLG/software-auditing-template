@@ -1,0 +1,18 @@
+rule: SUP-016
+negative:
+  files:
+    .github/workflows/publish.yml: |
+      name: Publish
+      jobs:
+        scan:
+          steps:
+            - run: trivy image myapp:latest
+positive:
+  files:
+    .github/workflows/publish.yml: |
+      name: Publish
+      jobs:
+        build:
+          steps:
+            - run: echo ok
+  expect: MISSING

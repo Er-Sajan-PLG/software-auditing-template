@@ -1,0 +1,10 @@
+rule: DOC-006
+negative:
+  files:
+    docs/ONBOARDING.md: |
+      # Onboarding
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

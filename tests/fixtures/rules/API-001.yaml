@@ -1,0 +1,10 @@
+rule: API-001
+negative:
+  files:
+    src/routes.ts: |
+      app.use('/api/v1/users', usersRouter);
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

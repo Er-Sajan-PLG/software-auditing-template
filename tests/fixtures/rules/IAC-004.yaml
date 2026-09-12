@@ -1,0 +1,16 @@
+rule: IAC-004
+negative:
+  files:
+    infra/backend.tf: |
+      terraform {
+        backend "s3" {
+          bucket = "state"
+        }
+      }
+positive:
+  files:
+    infra/backend.tf: |
+      terraform {
+        required_version = ">= 1.5"
+      }
+  expect: MISSING

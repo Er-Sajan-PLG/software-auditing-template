@@ -1,0 +1,10 @@
+rule: SOLID-004
+negative:
+  files:
+    contracts/Token.sol: |
+      require(msg.sender == owner);
+positive:
+  files:
+    contracts/Token.sol: |
+      require(tx.origin == owner);
+  expect: FAIL

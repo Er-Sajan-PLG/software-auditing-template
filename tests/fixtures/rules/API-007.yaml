@@ -1,0 +1,10 @@
+rule: API-007
+negative:
+  files:
+    src/graphql.ts: |
+      const server = new ApolloServer({ validationRules: [depthLimit(10)] });
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

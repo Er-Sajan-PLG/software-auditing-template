@@ -1,0 +1,16 @@
+rule: GO-001
+negative:
+  files:
+    go.mod: |
+      module example.com/app
+
+      go 1.22
+
+      require github.com/pkg/errors v0.9.1
+positive:
+  files:
+    go.mod: |
+      module example.com/app
+
+      require github.com/pkg/errors v0.9.1
+  expect: MISSING

@@ -1,0 +1,11 @@
+rule: NODE-006
+negative:
+  files:
+    src/env.ts: |
+      import { z } from 'zod';
+      export const env = zod.object({ PORT: zod.string() }).parse(process.env);
+positive:
+  files:
+    src/env.ts: |
+      export const port = Number(process.env.PORT);
+  expect: MISSING

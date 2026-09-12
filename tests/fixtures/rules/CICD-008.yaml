@@ -1,0 +1,11 @@
+rule: CICD-008
+negative:
+  files:
+    src/monitoring.ts: |
+      import * as Sentry from '@sentry/node';
+      Sentry.init({ dsn: process.env.SENTRY_DSN });
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

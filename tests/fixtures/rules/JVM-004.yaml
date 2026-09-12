@@ -1,0 +1,10 @@
+rule: JVM-004
+negative:
+  files:
+    src/main/java/com/example/Repo.java: |
+      String query = "SELECT id FROM users WHERE id = ?";
+positive:
+  files:
+    src/main/java/com/example/Repo.java: |
+      String query = "SELECT * FROM users WHERE id = " + userId;
+  expect: FAIL

@@ -1,0 +1,18 @@
+rule: IAC-003
+negative:
+  files:
+    .github/workflows/iac.yml: |
+      name: IaC
+      jobs:
+        validate:
+          steps:
+            - run: tflint --recursive
+positive:
+  files:
+    .github/workflows/iac.yml: |
+      name: IaC
+      jobs:
+        build:
+          steps:
+            - run: echo ok
+  expect: MISSING

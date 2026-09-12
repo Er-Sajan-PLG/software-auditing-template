@@ -1,0 +1,14 @@
+rule: PY-002
+negative:
+  files:
+    pyproject.toml: |
+      [project]
+      name = "app"
+      requires-python = ">=3.12"
+positive:
+  files:
+    pyproject.toml: |
+      [project]
+      name = "app"
+      version = "0.1.0"
+  expect: MISSING

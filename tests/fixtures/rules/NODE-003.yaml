@@ -1,0 +1,10 @@
+rule: NODE-003
+negative:
+  files:
+    src/index.ts: |
+      process.on('unhandledRejection', (reason) => { console.error(reason); });
+positive:
+  files:
+    src/index.ts: |
+      export const start = () => 0;
+  expect: MISSING

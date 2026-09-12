@@ -1,0 +1,10 @@
+rule: SEC-013
+negative:
+  files:
+    src/jwt.ts: |
+      jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+positive:
+  files:
+    src/jwt.ts: |
+      jwt.verify(token, secret, { algorithms: ['none'] });
+  expect: FAIL

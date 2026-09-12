@@ -1,0 +1,13 @@
+rule: RS-007
+negative:
+  files:
+    Cargo.toml: |
+      [profile.release]
+      lto = true
+      strip = true
+positive:
+  files:
+    Cargo.toml: |
+      [package]
+      name = "app"
+  expect: MISSING

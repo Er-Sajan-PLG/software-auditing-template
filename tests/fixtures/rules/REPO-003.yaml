@@ -1,0 +1,8 @@
+rule: REPO-003
+# command-kind rule: with allowCommands disabled (the safe default) the engine
+# deterministically reports UNKNOWN, so only the fail-closed path is asserted.
+positive:
+  files:
+    .gitignore: |
+      node_modules/
+  expect: UNKNOWN

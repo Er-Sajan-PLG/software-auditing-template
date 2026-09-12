@@ -1,0 +1,15 @@
+rule: NODE-001
+negative:
+  files:
+    package.json: |
+      {
+        "name": "app",
+        "engines": { "node": ">=20" }
+      }
+positive:
+  files:
+    package.json: |
+      {
+        "name": "app"
+      }
+  expect: MISSING

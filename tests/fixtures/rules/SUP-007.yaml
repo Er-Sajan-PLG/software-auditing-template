@@ -1,0 +1,18 @@
+rule: SUP-007
+negative:
+  files:
+    .github/workflows/secrets.yml: |
+      name: Secrets
+      jobs:
+        scan:
+          steps:
+            - run: gitleaks detect
+positive:
+  files:
+    .github/workflows/secrets.yml: |
+      name: CI
+      jobs:
+        build:
+          steps:
+            - run: echo ok
+  expect: MISSING

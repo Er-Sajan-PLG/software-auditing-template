@@ -1,0 +1,18 @@
+rule: GO-007
+negative:
+  files:
+    src/db.go: |
+      package db
+
+      func Get(id string) {
+        db.Query("SELECT id FROM users WHERE id = ?", id)
+      }
+positive:
+  files:
+    src/db.go: |
+      package db
+
+      func Get(id string) {
+        db.Query("SELECT id FROM users WHERE id = " + id)
+      }
+  expect: FAIL

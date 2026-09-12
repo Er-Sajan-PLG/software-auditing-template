@@ -1,0 +1,10 @@
+rule: SW-001
+negative:
+  files:
+    Sources/App/Decode.swift: |
+      let value = try? JSONDecoder().decode(T.self, from: data)
+positive:
+  files:
+    Sources/App/Decode.swift: |
+      let pattern = NSRegularExpression(pattern: "try!\s")
+  expect: WRONG

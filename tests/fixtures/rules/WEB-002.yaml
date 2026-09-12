@@ -1,0 +1,10 @@
+rule: WEB-002
+negative:
+  files:
+    src/App.tsx: |
+      const Chart = React.lazy(() => import('./Chart'));
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

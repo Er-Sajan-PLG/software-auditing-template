@@ -1,0 +1,11 @@
+rule: SEC-003
+negative:
+  files:
+    src/config.ts: |
+      export const baseUrl = 'https://api.example.com/v1';
+      export const health = 'http://localhost:3000';
+positive:
+  files:
+    src/config.ts: |
+      export const baseUrl = 'http://api.example.com/v1';
+  expect: FAIL

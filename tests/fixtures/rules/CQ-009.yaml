@@ -1,0 +1,10 @@
+rule: CQ-009
+negative:
+  files:
+    src/index.ts: |
+      logger.info('started');
+positive:
+  files:
+    src/index.ts: |
+      console.log('debug value', value);
+  expect: FAIL

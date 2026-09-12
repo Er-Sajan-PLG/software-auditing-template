@@ -1,0 +1,10 @@
+rule: CQ-005
+negative:
+  files:
+    src/index.ts: |
+      try { work(); } catch (e) { log(e); }
+positive:
+  files:
+    src/index.ts: |
+      try { work(); } catch (e) {}
+  expect: FAIL

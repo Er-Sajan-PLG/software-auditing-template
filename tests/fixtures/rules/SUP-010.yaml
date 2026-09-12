@@ -1,0 +1,18 @@
+rule: SUP-010
+negative:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      jobs:
+        build:
+          steps:
+            - uses: actions/checkout@v4
+positive:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      jobs:
+        build:
+          steps:
+            - uses: actions/checkout@main
+  expect: FAIL

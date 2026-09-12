@@ -1,0 +1,11 @@
+rule: AI-005
+negative:
+  files:
+    src/client.py: >
+      response = client.chat.completions.create(model="m", messages=[],
+      max_tokens=256)
+positive:
+  files:
+    src/client.py: |
+      response = client.chat.completions.create(model="m", messages=[])
+  expect: MISSING

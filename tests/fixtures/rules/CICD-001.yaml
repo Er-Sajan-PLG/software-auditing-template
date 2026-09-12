@@ -1,0 +1,10 @@
+rule: CICD-001
+negative:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

@@ -1,0 +1,10 @@
+rule: REPO-010
+negative:
+  files:
+    CHANGELOG.md: |
+      # Changelog
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

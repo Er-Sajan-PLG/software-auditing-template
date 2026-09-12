@@ -1,0 +1,12 @@
+rule: ML-001
+negative:
+  files:
+    ml/train.py: |
+      import dvc.api
+
+      data = load_dataset()
+positive:
+  files:
+    ml/train.py: |
+      data = load_csv("raw.csv")
+  expect: MISSING

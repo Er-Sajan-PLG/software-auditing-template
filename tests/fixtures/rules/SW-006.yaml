@@ -1,0 +1,10 @@
+rule: SW-006
+negative:
+  files:
+    Sources/App/configure.swift: |
+      app.use(SecurityHeadersMiddleware())
+positive:
+  files:
+    Sources/App/configure.swift: |
+      app.use(RouteLoggingMiddleware())
+  expect: MISSING

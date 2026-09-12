@@ -1,0 +1,11 @@
+rule: SOLID-008
+negative:
+  files:
+    contracts/Token.sol: |
+      import "@openzeppelin/contracts/security/Pausable.sol";
+      contract Token is Pausable {}
+positive:
+  files:
+    contracts/Token.sol: |
+      contract Token {}
+  expect: MISSING

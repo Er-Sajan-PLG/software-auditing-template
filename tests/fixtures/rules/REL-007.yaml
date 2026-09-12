@@ -1,0 +1,11 @@
+rule: REL-007
+negative:
+  files:
+    docs/RUNBOOK.md: |
+      # Runbook
+      How to respond to incidents.
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

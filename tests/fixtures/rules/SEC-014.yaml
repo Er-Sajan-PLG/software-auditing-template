@@ -1,0 +1,11 @@
+rule: SEC-014
+negative:
+  files:
+    src/app.ts: |
+      import rateLimit from 'express-rate-limit';
+positive:
+  files:
+    src/app.ts: |
+      import express from 'express';
+      const app = express();
+  expect: MISSING

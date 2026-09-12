@@ -1,0 +1,10 @@
+rule: REPO-012
+negative:
+  files:
+    CODE_OF_CONDUCT.md: |
+      # Code of Conduct
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

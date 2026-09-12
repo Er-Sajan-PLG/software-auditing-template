@@ -1,0 +1,14 @@
+rule: IAC-002
+negative:
+  files:
+    infra/storage.tf: |
+      resource "aws_db_instance" "db" {
+        storage_encrypted = true
+      }
+positive:
+  files:
+    infra/storage.tf: |
+      resource "aws_db_instance" "db" {
+        storage_encrypted = false
+      }
+  expect: MISSING

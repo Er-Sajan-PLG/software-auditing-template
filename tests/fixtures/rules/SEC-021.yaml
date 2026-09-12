@@ -1,0 +1,10 @@
+rule: SEC-021
+negative:
+  files:
+    src/id.ts: |
+      const id = crypto.randomUUID();
+positive:
+  files:
+    src/id.ts: |
+      const id = Math.random().toString(36);
+  expect: WRONG

@@ -1,0 +1,12 @@
+rule: PY-009
+negative:
+  files:
+    src/api.py: |
+      def greet(name: str) -> str:
+          return f"hello {name}"
+positive:
+  files:
+    src/api.py: |
+      def greet(name):
+          return f"hello {name}"
+  expect: MISSING

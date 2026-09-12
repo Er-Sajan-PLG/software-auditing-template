@@ -1,0 +1,11 @@
+rule: COMP-010
+negative:
+  files:
+    src/index.ts: |
+      // SPDX-License-Identifier: MIT
+      export const x = 1;
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

@@ -1,0 +1,5 @@
+rule: ARCH-003
+negative:
+  files:
+    src/small.ts: |
+      export const a = 1;

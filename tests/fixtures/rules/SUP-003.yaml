@@ -1,0 +1,14 @@
+rule: SUP-003
+negative:
+  files:
+    package.json: |
+      {
+        "dependencies": { "left-pad": "1.3.0" }
+      }
+positive:
+  files:
+    package.json: |
+      {
+        "dependencies": { "left-pad": "1.x" }
+      }
+  expect: FAIL

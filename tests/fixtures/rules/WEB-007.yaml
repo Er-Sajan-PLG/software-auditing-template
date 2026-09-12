@@ -1,0 +1,10 @@
+rule: WEB-007
+negative:
+  files:
+    src/config.ts: |
+      const publicUrl = process.env.NEXT_PUBLIC_API_URL;
+positive:
+  files:
+    src/config.ts: |
+      const token = process.env.NEXT_PUBLIC_TOKEN;
+  expect: WRONG

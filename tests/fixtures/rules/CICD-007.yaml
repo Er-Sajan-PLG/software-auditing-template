@@ -1,0 +1,10 @@
+rule: CICD-007
+negative:
+  files:
+    src/app.ts: |
+      app.get('/health', (req, res) => res.json({ ok: true }));
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

@@ -1,0 +1,10 @@
+rule: REPO-018
+negative:
+  files:
+    AGENTS.md: |
+      # Agent instructions
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

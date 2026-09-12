@@ -1,0 +1,18 @@
+rule: IAC-007
+negative:
+  files:
+    k8s/pod.yaml: |
+      spec:
+        containers:
+          - name: app
+            securityContext:
+              privileged: false
+positive:
+  files:
+    k8s/pod.yaml: |
+      spec:
+        containers:
+          - name: app
+            securityContext:
+              privileged: true
+  expect: FAIL

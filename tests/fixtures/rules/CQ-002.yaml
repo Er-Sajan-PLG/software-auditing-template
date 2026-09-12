@@ -1,0 +1,10 @@
+rule: CQ-002
+negative:
+  files:
+    .prettierrc: |
+      { "singleQuote": true }
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

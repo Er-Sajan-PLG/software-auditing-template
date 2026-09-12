@@ -1,0 +1,8 @@
+rule: DEP-002
+positive:
+  files:
+    package.json: |
+      {
+        "name": "app"
+      }
+  expect: UNKNOWN

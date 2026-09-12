@@ -1,0 +1,10 @@
+rule: SEC-004
+negative:
+  files:
+    src/http.ts: |
+      const agent = new https.Agent({ rejectUnauthorized: true });
+positive:
+  files:
+    src/http.ts: |
+      const agent = new https.Agent({ rejectUnauthorized: false });
+  expect: FAIL

@@ -1,0 +1,5 @@
+rule: ML-009
+negative:
+  files:
+    notes.txt: |
+      model artifacts live in object storage

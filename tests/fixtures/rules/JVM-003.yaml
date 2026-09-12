@@ -1,0 +1,26 @@
+rule: JVM-003
+negative:
+  files:
+    src/main/java/com/example/Service.java: |
+      package com.example;
+
+      public class Service {
+        public void run() {
+          try {
+            work();
+          } catch (Exception e) {
+            log.error("failed", e);
+          }
+        }
+      }
+positive:
+  files:
+    src/main/java/com/example/Service.java: |
+      package com.example;
+
+      public class Service {
+        public void run() {
+          try { work(); } catch (Exception e) { }
+        }
+      }
+  expect: WRONG

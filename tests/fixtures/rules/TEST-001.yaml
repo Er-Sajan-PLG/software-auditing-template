@@ -1,0 +1,10 @@
+rule: TEST-001
+negative:
+  files:
+    tests/app.test.ts: |
+      import { describe, it, expect } from 'vitest';
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

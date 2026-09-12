@@ -1,0 +1,7 @@
+rule: ARCH-005
+# command-kind rule: fails closed to UNKNOWN when commands are disabled.
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: UNKNOWN

@@ -1,0 +1,11 @@
+rule: CQ-004
+negative:
+  files:
+    src/index.ts: |
+      const value: string = "hello";
+positive:
+  files:
+    src/index.ts: |
+      // @ts-ignore
+      const value = externalThing;
+  expect: FAIL

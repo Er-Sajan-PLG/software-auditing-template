@@ -1,0 +1,10 @@
+rule: TEST-004
+negative:
+  files:
+    package.json: |
+      { "scripts": { "test": "vitest run --coverage" } }
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

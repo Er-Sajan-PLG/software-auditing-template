@@ -1,0 +1,10 @@
+rule: COMP-004
+negative:
+  files:
+    src/i18n.ts: |
+      import i18next from 'i18next';
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

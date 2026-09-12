@@ -1,0 +1,10 @@
+rule: SEC-005
+negative:
+  files:
+    src/db.ts: |
+      const rows = db.query("SELECT id FROM users WHERE id = ?", [userId]);
+positive:
+  files:
+    src/db.ts: |
+      const rows = db.query("SELECT id FROM users WHERE id = " + userId);
+  expect: WRONG

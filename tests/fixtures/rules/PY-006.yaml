@@ -1,0 +1,10 @@
+rule: PY-006
+negative:
+  files:
+    src/load.py: |
+      data = yaml.safe_load(text)
+positive:
+  files:
+    src/load.py: |
+      data = yaml.load(text)
+  expect: FAIL

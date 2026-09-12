@@ -1,0 +1,10 @@
+rule: WEB-001
+negative:
+  files:
+    src/vitals.ts: |
+      import { onLCP, onCLS, onINP } from 'web-vitals';
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

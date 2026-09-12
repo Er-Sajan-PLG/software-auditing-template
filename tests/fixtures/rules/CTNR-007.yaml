@@ -1,0 +1,19 @@
+rule: CTNR-007
+negative:
+  files:
+    k8s/deployment.yaml: |
+      spec:
+        containers:
+          - name: web
+            image: web:1.0
+            resources:
+              limits:
+                memory: 256Mi
+positive:
+  files:
+    k8s/deployment.yaml: |
+      spec:
+        containers:
+          - name: web
+            image: web:1.0
+  expect: MISSING

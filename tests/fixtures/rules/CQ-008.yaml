@@ -1,0 +1,10 @@
+rule: CQ-008
+negative:
+  files:
+    src/log.ts: |
+      const traceId = req.headers['x-request-id'];
+positive:
+  files:
+    src/log.ts: |
+      export const x = 1;
+  expect: MISSING

@@ -1,0 +1,18 @@
+rule: SUP-006
+negative:
+  files:
+    .github/workflows/sast.yml: |
+      name: SAST
+      jobs:
+        scan:
+          steps:
+            - uses: github/codeql-action/analyze@v3
+positive:
+  files:
+    .github/workflows/sast.yml: |
+      name: CI
+      jobs:
+        build:
+          steps:
+            - run: echo ok
+  expect: MISSING

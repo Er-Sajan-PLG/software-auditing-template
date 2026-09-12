@@ -1,0 +1,10 @@
+rule: ARCH-001
+negative:
+  files:
+    docs/ARCHITECTURE.md: |
+      # Architecture
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

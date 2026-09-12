@@ -1,0 +1,14 @@
+rule: RS-001
+negative:
+  files:
+    Cargo.toml: |
+      [package]
+      name = "app"
+      edition = "2021"
+positive:
+  files:
+    Cargo.toml: |
+      [package]
+      name = "app"
+      version = "0.1.0"
+  expect: MISSING

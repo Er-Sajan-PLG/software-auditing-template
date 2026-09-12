@@ -1,0 +1,12 @@
+rule: CTNR-004
+negative:
+  files:
+    .dockerignore: |
+      node_modules
+      dist
+      .git
+positive:
+  files:
+    Dockerfile: |
+      FROM node:20-slim
+  expect: MISSING

@@ -1,0 +1,13 @@
+rule: CTNR-005
+negative:
+  files:
+    Dockerfile: |
+      FROM node:20-slim
+      ENV NODE_ENV=production
+      RUN npm ci
+positive:
+  files:
+    Dockerfile: |
+      FROM node:20-slim
+      ENV API_KEY=EXAMPLE_ACCESS_KEY_0123456789
+  expect: FAIL

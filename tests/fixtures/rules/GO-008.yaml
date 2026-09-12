@@ -1,0 +1,16 @@
+rule: GO-008
+negative:
+  files:
+    internal/server.go: |
+      package server
+
+      import "time"
+
+      var srv = &http.Server{ReadHeaderTimeout: 5 * time.Second}
+positive:
+  files:
+    internal/server.go: |
+      package server
+
+      var srv = &http.Server{Addr: ":8080"}
+  expect: MISSING

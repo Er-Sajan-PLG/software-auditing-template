@@ -1,0 +1,10 @@
+rule: WEB-005
+negative:
+  files:
+    package.json: |
+      { "devDependencies": { "webpack-bundle-analyzer": "^4.0.0" } }
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

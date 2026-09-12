@@ -1,0 +1,10 @@
+rule: SEC-007
+negative:
+  files:
+    scripts/run.py: |
+      subprocess.run(['ls', '-la'], check=True)
+positive:
+  files:
+    app/exec.py: |
+      subprocess.run(f"ls {path}", shell=True)
+  expect: WRONG

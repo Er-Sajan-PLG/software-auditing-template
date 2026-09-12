@@ -21,9 +21,10 @@ Items graduate to ADRs when decided and to `CHANGELOG.md` when shipped.
 - [ ] **SARIF + JSON renderers** — findings already carry file/line/severity/
       rule identity; add renderers so USA composes with dashboards and code
       scanning. Engine unchanged. _(S)_
-- [ ] **Per-rule expected-finding fixtures** — positive/negative fixture per
+- [x] **Per-rule expected-finding fixtures** — positive/negative fixture per
       rule run in CI (`codeql test` model). Rule packs are the highest FP/FN
-      risk in the system; fixtures catch silent rule rot. _(S)_
+      risk in the system; fixtures catch silent rule rot. _(shipped — 174
+      automatable rules fixtured, coverage gate blocks untested rules; ADR-0017)_
 - [ ] **Oracle-ingestion check kinds** — `evidence: { source: sarif|json }`
       for coverage numbers, CVE counts, attestation verification. Opt-in,
       offline-by-default preserved. _(M)_

@@ -1,0 +1,18 @@
+rule: SUP-013
+negative:
+  files:
+    .github/workflows/release.yml: |
+      name: Release
+      jobs:
+        build:
+          steps:
+            - uses: actions/attest-build-provenance@v1
+positive:
+  files:
+    .github/workflows/release.yml: |
+      name: Release
+      jobs:
+        build:
+          steps:
+            - run: echo ok
+  expect: MISSING

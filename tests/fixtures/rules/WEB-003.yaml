@@ -1,0 +1,10 @@
+rule: WEB-003
+negative:
+  files:
+    src/Hero.tsx: |
+      import Image from 'next/image';
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

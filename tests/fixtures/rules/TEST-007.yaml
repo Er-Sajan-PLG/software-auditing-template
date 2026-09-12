@@ -1,0 +1,10 @@
+rule: TEST-007
+negative:
+  files:
+    playwright.config.ts: |
+      export default { testDir: 'e2e' };
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

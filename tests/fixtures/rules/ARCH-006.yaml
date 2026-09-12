@@ -1,0 +1,10 @@
+rule: ARCH-006
+negative:
+  files:
+    .eslintrc.json: |
+      { "rules": { "import/no-cycle": "error" } }
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

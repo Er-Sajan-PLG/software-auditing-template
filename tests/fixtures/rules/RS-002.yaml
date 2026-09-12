@@ -1,0 +1,14 @@
+rule: RS-002
+negative:
+  files:
+    src/lib.rs: |
+      pub fn get(m: &Map) -> Result<&str, Error> {
+          m.get("k").ok_or(Error::Missing)
+      }
+positive:
+  files:
+    src/lib.rs: |
+      pub fn get(m: &Map) -> &str {
+          m.get("k").unwrap()
+      }
+  expect: WRONG

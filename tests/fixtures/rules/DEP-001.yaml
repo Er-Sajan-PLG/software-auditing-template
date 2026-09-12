@@ -1,0 +1,15 @@
+rule: DEP-001
+negative:
+  files:
+    package.json: |
+      {
+        "name": "app",
+        "dependencies": { "express": "4.18.2" }
+      }
+positive:
+  files:
+    README.md: |
+      # Project
+
+      No manifest yet.
+  expect: MISSING

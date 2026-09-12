@@ -1,0 +1,10 @@
+rule: PY-008
+negative:
+  files:
+    app/main.py: |
+      app.run(host="0.0.0.0", port=8000)
+positive:
+  files:
+    app/main.py: |
+      app.run(debug=True)
+  expect: FAIL

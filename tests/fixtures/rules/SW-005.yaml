@@ -1,0 +1,14 @@
+rule: SW-005
+negative:
+  files:
+    Sources/App/User.swift: |
+      struct Signup: Validatable {
+        let email: String
+      }
+positive:
+  files:
+    Sources/App/User.swift: |
+      struct Signup {
+        let email: String
+      }
+  expect: MISSING

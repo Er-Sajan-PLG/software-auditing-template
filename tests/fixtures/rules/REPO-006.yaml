@@ -1,0 +1,11 @@
+rule: REPO-006
+negative:
+  files:
+    .env.example: |
+      DATABASE_URL=
+      API_KEY=
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

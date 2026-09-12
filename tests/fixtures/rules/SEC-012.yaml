@@ -1,0 +1,11 @@
+rule: SEC-012
+negative:
+  files:
+    src/auth.ts: |
+      const token = jwt.sign(payload, secret, { expiresIn: '15m' });
+positive:
+  files:
+    src/auth.ts: |
+      const token = jwt.sign(payload, secret);
+      return token;
+  expect: MISSING

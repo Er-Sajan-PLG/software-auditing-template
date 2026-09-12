@@ -1,0 +1,7 @@
+rule: REPO-002
+negative:
+  files:
+    src/index.ts: |
+      export const x = 1;
+    .gitignore: |
+      .env

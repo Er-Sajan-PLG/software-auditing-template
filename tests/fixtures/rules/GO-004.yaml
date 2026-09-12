@@ -1,0 +1,20 @@
+rule: GO-004
+negative:
+  files:
+    internal/handler.go: |
+      package handler
+
+      import "fmt"
+
+      func Handle() error {
+        return fmt.Errorf("bad request")
+      }
+positive:
+  files:
+    internal/handler.go: |
+      package handler
+
+      func Handle() {
+        panic("unreachable")
+      }
+  expect: FAIL

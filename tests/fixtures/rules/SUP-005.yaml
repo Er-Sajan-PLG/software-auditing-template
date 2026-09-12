@@ -1,0 +1,18 @@
+rule: SUP-005
+negative:
+  files:
+    .github/workflows/security.yml: |
+      name: Security
+      jobs:
+        audit:
+          steps:
+            - run: npm audit --audit-level=high
+positive:
+  files:
+    .github/workflows/security.yml: |
+      name: Security
+      jobs:
+        audit:
+          steps:
+            - run: echo ok
+  expect: MISSING

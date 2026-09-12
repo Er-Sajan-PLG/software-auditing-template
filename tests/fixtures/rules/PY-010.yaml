@@ -1,0 +1,12 @@
+rule: PY-010
+negative:
+  files:
+    pyproject.toml: |
+      [tool.ruff]
+      line-length = 100
+positive:
+  files:
+    pyproject.toml: |
+      [project]
+      name = "app"
+  expect: MISSING

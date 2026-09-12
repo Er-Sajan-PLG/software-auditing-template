@@ -1,0 +1,12 @@
+rule: SEC-017
+negative:
+  files:
+    config/headers.yml: |
+      cors:
+        Access-Control-Allow-Origin: "https://app.example.com"
+positive:
+  files:
+    config/headers.yml: |
+      cors:
+        Access-Control-Allow-Origin: "*"
+  expect: FAIL

@@ -1,0 +1,14 @@
+rule: JVM-002
+negative:
+  files:
+    src/main/resources/application.yml: |
+      spring:
+        datasource:
+          password: ${DB_PASSWORD}
+positive:
+  files:
+    src/main/resources/application.yml: |
+      spring:
+        datasource:
+          password: EXAMPLE_PASSWORD_0123456789
+  expect: FAIL

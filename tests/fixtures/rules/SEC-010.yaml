@@ -1,0 +1,10 @@
+rule: SEC-010
+negative:
+  files:
+    src/files.ts: |
+      const data = fs.readFile(safePath, cb);
+positive:
+  files:
+    src/files.ts: |
+      const data = fs.readFile(path.join(uploadDir, req.params.file), cb);
+  expect: WRONG

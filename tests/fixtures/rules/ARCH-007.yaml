@@ -1,0 +1,10 @@
+rule: ARCH-007
+negative:
+  files:
+    src/config.ts: |
+      export const url = process.env.DATABASE_URL;
+positive:
+  files:
+    src/config.ts: |
+      const DATABASE_URL = "postgres://user:pass@db:5432/app";
+  expect: FAIL

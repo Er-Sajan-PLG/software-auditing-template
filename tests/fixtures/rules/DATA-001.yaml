@@ -1,0 +1,10 @@
+rule: DATA-001
+negative:
+  files:
+    migrations/001_init.sql: |
+      CREATE TABLE users (id INT PRIMARY KEY);
+positive:
+  files:
+    src/index.ts: |
+      export const start = () => 0;
+  expect: MISSING

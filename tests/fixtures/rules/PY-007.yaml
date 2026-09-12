@@ -1,0 +1,10 @@
+rule: PY-007
+negative:
+  files:
+    app/run.py: |
+      subprocess.run(cmd, check=True)
+positive:
+  files:
+    app/run.py: |
+      subprocess.run(cmd, shell=True)
+  expect: FAIL

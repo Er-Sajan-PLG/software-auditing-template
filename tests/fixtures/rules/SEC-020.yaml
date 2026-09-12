@@ -1,0 +1,10 @@
+rule: SEC-020
+negative:
+  files:
+    src/errors.ts: |
+      res.status(500).json({ error: 'Internal Server Error' });
+positive:
+  files:
+    src/errors.ts: |
+      res.status(500).json({ error: err.stack });
+  expect: WRONG

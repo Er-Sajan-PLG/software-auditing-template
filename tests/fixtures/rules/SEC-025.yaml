@@ -1,0 +1,13 @@
+rule: SEC-025
+negative:
+  files:
+    src/auth.ts: |
+      import bcrypt from 'bcrypt';
+      export const hash = (p) => bcrypt.hash(p, 12);
+positive:
+  files:
+    src/auth.ts: |
+      export function login(user) {
+        return user;
+      }
+  expect: MISSING

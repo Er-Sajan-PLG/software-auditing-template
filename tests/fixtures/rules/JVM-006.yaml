@@ -1,0 +1,14 @@
+rule: JVM-006
+negative:
+  files:
+    build.gradle: |
+      plugins {
+        id "checkstyle"
+      }
+positive:
+  files:
+    build.gradle: |
+      plugins {
+        id "java"
+      }
+  expect: MISSING

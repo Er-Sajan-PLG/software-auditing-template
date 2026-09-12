@@ -1,0 +1,10 @@
+rule: TEST-005
+negative:
+  files:
+    vitest.config.ts: |
+      export default { test: { coverage: { thresholds: { lines: 80 } } } };
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

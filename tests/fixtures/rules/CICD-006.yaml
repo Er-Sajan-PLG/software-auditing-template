@@ -1,0 +1,10 @@
+rule: CICD-006
+negative:
+  files:
+    Dockerfile: |
+      FROM node:24-alpine
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

@@ -1,0 +1,10 @@
+rule: ARCH-002
+negative:
+  files:
+    docs/adr/0001-record-decisions.md: |
+      # 1. Record decisions
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

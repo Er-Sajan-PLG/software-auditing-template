@@ -1,0 +1,14 @@
+rule: IAC-001
+negative:
+  files:
+    infra/storage.tf: |
+      resource "aws_s3_bucket" "b" {
+        acl = "private"
+      }
+positive:
+  files:
+    infra/storage.tf: |
+      resource "aws_s3_bucket" "b" {
+        acl = "public-read"
+      }
+  expect: WRONG

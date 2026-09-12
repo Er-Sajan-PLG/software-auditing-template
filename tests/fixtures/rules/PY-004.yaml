@@ -1,0 +1,16 @@
+rule: PY-004
+negative:
+  files:
+    src/app.py: |
+      try:
+          work()
+      except ValueError as e:
+          handle(e)
+positive:
+  files:
+    src/app.py: |
+      try:
+          work()
+      except:
+          pass
+  expect: WRONG

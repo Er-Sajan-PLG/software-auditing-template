@@ -1,0 +1,10 @@
+rule: NODE-004
+negative:
+  files:
+    .npmrc: |
+      registry=https://registry.npmjs.org/
+positive:
+  files:
+    .npmrc: |
+      //registry.npmjs.org/:_authToken=placeholder-token-0123456789
+  expect: FAIL

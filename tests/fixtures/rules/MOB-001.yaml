@@ -1,0 +1,13 @@
+rule: MOB-001
+negative:
+  files:
+    src/App.tsx: |
+      import * as Sentry from '@sentry/react-native';
+      Sentry.init({ dsn });
+positive:
+  files:
+    src/App.tsx: |
+      export function App() {
+        return null;
+      }
+  expect: MISSING

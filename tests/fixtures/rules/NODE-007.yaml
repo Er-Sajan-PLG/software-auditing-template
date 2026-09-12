@@ -1,0 +1,16 @@
+rule: NODE-007
+negative:
+  files:
+    package.json: |
+      {
+        "name": "lib",
+        "exports": { ".": "./dist/index.js" }
+      }
+positive:
+  files:
+    package.json: |
+      {
+        "name": "lib",
+        "main": "./dist/index.js"
+      }
+  expect: MISSING

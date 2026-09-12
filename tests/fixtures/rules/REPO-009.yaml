@@ -1,0 +1,10 @@
+rule: REPO-009
+negative:
+  files:
+    SECURITY.md: |
+      # Security Policy
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

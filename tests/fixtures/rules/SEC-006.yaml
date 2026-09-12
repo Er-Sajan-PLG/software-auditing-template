@@ -1,0 +1,10 @@
+rule: SEC-006
+negative:
+  files:
+    src/parse.ts: |
+      const result = JSON.parse(input);
+positive:
+  files:
+    src/parse.ts: |
+      eval(userInput);
+  expect: WRONG

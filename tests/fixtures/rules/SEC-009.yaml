@@ -1,0 +1,10 @@
+rule: SEC-009
+negative:
+  files:
+    src/render.ts: |
+      element.textContent = untrusted;
+positive:
+  files:
+    src/render.ts: |
+      element.innerHTML = untrusted;
+  expect: FAIL

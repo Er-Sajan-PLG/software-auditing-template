@@ -1,0 +1,12 @@
+rule: CTNR-003
+negative:
+  files:
+    Dockerfile: |
+      FROM node:20.11.0-bookworm
+      WORKDIR /app
+positive:
+  files:
+    Dockerfile: |
+      FROM node:latest
+      WORKDIR /app
+  expect: FAIL

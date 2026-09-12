@@ -1,0 +1,8 @@
+rule: REPO-008
+negative:
+  files:
+    src/index.ts: |
+      export const x = 1;
+    .gitignore: |
+      *.zip
+      *.exe

@@ -1,0 +1,10 @@
+rule: JVM-008
+negative:
+  files:
+    Dockerfile: |
+      ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+positive:
+  files:
+    Dockerfile: |
+      ENTRYPOINT ["java", "-jar", "app.jar"]
+  expect: MISSING

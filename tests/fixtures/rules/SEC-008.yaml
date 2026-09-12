@@ -1,0 +1,13 @@
+rule: SEC-008
+negative:
+  files:
+    src/schema.ts: |
+      import { z } from 'zod';
+      export const S = z.object({ id: z.string() });
+positive:
+  files:
+    src/schema.ts: |
+      export function read(raw: unknown) {
+        return raw;
+      }
+  expect: MISSING

@@ -1,0 +1,11 @@
+rule: ARCH-010
+negative:
+  files:
+    src/queue.ts: |
+      import { Queue } from 'bullmq';
+      export const q = new Queue('jobs');
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

@@ -1,0 +1,10 @@
+rule: NODE-005
+negative:
+  files:
+    src/legacy.ts: |
+      const buf = Buffer.alloc(16);
+positive:
+  files:
+    src/legacy.ts: |
+      const buf = new Buffer(16);
+  expect: DEPRECATED

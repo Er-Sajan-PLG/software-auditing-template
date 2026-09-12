@@ -1,0 +1,11 @@
+rule: SUP-004
+negative:
+  files:
+    .github/dependabot.yml: |
+      version: 2
+      updates: []
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

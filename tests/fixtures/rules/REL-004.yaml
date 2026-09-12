@@ -1,0 +1,10 @@
+rule: REL-004
+negative:
+  files:
+    src/flags.ts: |
+      const enabled = isFeatureEnabled('new-checkout');
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

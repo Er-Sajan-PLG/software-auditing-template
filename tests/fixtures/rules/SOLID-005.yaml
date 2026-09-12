@@ -1,0 +1,10 @@
+rule: SOLID-005
+negative:
+  files:
+    contracts/Token.sol: |
+      IERC20(token).safeTransfer(to, amount);
+positive:
+  files:
+    contracts/Token.sol: |
+      payable(to).transfer(amount);
+  expect: WRONG

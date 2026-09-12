@@ -1,0 +1,10 @@
+rule: MOB-002
+negative:
+  files:
+    ios/App/Settings.swift: |
+      let apiKey = ProcessInfo.processInfo.environment["API_KEY"]
+positive:
+  files:
+    ios/App/Secrets.swift: |
+      let apiKey = "EXAMPLE_API_KEY_0123456789"
+  expect: FAIL

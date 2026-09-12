@@ -1,0 +1,10 @@
+rule: REPO-011
+negative:
+  files:
+    CONTRIBUTING.md: |
+      # Contributing
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

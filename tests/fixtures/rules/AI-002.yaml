@@ -1,0 +1,10 @@
+rule: AI-002
+negative:
+  files:
+    src/client.py: |
+      parsed = json.loads(response)
+positive:
+  files:
+    src/client.py: |
+      exec(response)
+  expect: WRONG

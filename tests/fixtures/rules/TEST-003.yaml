@@ -1,0 +1,15 @@
+rule: TEST-003
+negative:
+  files:
+    tests/a.test.ts: |
+      import { it } from 'vitest';
+    tests/b.test.ts: |
+      import { it } from 'vitest';
+    tests/c.test.ts: |
+      import { it } from 'vitest';
+    tests/d.test.ts: |
+      import { it } from 'vitest';
+    tests/e.test.ts: |
+      import { it } from 'vitest';
+    src/index.ts: |
+      export const x = 1;

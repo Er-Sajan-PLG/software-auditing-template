@@ -1,0 +1,15 @@
+rule: CTNR-002
+negative:
+  files:
+    Dockerfile: |
+      FROM node:20-slim AS build
+      RUN npm ci
+      FROM node:20-slim
+      COPY --from=build /app /app
+positive:
+  files:
+    Dockerfile: |
+      FROM node:20-slim
+      WORKDIR /app
+      CMD ["node", "index.js"]
+  expect: MISSING

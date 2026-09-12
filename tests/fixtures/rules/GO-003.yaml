@@ -1,0 +1,20 @@
+rule: GO-003
+negative:
+  files:
+    internal/server.go: |
+      package server
+
+      import "context"
+
+      func handle(ctx context.Context) error {
+        return nil
+      }
+positive:
+  files:
+    internal/server.go: |
+      package server
+
+      func handle() error {
+        return nil
+      }
+  expect: MISSING

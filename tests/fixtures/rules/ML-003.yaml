@@ -1,0 +1,11 @@
+rule: ML-003
+negative:
+  files:
+    ml/train.py: |
+      import torch
+      torch.manual_seed(42)
+positive:
+  files:
+    ml/train.py: |
+      model = fit(data)
+  expect: MISSING

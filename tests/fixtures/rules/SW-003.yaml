@@ -1,0 +1,10 @@
+rule: SW-003
+negative:
+  files:
+    Package.resolved: |
+      { "pins": [] }
+positive:
+  files:
+    Package.swift: |
+      // swift-tools-version:5.9
+  expect: MISSING

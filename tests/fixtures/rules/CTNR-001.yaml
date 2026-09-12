@@ -1,0 +1,16 @@
+rule: CTNR-001
+negative:
+  files:
+    Dockerfile: |
+      FROM node:20-slim
+      WORKDIR /app
+      COPY . .
+      USER appuser
+      CMD ["node", "index.js"]
+positive:
+  files:
+    Dockerfile: |
+      FROM node:20-slim
+      WORKDIR /app
+      CMD ["node", "index.js"]
+  expect: MISSING

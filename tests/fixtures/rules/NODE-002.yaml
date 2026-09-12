@@ -1,0 +1,14 @@
+rule: NODE-002
+negative:
+  files:
+    tsconfig.json: |
+      {
+        "compilerOptions": { "strict": true }
+      }
+positive:
+  files:
+    tsconfig.json: |
+      {
+        "compilerOptions": {}
+      }
+  expect: MISSING

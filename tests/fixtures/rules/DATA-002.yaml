@@ -1,0 +1,11 @@
+rule: DATA-002
+negative:
+  files:
+    src/schema.sql: >
+      CREATE TABLE posts (id INT, user_id INT, FOREIGN KEY (user_id) REFERENCES
+      users(id));
+positive:
+  files:
+    src/schema.sql: |
+      CREATE TABLE posts (id INT, user_id INT);
+  expect: MISSING

@@ -1,0 +1,12 @@
+rule: PY-005
+negative:
+  files:
+    src/app.py: |
+      def add(item, items=None):
+          return items
+positive:
+  files:
+    src/app.py: |
+      def add(item, items=[]):
+          return items
+  expect: WRONG

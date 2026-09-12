@@ -1,0 +1,10 @@
+rule: TEST-012
+negative:
+  files:
+    tests/factories/user.ts: |
+      export const userFactory = (over = {}) => ({ id: 1, ...over });
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING

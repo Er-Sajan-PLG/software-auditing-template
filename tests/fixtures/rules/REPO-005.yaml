@@ -1,0 +1,10 @@
+rule: REPO-005
+negative:
+  files:
+    LICENSE: |
+      MIT License
+positive:
+  files:
+    README.md: |
+      # Project
+  expect: MISSING

@@ -1,0 +1,14 @@
+rule: SOLID-002
+negative:
+  files:
+    contracts/Token.sol: |
+      pragma solidity ^0.8.20;
+
+      contract Token {}
+positive:
+  files:
+    contracts/Token.sol: |
+      pragma solidity ^0.7.6;
+
+      contract Token {}
+  expect: DEPRECATED

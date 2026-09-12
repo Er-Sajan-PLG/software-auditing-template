@@ -1,0 +1,18 @@
+rule: IAC-005
+negative:
+  files:
+    infra/iam.tf: |
+      data "aws_iam_policy_document" "p" {
+        statement {
+          actions = ["s3:GetObject"]
+        }
+      }
+positive:
+  files:
+    infra/iam.tf: |
+      data "aws_iam_policy_document" "p" {
+        statement {
+          actions = ["*"]
+        }
+      }
+  expect: FAIL

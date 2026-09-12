@@ -1,0 +1,14 @@
+rule: TEST-002
+negative:
+  files:
+    .github/workflows/ci.yml: |
+      name: CI
+      jobs:
+        test:
+          steps:
+            - run: npm test
+positive:
+  files:
+    src/index.ts: |
+      export const x = 1;
+  expect: MISSING
