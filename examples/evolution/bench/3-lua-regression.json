@@ -1,0 +1,7 @@
+{
+  "id": "lua-regression",
+  "kind": "regression",
+  "description": "Clean Lua file — the candidate must not disturb existing rules.",
+  "fixture": { "app.lua": "local x = 1\nreturn x\n" },
+  "expected": [{ "ruleId": "LUA-001", "status": "PASS" }]
+}

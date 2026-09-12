@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AuditReport, Depth, Maturity, Rule, Severity } from './types.js';
 import { runAudit } from './engine/audit.js';
-import { loadRulePacks } from './engine/loader.js';
+import { loadRulePacks, loadPackFile } from './engine/loader.js';
 import { loadDetectorFile } from './detect/index.js';
 import { Project } from './util/project.js';
 import { detect } from './detect/index.js';
@@ -14,6 +14,10 @@ import { bootstrapPacks, writeBootstrapPacks } from './bootstrap/index.js';
 import { EXAMPLE_CONFIG, loadConfig } from './config.js';
 import { evaluateGate } from './engine/gate.js';
 import { learnFromReport, renderSuggestions, type LearnOptions } from './learn/index.js';
+import { Store } from './store/index.js';
+import { runEvolutionCycle, type EvolutionCycleOutput } from './evolution/run.js';
+import { capabilityFromPack } from './evolution/capability.js';
+import type { BenchmarkCase, CapabilityGap, CoverageModel } from './evolution/types.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RULES_DIR = path.resolve(HERE, '..', 'rules');
@@ -84,6 +88,7 @@ const COMMANDS: Record<string, (args: Args) => number> = {
   init: cmdInit,
   bootstrap: cmdBootstrap,
   learn: cmdLearn,
+  evolve: cmdEvolve,
 };
 
 export function main(argv: string[]): number {
@@ -457,6 +462,129 @@ function cmdLearn(args: Args): number {
   }
 }
 
+/* ----------------------------------------------------------------- evolve -- */
+
+function cmdEvolve(args: Args): number {
+  const target = (args._[1] as string | undefined) ?? '.';
+  const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
+  if (!fs.existsSync(target)) {
+    console.error(`Target path does not exist: ${target}`);
+    return 2;
+  }
+
+  const storeDir = str(args, 'store');
+  const store = storeDir ? new Store(storeDir) : undefined;
+
+  const candidateCapability = loadEvolveCandidate(args);
+  const cases = loadEvolveCases(args, candidateCapability);
+
+  const result = runEvolutionCycle({
+    target,
+    rulesDir,
+    engineVersion: VERSION,
+    candidateCapability,
+    benchmarkCases: cases,
+    store,
+  });
+
+  printEvolutionResult(result);
+  return 0;
+}
+
+function loadEvolveCandidate(args: Args) {
+  const candidateFile = str(args, 'candidate');
+  if (!candidateFile) return undefined;
+  const { pack, warnings } = loadPackFile(candidateFile);
+  for (const w of warnings) console.error(`warning: ${w}`);
+  if (!pack) {
+    console.error(`Could not load candidate pack: ${candidateFile}`);
+    return undefined;
+  }
+  return capabilityFromPack(pack, { createdBy: 'cli' });
+}
+
+function loadEvolveCases(args: Args, candidateCapability: unknown): BenchmarkCase[] {
+  const benchDir = str(args, 'bench-dir');
+  const cases = benchDir ? loadBenchCases(benchDir) : [];
+  if (candidateCapability && cases.length === 0) {
+    console.error(
+      'warning: no benchmark cases supplied (--bench-dir). The release decision will be vacuous.',
+    );
+  }
+  return cases;
+}
+
+function loadBenchCases(dir: string): BenchmarkCase[] {
+  if (!fs.existsSync(dir)) return [];
+  const cases: BenchmarkCase[] = [];
+  for (const entry of fs.readdirSync(dir)) {
+    if (!entry.endsWith('.json')) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(dir, entry), 'utf8')) as BenchmarkCase;
+      if (raw && raw.id && Array.isArray(raw.expected) && raw.fixture) cases.push(raw);
+    } catch {
+      console.error(`warning: could not read benchmark case ${entry}`);
+    }
+  }
+  return cases;
+}
+
+function printEvolutionResult(result: EvolutionCycleOutput): void {
+  console.log(`# Evolution: ${result.snapshot.root}`);
+  console.log();
+  console.log(`snapshot        : ${result.snapshot.id}`);
+  printCoverage('before', result.before.coverage);
+  printGaps(result.before.gaps);
+
+  if (!result.candidate) {
+    console.log();
+    console.log('No candidate capability supplied (--candidate <pack.yaml>).');
+    console.log('This was the deterministic BEFORE half of the loop only.');
+    return;
+  }
+
+  const release = result.candidate.release;
+  console.log();
+  console.log(
+    `candidate       : ${result.candidate.capabilityId} (gaps: ${result.candidate.gapIds.join(', ')})`,
+  );
+  if (release) {
+    console.log(`release decision: ${release.decision}`);
+    console.log(
+      `  precision ${release.precision.toFixed(3)} · recall ${release.recall.toFixed(3)} · regressions ${release.regressions}`,
+    );
+    for (const r of release.reasons) console.log(`  - ${r}`);
+  }
+
+  if (result.after) {
+    console.log();
+    printCoverage('after', result.after.coverage);
+    const d = result.after.delta;
+    console.log(
+      `delta           : coverage +${d.coverageDelta}pt · ${d.findingsAdded.length} finding(s) added · gap reduced: ${d.gapReduced}`,
+    );
+    if (d.findingsAdded.length) console.log(`  new findings: ${d.findingsAdded.join(', ')}`);
+  }
+}
+
+function printCoverage(label: string, cov: CoverageModel): void {
+  console.log(
+    `${label.padEnd(16)}: language coverage ${cov.languageCoverage}% · automation ${cov.automationCoverage}%`,
+  );
+  if (cov.unsupportedLanguages.length) {
+    console.log(`  unsupported : ${cov.unsupportedLanguages.join(', ')}`);
+  }
+}
+
+function printGaps(gaps: CapabilityGap[]): void {
+  if (gaps.length === 0) {
+    console.log('gaps           : none');
+    return;
+  }
+  console.log(`gaps           : ${gaps.length}`);
+  for (const g of gaps) console.log(`  - ${g.id} [${g.priority}] ${g.requiredCapability}`);
+}
+
 /* ------------------------------------------------------------------ utils -- */
 
 function readVersion(): string {
@@ -486,6 +614,13 @@ usa — Universal Software Auditor
   usa init [path]               Scaffold .usa.yaml + a GitHub Actions workflow
   usa bootstrap [path]          Propose rule packs for stacks USA cannot audit yet
   usa learn <report.md>         Generate suggested rules from audit findings
+  usa evolve [path]             Run the audit → gap → candidate → release loop
+
+evolve options
+  --store <dir>        Persist audit runs/results (content-addressed store)
+  --candidate <file>   A candidate capability pack (YAML) to benchmark and release
+  --bench-dir <dir>    Directory of benchmark case *.json files
+  --rules-dir <dir>    Rule pack directory             (default bundled rules/)
 
 learn options
   --out <file>        Output YAML file (default learn-suggestions.yaml)

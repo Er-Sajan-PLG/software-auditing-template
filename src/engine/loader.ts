@@ -30,6 +30,17 @@ export interface LoaderResult {
   warnings: string[];
 }
 
+/**
+ * Load a single pack file (not the registry). Used by the evolution CLI to load
+ * a candidate capability pack that is *not* (yet) in `rules/index.yaml`.
+ */
+export function loadPackFile(file: string): { pack: RulePack | null; warnings: string[] } {
+  const warnings: string[] = [];
+  const pack = parsePack(path.resolve(file), new Map(), warnings);
+  if (pack) pack.source = path.basename(file);
+  return { pack, warnings };
+}
+
 /** Read `rules/index.yaml` and every pack it references. */
 export function loadRulePacks(rulesDir: string): LoaderResult {
   const warnings: string[] = [];
