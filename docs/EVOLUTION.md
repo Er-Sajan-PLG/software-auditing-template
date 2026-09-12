@@ -14,21 +14,22 @@ measurement, not an assertion.
 SNAPSHOT → AUDIT → COVERAGE → GAPS → PROPOSE → CANDIDATE → BENCHMARK → RELEASE → RE-AUDIT → DELTA
 ```
 
-| Stage                     | Module                           | Status                                               |
-| ------------------------- | -------------------------------- | ---------------------------------------------------- |
-| Immutable snapshot        | `src/snapshot/`                  | `[IMPLEMENTED]`                                      |
-| Content-addressed store   | `src/store/`                     | `[IMPLEMENTED]`                                      |
-| Audit run + provenance    | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                      |
-| Coverage model            | `src/evolution/coverage.ts`      | `[IMPLEMENTED]`                                      |
-| Capability gaps           | `src/evolution/gap.ts`           | `[IMPLEMENTED]`                                      |
-| Proposal stage            | `src/evolution/propose.ts`       | `[IMPLEMENTED]` (gap→candidate; learn→candidate)     |
-| Capability-set resolution | `src/evolution/capability.ts`    | `[IMPLEMENTED]`                                      |
-| Candidate lifecycle       | (types) `src/evolution/types.ts` | `[PARTIALLY IMPLEMENTED]` (states defined; no queue) |
-| Benchmark fleet           | `src/evolution/benchmark.ts`     | `[IMPLEMENTED]` (tiny fleet)                         |
-| Release gate              | `src/evolution/release.ts`       | `[IMPLEMENTED]` (vacuous benchmarks rejected)        |
-| Re-audit delta            | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                      |
-| End-to-end orchestrator   | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                      |
-| CLI                       | `usa evolve` in `src/cli.ts`     | `[IMPLEMENTED]`                                      |
+| Stage                     | Module                           | Status                                           |
+| ------------------------- | -------------------------------- | ------------------------------------------------ |
+| Immutable snapshot        | `src/snapshot/`                  | `[IMPLEMENTED]`                                  |
+| Content-addressed store   | `src/store/`                     | `[IMPLEMENTED]`                                  |
+| Audit run + provenance    | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                  |
+| Coverage model            | `src/evolution/coverage.ts`      | `[IMPLEMENTED]`                                  |
+| Capability gaps           | `src/evolution/gap.ts`           | `[IMPLEMENTED]`                                  |
+| Proposal stage            | `src/evolution/propose.ts`       | `[IMPLEMENTED]` (gap→candidate; learn→candidate) |
+| Persistent gap queue      | `src/evolution/queue.ts`         | `[IMPLEMENTED]`                                  |
+| Capability-set resolution | `src/evolution/capability.ts`    | `[IMPLEMENTED]`                                  |
+| Candidate lifecycle       | (types) `src/evolution/types.ts` | `[IMPLEMENTED]` (PROPOSED→…→RELEASED tracked)    |
+| Benchmark fleet           | `src/evolution/benchmark.ts`     | `[IMPLEMENTED]` (tiny fleet)                     |
+| Release gate              | `src/evolution/release.ts`       | `[IMPLEMENTED]` (vacuous benchmarks rejected)    |
+| Re-audit delta            | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                  |
+| End-to-end orchestrator   | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                  |
+| CLI                       | `usa evolve` in `src/cli.ts`     | `[IMPLEMENTED]`                                  |
 
 ## What is a capability here
 
@@ -90,6 +91,41 @@ candidate would otherwise score a vacuous precision/recall of 1.000 and sail
 through the gate; requiring positive evidence keeps the "evidence over claims"
 invariant (ADR-0014).
 
+## The persistent gap queue
+
+`src/evolution/queue.ts` is the durable memory of the loop. Every audit
+re-discovers the same gaps; the queue answers "which gaps are open right now?"
+across runs without ever mutating a record.
+
+- Every state change is one **append-only** record in the Store, keyed by a
+  `namespace` (default `gaps`). The latest state is a pure fold over the
+  records — there is no mutable index that can drift, so replaying the store
+  reproduces the queue exactly.
+- `recordGaps` opens new gaps, re-opens previously closed ones, and treats an
+  unchanged re-observation as `existing` (no duplicate transition). A change to
+  the evidence trail is a genuine update and appends.
+- When a candidate is **released**, the gap(s) it targeted are closed. The
+  queue backing is enabled automatically whenever a `--store` is supplied (or
+  explicitly with `persistGaps` in the programmatic API).
+
+```bash
+# run with persistence; the queue line reports open/closed/total
+usa evolve /some/lua/repo --store /tmp/usa-store
+```
+
+## Learning a candidate from a report
+
+`usa evolve --learn <report.md>` turns the open findings of a previously
+generated report into a `learn-proposals` candidate of `manual` checks (via the
+same `usa learn` machinery). It sits between an explicit `--candidate` and
+`--propose` in precedence. A malformed or foreign report is refused with a
+warning — never a crash — and the loop simply runs its BEFORE half.
+
+```bash
+usa audit /some/repo --out AUDIT.md
+usa evolve /some/repo --learn AUDIT.md --min-severity LOW
+```
+
 ## Worked example (end-to-end, runnable test)
 
 The integration test `tests/evolution.test.ts` proves the loop on a Lua target —
@@ -122,12 +158,10 @@ usa evolve /some/lua/repo \
 
 - `[DEFERRED]` Dynamic/sandbox execution, model roles, discovery, scheduling,
   n8n, dashboards, PostgreSQL/NATS — none are needed to prove the feedback loop.
-- `[PARTIALLY IMPLEMENTED]` Wiring `usa learn` into the proposal stage is done
-  (`proposeFromSuggestions`); feeding a _report_ directly from the `evolve` CLI
-  (`--learn <report.md>`) is still `[PLANNED]`.
-- `[PARTIALLY IMPLEMENTED]` A persistent gap→candidate→release **queue**; today
-  the loop runs per-invocation and persists records in the Store, but does not
-  auto-schedule or re-open gaps.
+- `[PARTIALLY IMPLEMENTED]` The queue is persistent and reports open/closed. An
+  **auto-scheduler** that walks `openGaps()` and drives a batch of proposals
+  through the loop unattended is still `[PLANNED]`; today a run evaluates only
+  the first proposable candidate.
 - `[DEFERRED]` Model runtime (`ModelRuntime`, model bundle in provenance) — a
   later, optional layer; producer/judge separation is already enforced by the
   deterministic gate.

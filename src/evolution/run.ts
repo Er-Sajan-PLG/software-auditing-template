@@ -9,7 +9,9 @@ import { deriveGaps } from './gap.js';
 import { basePackIds, resolveCapabilitySetId } from './capability.js';
 import { runBenchmark } from './benchmark.js';
 import { DEFAULT_RELEASE_GATE, evaluateRelease } from './release.js';
-import { proposeCandidates } from './propose.js';
+import { proposeCandidates, proposeFromSuggestions } from './propose.js';
+import { learnFromReport } from '../learn/index.js';
+import { GapQueue, type QueueSummary } from './queue.js';
 import type {
   AuditRun,
   BenchmarkCase,
@@ -40,6 +42,21 @@ export interface EvolutionCycleInput {
   proposeFromGaps?: boolean;
   /** Called for each gap that could not be turned into a candidate. */
   onUnproposable?: (gap: CapabilityGap, reason: string) => void;
+  /**
+   * Path to a previously generated USA report. When no explicit candidate is
+   * supplied, its open findings are turned into a `learn-proposals` candidate of
+   * manual checks (`usa learn` → proposal). Lower precedence than
+   * `candidateCapability`; higher than `proposeFromGaps`.
+   */
+  learnReportPath?: string;
+  /** Minimum severity considered when learning from `learnReportPath`. */
+  learnMinSeverity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'FUTURE';
+  /**
+   * Persist gaps into the persistent queue and close the targeted gap(s) when a
+   * candidate is accepted. Defaults to true when a `store` is present. Requires
+   * a store; ignored otherwise.
+   */
+  persistGaps?: boolean;
 }
 
 export interface AuditWithCoverage {
@@ -63,6 +80,10 @@ export interface EvolutionCycleOutput {
   };
   /** All candidates proposed from gaps (empty when none were requested). */
   proposed: CandidateCapability[];
+  /** Suggestion count when the candidate was learned from a report. */
+  learnedSuggestions?: number;
+  /** Persistent-queue view after the run (when a store was used). */
+  queue?: QueueSummary;
   after?: AuditWithCoverage & { delta: ReAuditDelta };
 }
 
@@ -84,19 +105,27 @@ export function runEvolutionCycle(input: EvolutionCycleInput): EvolutionCycleOut
   const before = audit(input, snapshot, engineVersion, [], input.repository);
 
   const out: EvolutionCycleOutput = { snapshot, before, proposed: [] };
+  const queue = useQueue(input);
+  if (queue) {
+    queue.recordGaps(before.gaps);
+    out.queue = queue.summarize();
+  }
+
   const candidate = resolveCandidate(input, before, out);
   if (!candidate) return out;
 
   const gate = input.releaseGate ?? DEFAULT_RELEASE_GATE;
   const bench = runBenchmark(candidate, input.benchmarkCases ?? [], input.rulesDir, engineVersion);
   const release = evaluateRelease(bench, gate);
-
-  // Associate the candidate with the gap(s) it actually targets (by required
-  // capability), not every gap the audit happened to produce.
-  const gapIds = before.gaps.filter((g) => g.requiredCapability === candidate.id).map((g) => g.id);
+  // Gaps this candidate provably targets, by required capability. This drives
+  // the queue — it must be exact, never a "the candidate is about everything"
+  // fallback, or an unrelated release would close unrelated gaps.
+  const targeted = before.gaps
+    .filter((g) => g.requiredCapability === candidate.id)
+    .map((g) => g.id);
   out.candidate = {
     capabilityId: candidate.id,
-    gapIds: gapIds.length > 0 ? gapIds : before.gaps.map((g) => g.id),
+    gapIds: targeted,
     release,
   };
   input.store?.put({ kind: 'benchmark', capabilityId: candidate.id, ...bench });
@@ -105,9 +134,29 @@ export function runEvolutionCycle(input: EvolutionCycleInput): EvolutionCycleOut
   if (release.decision === 'ACCEPT') {
     const after = audit(input, snapshot, engineVersion, [candidate], input.repository);
     out.after = { ...after, delta: compareReAudit(before, after) };
+    releaseIntoQueue(queue, out, candidate, targeted);
   }
 
   return out;
+}
+
+/** A released capability closes exactly the queue gaps it targeted. */
+function releaseIntoQueue(
+  queue: GapQueue | undefined,
+  out: EvolutionCycleOutput,
+  candidate: Capability,
+  targeted: string[],
+): void {
+  if (!queue || targeted.length === 0) return;
+  queue.closeGaps(targeted, `released ${candidate.id}@${candidate.version ?? '?'}`);
+  out.queue = queue.summarize();
+}
+
+/** The persistent gap queue, when a store backs this run. */
+function useQueue(input: EvolutionCycleInput): GapQueue | undefined {
+  const enabled = input.persistGaps ?? input.store !== undefined;
+  if (!enabled || !input.store) return undefined;
+  return new GapQueue(input.store);
 }
 
 /**
@@ -121,6 +170,7 @@ function resolveCandidate(
   out: EvolutionCycleOutput,
 ): Capability | undefined {
   if (input.candidateCapability) return input.candidateCapability;
+  if (input.learnReportPath) return learnCandidate(input, out);
   if (!input.proposeFromGaps) return undefined;
   const proposed = proposeCandidates(before.coverage, before.gaps, {
     createdBy: 'evolution:propose',
@@ -128,6 +178,39 @@ function resolveCandidate(
   });
   out.proposed = proposed;
   return proposed[0]?.capability;
+}
+
+/** Turn a report's open findings into a `learn-proposals` candidate. */
+function learnCandidate(
+  input: EvolutionCycleInput,
+  out: EvolutionCycleOutput,
+): Capability | undefined {
+  let suggestions;
+  try {
+    suggestions = learnFromReport({
+      reportPath: input.learnReportPath!,
+      minSeverity: input.learnMinSeverity,
+    });
+  } catch (err) {
+    // A malformed/foreign report must not abort the audit: warn and continue
+    // with the BEFORE half (consistent with ADR-0009: fail closed, not crash).
+    input.onUnproposable?.(
+      { id: 'learn-proposals' } as CapabilityGap,
+      `could not learn from ${input.learnReportPath}: ${(err as Error).message}`,
+    );
+    return undefined;
+  }
+  out.learnedSuggestions = suggestions.length;
+  const candidate = proposeFromSuggestions(suggestions, { createdBy: 'evolution:learn' });
+  if (!candidate) {
+    input.onUnproposable?.(
+      { id: 'learn-proposals' } as CapabilityGap,
+      `no actionable suggestions in ${input.learnReportPath}`,
+    );
+    return undefined;
+  }
+  out.proposed = [candidate];
+  return candidate.capability;
 }
 
 /* -------------------------------------------------------------------- core -- */

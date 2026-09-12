@@ -17,6 +17,7 @@ import { learnFromReport, renderSuggestions, type LearnOptions } from './learn/i
 import { Store } from './store/index.js';
 import { runEvolutionCycle, type EvolutionCycleOutput } from './evolution/run.js';
 import { capabilityFromPack } from './evolution/capability.js';
+import type { QueueSummary } from './evolution/queue.js';
 import type {
   BenchmarkCase,
   CandidateCapability,
@@ -482,7 +483,8 @@ function cmdEvolve(args: Args): number {
 
   const candidateCapability = loadEvolveCandidate(args);
   const cases = loadEvolveCases(args, candidateCapability);
-  const proposeFromGaps = bool(args, 'propose') && !candidateCapability;
+  const learnReportPath = loadEvolveLearn(args);
+  const proposeFromGaps = bool(args, 'propose') && !candidateCapability && !learnReportPath;
 
   const result = runEvolutionCycle({
     target,
@@ -491,14 +493,28 @@ function cmdEvolve(args: Args): number {
     candidateCapability,
     benchmarkCases: cases,
     store,
+    learnReportPath,
+    learnMinSeverity: str(args, 'min-severity', 'MEDIUM') as
+      'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'FUTURE',
     proposeFromGaps,
     onUnproposable: (gap, reason) => {
-      console.error(`warning: gap ${gap.id} not proposable (${reason})`);
+      console.error(`warning: ${gap.id} not proposable (${reason})`);
     },
   });
 
   printEvolutionResult(result);
   return 0;
+}
+
+/** Resolve `--learn <report.md>` to an existing path, or undefined. */
+function loadEvolveLearn(args: Args): string | undefined {
+  const reportPath = str(args, 'learn');
+  if (!reportPath) return undefined;
+  if (!fs.existsSync(reportPath)) {
+    console.error(`warning: learn report not found (${reportPath}) — ignoring --learn`);
+    return undefined;
+  }
+  return reportPath;
 }
 
 function loadEvolveCandidate(args: Args) {
@@ -556,6 +572,7 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
       console.log('This was the deterministic BEFORE half of the loop only.');
       console.log('Pass --propose to auto-propose a candidate from the gaps.');
     }
+    printQueue(result.queue);
     return;
   }
 
@@ -565,6 +582,9 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
     `candidate       : ${result.candidate.capabilityId} (gaps: ${result.candidate.gapIds.join(', ')})`,
   );
   if (result.proposed.length > 0) printProposed(result.proposed);
+  if (result.learnedSuggestions !== undefined) {
+    console.log(`learned       : ${result.learnedSuggestions} suggestion(s) from report`);
+  }
   if (release) {
     console.log(`release decision: ${release.decision}`);
     console.log(
@@ -582,6 +602,19 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
     );
     if (d.findingsAdded.length) console.log(`  new findings: ${d.findingsAdded.join(', ')}`);
   }
+
+  if (result.queue) {
+    console.log(
+      `queue           : ${result.queue.open} open · ${result.queue.closed} closed · ${result.queue.total} total`,
+    );
+  }
+}
+
+function printQueue(queue: QueueSummary | undefined): void {
+  if (!queue) return;
+  console.log(
+    `queue           : ${queue.open} open · ${queue.closed} closed · ${queue.total} total`,
+  );
 }
 
 function printCoverage(label: string, cov: CoverageModel): void {
@@ -648,6 +681,8 @@ evolve options
   --store <dir>        Persist audit runs/results (content-addressed store)
   --candidate <file>   A candidate capability pack (YAML) to benchmark and release
   --propose            Auto-propose a candidate from the gaps (bootstrap catalog)
+  --learn <report.md>  Propose a candidate from a report's open findings (usa learn)
+  --min-severity <s>   Min severity for --learn (default MEDIUM)
   --bench-dir <dir>    Directory of benchmark case *.json files
   --rules-dir <dir>    Rule pack directory             (default bundled rules/)
 

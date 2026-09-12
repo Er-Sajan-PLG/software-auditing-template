@@ -114,4 +114,33 @@ describe('usa evolve CLI', () => {
     cleanups.push(() => fs.rmSync(target, { recursive: true, force: true }));
     expect(main(['evolve', target, '--propose'])).toBe(0);
   });
+
+  it('proposes from a report with --learn', () => {
+    const target = makeProject({ 'app.lua': 'local r = os.execute("rm " .. p)\n' }).root;
+    cleanups.push(() => fs.rmSync(target, { recursive: true, force: true }));
+    const dir = tmpdir();
+    const report = path.join(dir, 'AUDIT.md');
+    fs.writeFileSync(
+      report,
+      [
+        '# AUDIT',
+        '<!-- USA:TRAILER:BEGIN -->',
+        '```yaml',
+        'schema: usa-report-v1',
+        'rules:',
+        '  LUA-001: {status: WRONG, severity: HIGH, section: S15}',
+        '```',
+        '<!-- USA:TRAILER:END -->',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    expect(main(['evolve', target, '--learn', report, '--min-severity', 'LOW'])).toBe(0);
+  });
+
+  it('ignores a missing --learn report without crashing', () => {
+    const target = makeProject({ 'app.lua': 'print("hi")\n' }).root;
+    cleanups.push(() => fs.rmSync(target, { recursive: true, force: true }));
+    expect(main(['evolve', target, '--learn', '/nonexistent/report.md'])).toBe(0);
+  });
 });

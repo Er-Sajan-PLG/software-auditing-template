@@ -23,6 +23,7 @@ a changed decision gets a _new_ ADR that supersedes the old one).
 | 0012 | Self-extension via bootstrap: propose, never self-trust    | Accepted | —          |
 | 0013 | Deterministic, offline evolution loop; no LLM in the spine | Accepted | —          |
 | 0014 | Deterministic proposal stage; release requires evidence    | Accepted | —          |
+| 0015 | Persistent gap queue: append-only state, derived latest    | Accepted | —          |
 
 ## Coverage map (what has no ADR, and why)
 

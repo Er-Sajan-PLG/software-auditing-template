@@ -51,6 +51,23 @@ export class Store {
     return fs.existsSync(this.pathFor(id));
   }
 
+  /**
+   * All content addresses currently stored, sorted. Sorted so callers can build
+   * deterministic indices over the store (an unordered directory listing would
+   * make "first record for X" non-reproducible).
+   */
+  ids(): string[] {
+    try {
+      return fs
+        .readdirSync(this.objectsDir)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.slice(0, -'.json'.length))
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+
   private pathFor(id: string): string {
     return path.join(this.objectsDir, `${id}.json`);
   }

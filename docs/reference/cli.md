@@ -23,6 +23,8 @@ evolve options
   --store <dir>        Persist audit runs/results (content-addressed store)
   --candidate <file>   A candidate capability pack (YAML) to benchmark and release
   --propose            Auto-propose a candidate from the gaps (bootstrap catalog)
+  --learn <report.md>  Propose a candidate from a report's open findings (usa learn)
+  --min-severity <s>   Min severity for --learn (default MEDIUM)
   --bench-dir <dir>    Directory of benchmark case *.json files
   --rules-dir <dir>    Rule pack directory             (default bundled rules/)
 
