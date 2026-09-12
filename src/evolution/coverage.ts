@@ -4,20 +4,26 @@ import type { BlindSpot, CoverageModel } from './types.js';
 
 /**
  * Coverage is tied to what the audit *actually resolved* — never to a registry
- * that merely contains a capability. A detected language with a shipped pack is
- * "covered"; one without is "unsupported" regardless of whether a bootstrap
- * proposal happens to exist (a proposal is not capability).
+ * that merely contains a capability. A detected language with a shipped pack, or
+ * one released and injected for this run (`extraCoveredLangs`), is "covered";
+ * anything else is "unsupported".
  *
- * Reuses the existing detection/bootstrap knowledge so there is exactly one
- * source of truth for "which languages does USA ship a pack for".
+ * `extraCoveredLangs` comes from the capabilities actually executed in this run
+ * (each released capability declares the languages it analyzes). The static
+ * `COVERED_LANGS` map is the base set of shipped packs; the bootstrap knowledge
+ * remains the single source of truth for "does a bootstrap proposal exist".
  */
-export function computeCoverage(report: AuditReport, facts: Facts): CoverageModel {
+export function computeCoverage(
+  report: AuditReport,
+  facts: Facts,
+  extraCoveredLangs: string[] = [],
+): CoverageModel {
   const boot = bootstrapPacks(facts);
   const langs = [...facts.flags]
     .filter((f) => f.startsWith('lang:'))
     .map((f) => f.slice('lang:'.length))
     .sort();
-  const coveredSet = new Set(boot.coveredLangs);
+  const coveredSet = new Set([...boot.coveredLangs, ...extraCoveredLangs]);
   const partialSet = new Set(boot.generatedLangs);
 
   const blindSpots: BlindSpot[] = [];

@@ -1,8 +1,11 @@
 /**
- * Types for the evolution layer: coverage, blind spots, and capability gaps.
- * All of these are plain JSON-serializable data so they can be content-addressed
- * by the Store and reproduced byte-for-byte.
+ * Types for the evolution layer: coverage, blind spots, capability gaps,
+ * capabilities/candidates, benchmarks, releases, audit runs, and re-audit deltas.
+ * All are plain JSON-serializable data so they can be content-addressed by the
+ * Store and reproduced byte-for-byte.
  */
+
+import type { RulePack, Status } from '../types.js';
 
 /** A place where USA measurably cannot (yet) analyze something. */
 export interface BlindSpot {
@@ -59,4 +62,122 @@ export interface CapabilityGap {
   snapshotId: string;
   createdAt: string;
   state: 'open' | 'accepted' | 'closed';
+}
+
+/* -------------------------------------------------------------- capability -- */
+
+export type CapabilityKind = 'data' | 'executor' | 'composite' | 'oracle';
+
+/** A shipped, versioned capability. The data kind carries a rule pack. */
+export interface Capability {
+  id: string;
+  version: string;
+  kind: CapabilityKind;
+  description: string;
+  /** The rule pack this capability contributes (signature for `data` capabilities). */
+  pack?: RulePack;
+  /** Languages this capability analyzes — used for honest coverage accounting. */
+  languages?: string[];
+  status: 'stable' | 'deprecated';
+  provenance: { createdAt: string; createdBy: string };
+}
+
+export type CandidateStatus =
+  'PROPOSED' | 'IMPLEMENTED' | 'TESTED' | 'BENCHMARKED' | 'REVIEWED' | 'RELEASED' | 'REJECTED';
+
+/** A capability that is *not* production yet. Never in the active set. */
+export interface CandidateCapability {
+  id: string;
+  capability: Capability;
+  gapIds: string[];
+  status: CandidateStatus;
+  createdAt: string;
+  release?: ReleaseDecision;
+}
+
+/* --------------------------------------------------------------- benchmark -- */
+
+export type BenchmarkKind = 'known-positive' | 'known-negative' | 'regression';
+
+export interface BenchmarkCase {
+  id: string;
+  kind: BenchmarkKind;
+  description: string;
+  /** Files to materialize as a fixture tree. */
+  fixture: Record<string, string>;
+  /** Ground truth: expected status per rule id in a full-fixture audit. */
+  expected: { ruleId: string; status: Status }[];
+}
+
+export interface BenchmarkCaseResult {
+  caseId: string;
+  kind: BenchmarkKind;
+  tp: number;
+  tn: number;
+  fp: number;
+  fn: number;
+  precision: number;
+  recall: number;
+  regressions: string[];
+  elapsedMs: number;
+}
+
+export interface BenchmarkResult {
+  capability: { id: string; version: string };
+  cases: BenchmarkCaseResult[];
+  summary: {
+    tp: number;
+    tn: number;
+    fp: number;
+    fn: number;
+    precision: number;
+    recall: number;
+    regressions: number;
+  };
+}
+
+/* ----------------------------------------------------------------- release -- */
+
+export interface ReleaseGate {
+  minPrecision: number;
+  minRecall: number;
+  requireNoRegressions: boolean;
+}
+
+export interface ReleaseDecision {
+  decision: 'ACCEPT' | 'REJECT';
+  reasons: string[];
+  testsPassed: boolean;
+  benchmarkPassed: boolean;
+  precision: number;
+  recall: number;
+  regressions: number;
+}
+
+/* -------------------------------------------------------------- audit run -- */
+
+export interface AuditRun {
+  id: string;
+  repository: string;
+  snapshotId: string;
+  capabilitySetId: string;
+  engineVersion: string;
+  status: 'running' | 'completed' | 'failed';
+  startedAt: string;
+  endedAt?: string;
+  /** Content address of the stored result (report trailer data). */
+  resultId?: string;
+  provenance: { modelBundleId?: string };
+}
+
+/* -------------------------------------------------------------- re-audit -- */
+
+export interface ReAuditDelta {
+  before: { automationCoverage: number; languageCoverage: number; unsupported: string[] };
+  after: { automationCoverage: number; languageCoverage: number; unsupported: string[] };
+  coverageDelta: number;
+  findingsAdded: string[];
+  findingsRemoved: string[];
+  gapReduced: boolean;
+  intendedFindingDetectable: boolean;
 }
