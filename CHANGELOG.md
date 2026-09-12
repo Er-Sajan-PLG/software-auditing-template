@@ -5,6 +5,34 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.3.0...v2.0.0) (2026-09-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename project to Universal Software Auditor (USA)
+
+### Features
+
+* capability registry, benchmark fleet, release gate, evolution loop ([9df8da5](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/9df8da598d4e7227aae29970d7603109ed9a5592))
+* coverage model + capability gaps + run-time pack injection ([c4f2a1a](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/c4f2a1a323f5faa09d860a83655367c4de7d8a4d))
+* **evolution:** deterministic proposal stage + evidence-required release ([8312b30](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/8312b30920beb356a0169b9f135c457d42373732))
+* **evolution:** persistent gap queue + learn-from-report ([e041070](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/e041070947c2aaacc1a07c30b8ca8e67b8310354))
+* **evolution:** queue-driven scheduler (usa evolve --all-gaps) ([1c09b91](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/1c09b9147778957ff4bcddeae0b9962272c317e9))
+* immutable snapshots + content-addressed store ([87c8085](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/87c8085e47bbbe4cbd9722d0cc2c4a86402f42d6))
+* **swift:** add detectors and rules for Validatable and security headers ([394d9db](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/394d9db671c399133d9608e7bce2fe1e7aef77ea))
+* usa evolve CLI + docs + ADR-0013 ([6d84b1b](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/6d84b1b78a4e65f4622207fb508f58efedea28fc))
+
+
+### Bug Fixes
+
+* **swift:** simplify validation detection patterns to avoid escape-drift ([40c22f5](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/40c22f536d461f51a90fbdc2ad2e917b839ef558))
+
+
+### Code Refactoring
+
+* rename project to Universal Software Auditor (USA) ([bd5d6a7](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/bd5d6a739902833f31998c38b728cac7d684da11))
+
 ## [1.3.1](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.3.0...v1.3.1) (2026-09-12)
 
 
