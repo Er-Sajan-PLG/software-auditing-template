@@ -7,7 +7,6 @@ import type { Check } from '../src/types.js';
 
 const RULES = path.resolve(process.cwd(), 'rules');
 
-/** Loads one rule straight out of its pack, so the test exercises the YAML. */
 function ruleOf(packFile: string, id: string) {
   const doc = parse(fs.readFileSync(path.join(RULES, packFile), 'utf8')) as {
     rules: { id: string; check: Check }[];
@@ -29,9 +28,6 @@ function fixture(files: Record<string, string>): string {
 }
 
 describe('core/testing rules', () => {
-  // TEST-005 once missed Vitest's `coverage: { thresholds: … }` form (the
-  // pattern required `coverage{` with no colon) — failing USAT's own
-  // self-audit the week thresholds were added.
   it('TEST-005 recognises Vitest coverage thresholds', () => {
     const rule = ruleOf('core/testing.yaml', 'TEST-005');
     const ok = fixture({
@@ -48,9 +44,6 @@ describe('core/security rules', () => {
   const sec002 = ruleOf('core/security.yaml', 'SEC-002');
   const sec006 = ruleOf('core/security.yaml', 'SEC-006');
 
-  // The eval alternative once fired on prose mentioning eval() — including
-  // this repo's own rule descriptions. A rule that fires on its own
-  // documentation is worse than no rule.
   it('SEC-006 passes prose mentions, fails real dynamic execution', () => {
     const prose = fixture({
       'src/catalog.ts': "why: 'eval() and string assert() execute arbitrary code',\n",
@@ -66,8 +59,6 @@ describe('core/security rules', () => {
   const sec013 = ruleOf('core/security.yaml', 'SEC-013');
   const sec025 = ruleOf('core/security.yaml', 'SEC-025');
 
-  // SEC-003 once used `https?://` and failed every compliant https:// URL,
-  // including this repo's own package.json. The `s?` must never come back.
   it('SEC-003 passes on https URLs, fails on plaintext http', () => {
     const ok = fixture({ 'src/api.ts': 'export const BASE = "https://api.example.com/v1";\n' });
     expect(evaluateAt(ok, sec003.check).status).toBe('PASS');
@@ -82,7 +73,6 @@ describe('core/security rules', () => {
     expect(evaluateAt(root, sec003.check).status).toBe('PASS');
   });
 
-  // The `%s` alternative once matched the safe DB-API parameter style.
   it('SEC-005 passes parameterised queries, fails interpolation', () => {
     const ok = fixture({
       'src/db.py': 'cursor.execute("SELECT * FROM t WHERE id = %s", (user_id,))\n',
@@ -94,8 +84,6 @@ describe('core/security rules', () => {
     expect(evaluateAt(concat, sec005.check).status).toBe('WRONG');
   });
 
-  // The trailing `['"']?` was optional, so every correct two-argument
-  // jwt.verify call failed. The quote is now mandatory (inline secrets only).
   it('SEC-013 passes correct verify calls, fails bypasses', () => {
     const mk = (line: string) => fixture({ 'src/auth.js': `${line}\n` });
     expect(
@@ -110,9 +98,6 @@ describe('core/security rules', () => {
     ).toBe('FAIL');
   });
 
-  // Companion to SEC-011 (which only proves weak hashes are absent):
-  // plaintext password storage used to pass cleanly. Positive evidence
-  // of an adaptive function is now required where auth exists.
   it('SEC-025 passes adaptive hashing, fails its absence', () => {
     const ok = fixture({ 'src/auth.js': 'const h = await bcrypt.hash(pw, 12);\n' });
     expect(evaluateAt(ok, sec025.check).status).toBe('PASS');
@@ -124,8 +109,6 @@ describe('core/security rules', () => {
     expect(evaluateAt(weak, sec025.check).status).toBe('MISSING');
   });
 
-  // A log line that merely talks about secrets is not a log line that leaks
-  // one. This rule used to fire on its own documentation.
   it('SEC-002 does not flag log messages that mention secrets', () => {
     const root = fixture({
       'src/scan.js': [
@@ -150,13 +133,11 @@ describe('core/security rules', () => {
     expect(evaluateAt(root, sec002.check).status).toBe('WRONG');
   });
 
-  it('SEC-002 works for Python too (the print( alternation consumed the paren)', () => {
+  it('SEC-002 works for Python too', () => {
     const root = fixture({ 'app.py': 'print("api_key=" + key)\n' });
     expect(evaluateAt(root, sec002.check).status).toBe('WRONG');
   });
 
-  // `regex.exec(body)` is not dynamic code execution, and a bare `body` also
-  // matches document.body / res.body.
   it('SEC-006 does not flag regex.exec or DOM bodies', () => {
     const sec006 = ruleOf('core/security.yaml', 'SEC-006');
     const root = fixture({
@@ -189,8 +170,6 @@ describe('core/security rules', () => {
 });
 
 describe('stacks/cli rules', () => {
-  // CLI-002 only recognised `process.exit(n)`; a CLI that returns a code from
-  // its entry point (`process.exitCode = main(argv)`) scored as if it had none.
   it('CLI-002 recognises the process.exitCode entry-point style', () => {
     const cli002 = ruleOf('stacks/cli.yaml', 'CLI-002');
     const root = fixture({ 'src/cli.ts': 'process.exitCode = main(process.argv.slice(2));\n' });
@@ -201,5 +180,41 @@ describe('stacks/cli rules', () => {
     const cli002 = ruleOf('stacks/cli.yaml', 'CLI-002');
     const root = fixture({ 'src/cli.ts': 'process.exit(1);\n' });
     expect(evaluateAt(root, cli002.check).status).toBe('PASS');
+  });
+});
+
+describe('stacks/swift rules', () => {
+  const sw005 = ruleOf('stacks/swift.yaml', 'SW-005');
+  const sw006 = ruleOf('stacks/swift.yaml', 'SW-006');
+
+  it('SW-005 passes when Validatable is present', () => {
+    const root = fixture({
+      'Package.swift':
+        '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", dependencies: [.package(url: "https://github.com/vapor/vapor.git", from: "4.0.0")], targets: [.target(name: "App")])',
+      'Sources/App/Models/User.swift':
+        'import Vapor\nstruct User: Validatable {\n  static func validations(_ validations: inout Validations) {}\n}\n',
+    });
+    expect(evaluateAt(root, sw005.check).status).toBe('PASS');
+  });
+
+  it('SW-005 fails when Validatable is absent', () => {
+    const root = fixture({
+      'Sources/App/Models/User.swift': 'struct User {\n  let name: String\n}\n',
+    });
+    expect(evaluateAt(root, sw005.check).status).toBe('MISSING');
+  });
+
+  it('SW-006 passes when CORSMiddleware is present', () => {
+    const root = fixture({
+      'Sources/App/Middleware.swift': 'import Vapor\napp.middleware.use(CORSMiddleware())\n',
+    });
+    expect(evaluateAt(root, sw006.check).status).toBe('PASS');
+  });
+
+  it('SW-006 fails when neither CORSMiddleware nor SecurityHeadersMiddleware are present', () => {
+    const root = fixture({
+      'Sources/App/Middleware.swift': 'import Vapor\napp.middleware.use(SomeOtherMiddleware())\n',
+    });
+    expect(evaluateAt(root, sw006.check).status).toBe('MISSING');
   });
 });

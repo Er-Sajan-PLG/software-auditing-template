@@ -100,7 +100,7 @@ describe('detection', () => {
     });
     const d = detectAt(root);
     expect(d.facts.flags).toContain('platform:evm');
-    expect(d.facts.flags).toContain('project:blockchain'); // derived via implies
+    expect(d.facts.flags).toContain('project:blockchain');
   });
 });
 
@@ -120,7 +120,6 @@ describe('maturity classification', () => {
       Dockerfile: 'FROM node:20\n',
       '.github/workflows/ci.yml': 'name: CI\non: push\njobs: {}\n',
     });
-    // Simulate a long history and release tags, which need real git objects.
     const d = detectAt(root);
     const project = new Project(root);
     const fakeGit = {
@@ -133,7 +132,7 @@ describe('maturity classification', () => {
     };
     const full = detect(project, loadDetectorFile('rules'), fakeGit as any, []);
     expect(full.maturity).toBe('production');
-    expect(d.maturity).not.toBe('production'); // without the git facts, it is younger
+    expect(d.maturity).not.toBe('production');
   });
 
   it('classifies an abandoned repo as legacy', () => {
@@ -191,7 +190,6 @@ describe('manifest matching precision', () => {
         match: { manifest: { file: 'config.toml', key: 'tool.test', contains: 'x' } },
       },
     ];
-    // `latest` contains `test` as a substring — must not count.
     expect(
       matchedWith(detectors as never[], { 'config.toml': '[tool]\nlatest = "x"\n' }, 'x:test'),
     ).toBe(false);
@@ -209,7 +207,6 @@ describe('manifest matching precision', () => {
         match: { manifest: { file: 'pyproject.toml', key: 'dependencies.django' } },
       },
     ];
-    // [dev-dependencies] is not [dependencies] (`-` is not a segment boundary).
     expect(
       matchedWith(
         detectors as never[],
@@ -256,5 +253,68 @@ describe('framework facts imply their platform', () => {
     const d = detectAt(root);
     expect(d.facts.flags).toContain('fw:react');
     expect(d.facts.flags).not.toContain('platform:server');
+  });
+});
+
+describe('swift ecosystem detection (graduated from bootstrap proof)', () => {
+  const vapidPkg = (extra: Record<string, string> = {}) => ({
+    'Package.swift': [
+      '// swift-tools-version: 5.9',
+      'import PackageDescription',
+      'let package = Package(',
+      '    name: "vapor-test",',
+      '    dependencies: [.package(url: "https://github.com/vapor/vapor.git", from: "4.0.0")],',
+      ...Object.values(extra),
+      ')',
+    ].join('\n'),
+  });
+
+  it('detects vapor framework and server platform', () => {
+    const root = build({
+      ...vapidPkg(),
+      'Sources/App/routes.swift': 'import Vapor\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).toContain('fw:vapor');
+    expect(d.facts.flags).toContain('platform:server');
+  });
+
+  it('detects executable targets, absent in pure libraries', () => {
+    const app = build({
+      ...vapidPkg({ exe: '    targets: [.executableTarget(name: "App")],' }),
+      'Sources/App/main.swift': 'print("hi")\n',
+    });
+    expect(detectAt(app).facts.flags).toContain('swift:executable');
+
+    const lib = build({
+      ...vapidPkg(),
+      'Sources/Lib/lib.swift': 'public func f() {}\n',
+    });
+    expect(detectAt(lib).facts.flags).not.toContain('swift:executable');
+  });
+
+  it('detects swift-validation presence', () => {
+    const root = build({
+      'Sources/App/Models/User.swift':
+        'import Vapor\nstruct User: Validatable {\n  static func validations(_ validations: inout Validations) {}\n}\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).toContain('has:swift-validation');
+  });
+
+  it('detects swift-security-headers presence', () => {
+    const root = build({
+      'Sources/App/Middleware.swift': 'import Vapor\napp.middleware.use(CORSMiddleware())\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).toContain('has:swift-security-headers');
+  });
+
+  it('does not detect swift-validation without Validatable', () => {
+    const root = build({
+      'Sources/App/Models/User.swift': 'struct User {\n  let name: String\n}\n',
+    });
+    const d = detectAt(root);
+    expect(d.facts.flags).not.toContain('has:swift-validation');
   });
 });

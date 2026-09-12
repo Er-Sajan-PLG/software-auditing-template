@@ -1,6 +1,6 @@
-name: 'USAT Audit'
+name: 'USA Audit'
 description: >
-  Audit any repository with USAT — the Universal Software Audit Template.
+  Audit any repository with USA — the Universal Software Auditor.
   Auto-detects the stack, grades against a maturity-appropriate bar, and writes a
   Markdown report with a prioritised roadmap.
 
@@ -31,7 +31,7 @@ inputs:
     required: false
     default: 'none'
   version:
-    description: 'USAT version to run (pin this in production pipelines)'
+    description: 'USA version to run (pin this in production pipelines)'
     required: false
     default: 'latest'
   allow-commands:
@@ -54,14 +54,14 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Run USAT
+    - name: Run USA
       id: audit
       shell: bash
       run: |
         set -euo pipefail
-        PKG="@xenos1996/usat"
+        PKG="@xenos1996/usa"
         if [ "${{ inputs.version }}" != "latest" ]; then
-          PKG="@xenos1996/usat@${{ inputs.version }}"
+          PKG="@xenos1996/usa@${{ inputs.version }}"
         fi
 
         ARGS=(audit "${{ inputs.path }}"

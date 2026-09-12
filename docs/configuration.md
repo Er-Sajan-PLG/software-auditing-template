@@ -1,6 +1,6 @@
-# Configuration — `.usat.yaml`
+# Configuration — `.usa.yaml`
 
-Generate one with `usat init`. Every field is optional; a missing file is fine.
+Generate one with `usa init`. Every field is optional; a missing file is fine.
 
 ```yaml
 version: 1
@@ -31,7 +31,7 @@ suppressions:
     until: '2026-12-31'
 
 # ── Indexing ───────────────────────────────────────────────────────────────
-ignore: # extra globs, on top of .gitignore + USAT defaults
+ignore: # extra globs, on top of .gitignore + USA defaults
   - 'generated/**'
   - 'vendor/**'
 
@@ -65,7 +65,7 @@ The file index skips, in order:
 1. `.git/`
 2. `DEFAULT_IGNORES` — `node_modules/`, `dist/`, `build/`, `.next/`, `venv/`, `target/`, media, archives, binaries
 3. Your `.gitignore`
-4. `ignore:` from `.usat.yaml`
+4. `ignore:` from `.usa.yaml`
 
 Lockfiles **are** indexed (a rule asking "is a lockfile committed?" has to see them)
 but are never grepped — they are huge and full of false positives. Files over 2 MB
@@ -115,5 +115,5 @@ An audit must never silently honour dead risk acceptances (see ADR-0007).
 rules regardless of depth and `applies_when` — that is the documented
 contract, and the operator is responsible for what they force on.
 
-**Keep `.usat.yaml` in the repo.** It is the audit trail for every exception you
+**Keep `.usa.yaml` in the repo.** It is the audit trail for every exception you
 have taken. A reviewer should be able to read it and understand what the team decided.

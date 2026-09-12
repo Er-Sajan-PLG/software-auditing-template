@@ -4,7 +4,7 @@ The same repository deserves a different report at age three days and age three 
 Grading a prototype against a production bar produces a wall of noise nobody reads;
 grading production with prototype standards produces a false all-clear.
 
-USAT detects a lifecycle stage and **dampens** severity to match.
+USA detects a lifecycle stage and **dampens** severity to match.
 
 ## How the stage is detected
 
@@ -137,11 +137,11 @@ service · document well enough to hand over or retire.
 ## Overriding
 
 ```bash
-usat audit . --profile production     # grade against the full bar
+usa audit . --profile production     # grade against the full bar
 ```
 
 ```yaml
-# .usat.yaml
+# .usa.yaml
 maturity: production
 ```
 

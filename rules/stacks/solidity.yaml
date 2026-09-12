@@ -2,7 +2,7 @@ id: stacks/solidity
 title: Blockchain / Smart Contracts
 section: S15
 section_title: Platform-Specific
-description: 'Activated when Solidity, Foundry, or Hardhat is detected. USAT is not a substitute for a third-party audit.'
+description: 'Activated when Solidity, Foundry, or Hardhat is detected. USA is not a substitute for a third-party audit.'
 version: '1.0'
 skip_when: { fact: 'platform:evm', op: 'absent' }
 

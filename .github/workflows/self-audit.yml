@@ -1,6 +1,6 @@
 name: Self audit
 
-# USAT audits itself on every PR. If this workflow fails, the tool regressed or
+# USA audits itself on every PR. If this workflow fails, the tool regressed or
 # the repo picked up a finding at or above the threshold.
 on:
   pull_request:
@@ -16,8 +16,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  usat:
-    name: USAT audit
+  usa:
+    name: USA audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,7 +32,7 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: Run USAT from source
+      - name: Run USA from source
         id: audit
         run: |
           node dist/cli.js audit . \
@@ -55,21 +55,21 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: usat-audit
+          name: usa-audit
           path: AUDIT.md
 
       - name: Comment score on PR
         if: github.event_name == 'pull_request' && always()
         uses: marocchino/sticky-pull-request-comment@v3
         with:
-          header: usat
+          header: usa
           message: |
-            ## 🧠 USAT self-audit
+            ## 🧠 USA self-audit
 
             **Score: ${{ steps.score.outputs.score }}/100** · depth `deep`
 
             <details><summary>Full report</summary>
 
-            See the artifact `usat-audit` on this run, or the job summary above.
+            See the artifact `usa-audit` on this run, or the job summary above.
 
             </details>

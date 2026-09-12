@@ -9,7 +9,7 @@ import { detect, loadDetectorFile } from '../src/detect/index.js';
 const RULES_DIR = path.resolve(process.cwd(), 'rules');
 
 export function makeProject(files: Record<string, string>): { root: string; cleanup: () => void } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'usat-eval-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'usa-eval-'));
   for (const [rel, content] of Object.entries(files)) {
     const abs = path.join(root, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });

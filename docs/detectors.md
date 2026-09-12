@@ -5,7 +5,7 @@ maps file patterns to **facts**, and rule packs select themselves on those facts
 Add a signal and every pack that cares starts applying — no TypeScript required.
 
 ```bash
-usat detect .            # what USAT thinks your project is
+usa detect .            # what USA thinks your project is
 ```
 
 ## How a detector works
@@ -37,11 +37,13 @@ detector count + 1 passes, early exit), so chains of any length resolve
 regardless of declaration order.
 
 Request-serving frameworks imply their platform: `fw:express` …
-`fw:sveltekit` (24 frameworks) each derive `platform:server`, so a bare
-framework app with no Dockerfile still gets the platform-gated rules
-(SEC-003 et al.). Task queues, static builders, and desktop/mobile packs
-deliberately imply nothing — see the comment block in
-`rules/detectors.yaml`.
+`fw:sveltekit` plus `fw:vapor` (25 frameworks) each derive
+`platform:server`, so a bare framework app with no Dockerfile still gets
+the platform-gated rules (SEC-003 et al.). Task queues, static builders,
+and desktop/mobile packs deliberately imply nothing — see the comment
+block in `rules/detectors.yaml`. SwiftPM executable targets additionally
+derive the `swift:executable` type fact, which scopes app-only rules like
+SW-003 (libraries must not commit `Package.resolved`).
 
 Manifest queries are section-scoped where sections exist: a dotted key
 (`tool.poetry.dependencies`) matches a full header segment
@@ -68,8 +70,8 @@ manifest, not prose. This list mirrors `CONTENT_EXCLUDES` in
 file it.
 
 Everything else in the tree is fair game. If a project's own config comments are
-still producing noise, add the file to `ignore:` in `.usat.yaml` — that is what
-[`../.usat.yaml`](../.usat.yaml) does with `rules/`.
+still producing noise, add the file to `ignore:` in `.usa.yaml` — that is what
+[`../.usa.yaml`](../.usa.yaml) does with `rules/`.
 
 ## Fact namespaces
 
@@ -91,6 +93,7 @@ Node backend: `express` `fastify` `nest` `hono` `koa`
 Python: `django` `flask` `fastapi` `celery` `airflow` `streamlit`
 Go: `gin` `echo` `fiber` `chi` · Rust: `axum` `actix` `rocket`
 JVM: `spring` `quarkus` · Ruby: `rails` · PHP: `laravel` `symfony` · .NET: `dotnet`
+Swift: `vapor`
 Mobile/desktop: `react-native` `expo` `flutter` `electron` `tauri`
 
 ### `project:*` — archetype
@@ -178,9 +181,9 @@ Metrics, referenced as `metric:<name>` in predicates:
 3. Verify against a project that uses the technology and one that does not:
 
 ```bash
-usat detect ~/code/uses-hono
-usat detect ~/code/does-not
+usa detect ~/code/uses-hono
+usa detect ~/code/does-not
 ```
 
 4. If detection is right but a project still eludes it, users can assert facts in
-   `.usat.yaml` — but if you find yourself doing that often, the detector is wrong.
+   `.usa.yaml` — but if you find yourself doing that often, the detector is wrong.

@@ -25,7 +25,7 @@ Closes #
 - [ ] `npm run format:check` passes
 - [ ] New rules have `why`, `remediation`, and — for `manual` checks — `evidence`
 - [ ] New rules have been tested against a project that **does** and one that **does not** have the problem
-- [ ] `usat audit .` on this repo shows no new failures (or the new ones are justified in `.usat.yaml`)
+- [ ] `usa audit .` on this repo shows no new failures (or the new ones are justified in `.usa.yaml`)
 
 ## False-positive check
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AuditReport, Depth, Maturity, Rule, Severity } from './types.js';
 import { runAudit } from './engine/audit.js';
-import { loadRulePacks } from './engine/loader.js';
+import { loadRulePacks, loadPackFile } from './engine/loader.js';
 import { loadDetectorFile } from './detect/index.js';
 import { Project } from './util/project.js';
 import { detect } from './detect/index.js';
@@ -13,6 +13,17 @@ import { diffReports } from './engine/diff.js';
 import { bootstrapPacks, writeBootstrapPacks } from './bootstrap/index.js';
 import { EXAMPLE_CONFIG, loadConfig } from './config.js';
 import { evaluateGate } from './engine/gate.js';
+import { learnFromReport, renderSuggestions, type LearnOptions } from './learn/index.js';
+import { Store } from './store/index.js';
+import { runEvolutionCycle, type EvolutionCycleOutput } from './evolution/run.js';
+import { capabilityFromPack } from './evolution/capability.js';
+import type { QueueSummary } from './evolution/queue.js';
+import type {
+  BenchmarkCase,
+  CandidateCapability,
+  CapabilityGap,
+  CoverageModel,
+} from './evolution/types.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RULES_DIR = path.resolve(HERE, '..', 'rules');
@@ -82,21 +93,18 @@ const COMMANDS: Record<string, (args: Args) => number> = {
   diff: cmdDiff,
   init: cmdInit,
   bootstrap: cmdBootstrap,
+  learn: cmdLearn,
+  evolve: cmdEvolve,
 };
 
 export function main(argv: string[]): number {
   const args = parseArgs(argv);
-  // GNU-style flags never reach `_` (the parser files them under flags), so
-  // check them before the command dispatch: without this, `usat --help`
-  // falls through to the default `audit` command and audits the tree
-  // instead of printing help. The `version`/`--version` cases below exist
-  // for the positional forms (`usat version`); the flags are handled here.
   if (bool(args, 'help')) {
     console.log(HELP);
     return 0;
   }
   if (bool(args, 'version')) {
-    console.log(`usat ${VERSION}`);
+    console.log(`usa ${VERSION}`);
     return 0;
   }
   const cmd = (args._[0] ?? 'audit') as string;
@@ -106,7 +114,7 @@ export function main(argv: string[]): number {
   switch (cmd) {
     case 'version':
     case '--version':
-      console.log(`usat ${VERSION}`);
+      console.log(`usa ${VERSION}`);
       return 0;
     case 'help':
     case '--help':
@@ -130,6 +138,14 @@ interface AuditCliOptions {
   out: string;
   failOn: string;
   quiet: boolean;
+  maxFiles?: number;
+  maxBytes?: number;
+}
+
+function parseCountFlag(v: string | undefined): number | undefined {
+  if (v === undefined) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 function readAuditOptions(args: Args): AuditCliOptions {
@@ -141,6 +157,8 @@ function readAuditOptions(args: Args): AuditCliOptions {
     out: str(args, 'out', 'AUDIT.md') ?? 'AUDIT.md',
     failOn: (str(args, 'fail-on', 'none') ?? 'none').toLowerCase(),
     quiet: bool(args, 'quiet'),
+    maxFiles: parseCountFlag(str(args, 'max-files')),
+    maxBytes: parseCountFlag(str(args, 'max-bytes')),
   };
 }
 
@@ -149,6 +167,8 @@ function validateAuditOptions(o: AuditCliOptions): string | null {
   if (o.profileArg !== 'auto' && !MATURITIES.includes(o.profileArg as Maturity)) {
     return `--profile must be auto or one of ${MATURITIES.join('|')}`;
   }
+  if (o.maxFiles !== undefined && !(o.maxFiles > 0)) return '--max-files must be a positive number';
+  if (o.maxBytes !== undefined && !(o.maxBytes > 0)) return '--max-bytes must be a positive number';
   return null;
 }
 
@@ -181,9 +201,11 @@ function cmdAudit(args: Args): number {
     profile: o.profileArg as Maturity | 'auto',
     config,
     allowCommands: bool(args, 'allow-commands'),
-    usatVersion: VERSION,
+    usaVersion: VERSION,
     includePacks: list(args, 'include'),
     excludePacks: list(args, 'exclude'),
+    maxFiles: o.maxFiles,
+    maxBytes: o.maxBytes,
   });
 
   for (const w of warnings) console.error(`warning: ${w}`);
@@ -205,7 +227,7 @@ function summaryLine(report: AuditReport): string {
     .map((k) => `${k.toLowerCase()} ${s[k]}`)
     .join(' · ');
   return (
-    `usat ${report.score.overall}/100 (${report.detection.maturity}) — ` +
+    `usa ${report.score.overall}/100 (${report.detection.maturity}) — ` +
     `${report.score.counts.PASS} passed, ` +
     (parts ? `open: ${parts}` : 'no open findings') +
     `, ${report.score.counts.UNKNOWN} to review` +
@@ -219,8 +241,6 @@ function cmdDetect(args: Args): number {
   const target = (args._[1] as string | undefined) ?? '.';
   const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
   const config = loadConfig(target, str(args, 'config'));
-  // Honour `ignore:`, so detecting a repo whose own files (rule packs, docs)
-  // mention every technology under the sun does not light up the whole map.
   const project = new Project(target, config.ignore ?? []);
   const git = project.gitInfo();
   const detection = detect(project, loadDetectorFile(rulesDir), git, [
@@ -283,7 +303,7 @@ function cmdRules(args: Args): number {
 function cmdExplain(args: Args): number {
   const id = args._[1] as string | undefined;
   if (!id) {
-    console.error('Usage: usat explain <RULE-ID>');
+    console.error('Usage: usa explain <RULE-ID>');
     return 2;
   }
   const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
@@ -325,7 +345,7 @@ function cmdDiff(args: Args): number {
   const beforePath = args._[1] as string | undefined;
   const afterPath = args._[2] as string | undefined;
   if (!beforePath || !afterPath) {
-    console.error('Usage: usat diff <before.md> <after.md> [--out DIFF.md]');
+    console.error('Usage: usa diff <before.md> <after.md> [--out DIFF.md]');
     return 2;
   }
   const readTrailer = (file: string) => {
@@ -350,7 +370,6 @@ function cmdBootstrap(args: Args): number {
   const target = (args._[1] as string | undefined) ?? '.';
   const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
   const config = loadConfig(target, str(args, 'config'));
-  // Honour `ignore:` — same project view the audit itself uses.
   const project = new Project(target, config.ignore ?? []);
   const git = project.gitInfo();
   const detection = detect(project, loadDetectorFile(rulesDir), git, [
@@ -391,7 +410,7 @@ function printBootstrap(outcome: ReturnType<typeof bootstrapPacks>): void {
 function cmdInit(args: Args): number {
   const target = (args._[1] as string | undefined) ?? '.';
   fs.mkdirSync(target, { recursive: true });
-  const configPath = path.join(target, '.usat.yaml');
+  const configPath = path.join(target, '.usa.yaml');
   if (fs.existsSync(configPath)) {
     console.error(`${configPath} already exists — leaving it alone.`);
   } else {
@@ -399,7 +418,7 @@ function cmdInit(args: Args): number {
     console.log(`created ${configPath}`);
   }
   const workflowDir = path.join(target, '.github', 'workflows');
-  const workflowPath = path.join(workflowDir, 'usat.yml');
+  const workflowPath = path.join(workflowDir, 'usa.yml');
   if (fs.existsSync(workflowPath)) {
     console.error(`${workflowPath} already exists — leaving it alone.`);
   } else {
@@ -407,8 +426,243 @@ function cmdInit(args: Args): number {
     fs.writeFileSync(workflowPath, WORKFLOW_TEMPLATE, 'utf8');
     console.log(`created ${workflowPath}`);
   }
-  console.log('\nNext: run `npx usat audit .` or `usat audit . --depth standard`.');
+  console.log('\nNext: run `npx usa audit .` or `usa audit . --depth standard`.');
   return 0;
+}
+
+/* ------------------------------------------------------------------ learn -- */
+
+function cmdLearn(args: Args): number {
+  const reportPath = args._[1] as string | undefined;
+  if (!reportPath) {
+    console.error('Usage: usa learn <report.md> [--out <file>] [--min-severity MEDIUM]');
+    return 2;
+  }
+  if (!fs.existsSync(reportPath)) {
+    console.error(`Report file not found: ${reportPath}`);
+    return 2;
+  }
+  const outFile = str(args, 'out', 'learn-suggestions.yaml') ?? 'learn-suggestions.yaml';
+  const minSeverity = (str(args, 'min-severity', 'MEDIUM') ?? 'MEDIUM').toUpperCase() as
+    'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'FUTURE';
+  const allowed = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'FUTURE'];
+  if (!allowed.includes(minSeverity)) {
+    console.error(`--min-severity must be one of: ${allowed.join(', ')}`);
+    return 2;
+  }
+  const options: LearnOptions = { reportPath, out: outFile, minSeverity };
+  try {
+    const suggestions = learnFromReport(options);
+    if (suggestions.length === 0) {
+      console.log(`No actionable suggestions found in ${reportPath}.`);
+      return 0;
+    }
+    const yaml = renderSuggestions(suggestions);
+    fs.writeFileSync(outFile, yaml, 'utf8');
+    console.log(`Wrote ${suggestions.length} suggestion(s) to ${outFile}`);
+    console.log('  Review the rules, test them, then register in rules/index.yaml.');
+    return 0;
+  } catch (err) {
+    console.error((err as Error).message);
+    return 2;
+  }
+}
+
+/* ----------------------------------------------------------------- evolve -- */
+
+function cmdEvolve(args: Args): number {
+  const target = (args._[1] as string | undefined) ?? '.';
+  const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
+  if (!fs.existsSync(target)) {
+    console.error(`Target path does not exist: ${target}`);
+    return 2;
+  }
+
+  const storeDir = str(args, 'store');
+  const store = storeDir ? new Store(storeDir) : undefined;
+
+  const candidateCapability = loadEvolveCandidate(args);
+  const cases = loadEvolveCases(args, candidateCapability);
+  const learnReportPath = loadEvolveLearn(args);
+  const proposeFromGaps = bool(args, 'propose') && !candidateCapability && !learnReportPath;
+  const allGaps = bool(args, 'all-gaps');
+
+  const result = runEvolutionCycle({
+    target,
+    rulesDir,
+    engineVersion: VERSION,
+    candidateCapability,
+    benchmarkCases: cases,
+    store,
+    learnReportPath,
+    learnMinSeverity: str(args, 'min-severity', 'MEDIUM') as
+      'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'FUTURE',
+    proposeFromGaps,
+    allGaps,
+    onUnproposable: (gap, reason) => {
+      console.error(`warning: ${gap.id} not proposable (${reason})`);
+    },
+  });
+
+  printEvolutionResult(result);
+  return 0;
+}
+
+/** Resolve `--learn <report.md>` to an existing path, or undefined. */
+function loadEvolveLearn(args: Args): string | undefined {
+  const reportPath = str(args, 'learn');
+  if (!reportPath) return undefined;
+  if (!fs.existsSync(reportPath)) {
+    console.error(`warning: learn report not found (${reportPath}) — ignoring --learn`);
+    return undefined;
+  }
+  return reportPath;
+}
+
+function loadEvolveCandidate(args: Args) {
+  const candidateFile = str(args, 'candidate');
+  if (!candidateFile) return undefined;
+  const { pack, warnings } = loadPackFile(candidateFile);
+  for (const w of warnings) console.error(`warning: ${w}`);
+  if (!pack) {
+    console.error(`Could not load candidate pack: ${candidateFile}`);
+    return undefined;
+  }
+  return capabilityFromPack(pack, { createdBy: 'cli' });
+}
+
+function loadEvolveCases(args: Args, candidateCapability: unknown): BenchmarkCase[] {
+  const benchDir = str(args, 'bench-dir');
+  const cases = benchDir ? loadBenchCases(benchDir) : [];
+  if (candidateCapability && cases.length === 0) {
+    console.error(
+      'warning: no benchmark cases supplied (--bench-dir). The release decision will be vacuous.',
+    );
+  }
+  return cases;
+}
+
+function loadBenchCases(dir: string): BenchmarkCase[] {
+  if (!fs.existsSync(dir)) return [];
+  const cases: BenchmarkCase[] = [];
+  for (const entry of fs.readdirSync(dir)) {
+    if (!entry.endsWith('.json')) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(dir, entry), 'utf8')) as BenchmarkCase;
+      if (raw && raw.id && Array.isArray(raw.expected) && raw.fixture) cases.push(raw);
+    } catch {
+      console.error(`warning: could not read benchmark case ${entry}`);
+    }
+  }
+  return cases;
+}
+
+function printEvolutionResult(result: EvolutionCycleOutput): void {
+  console.log(`# Evolution: ${result.snapshot.root}`);
+  console.log();
+  console.log(`snapshot        : ${result.snapshot.id}`);
+  printCoverage('before', result.before.coverage);
+  printGaps(result.before.gaps);
+
+  if (!result.candidate) {
+    console.log();
+    if (result.proposed.length > 0) {
+      console.log(`proposed        : ${result.proposed.length} candidate(s) (none benchmarked)`);
+      printProposed(result.proposed);
+    } else {
+      console.log('No candidate capability supplied (--candidate <pack.yaml>).');
+      console.log('This was the deterministic BEFORE half of the loop only.');
+      console.log('Pass --propose to auto-propose a candidate from the gaps.');
+    }
+    printQueue(result.queue);
+    printSchedule(result.schedule);
+    return;
+  }
+
+  const release = result.candidate.release;
+  console.log();
+  console.log(
+    `candidate       : ${result.candidate.capabilityId} (gaps: ${result.candidate.gapIds.join(', ')})`,
+  );
+  if (result.proposed.length > 0) printProposed(result.proposed);
+  if (result.learnedSuggestions !== undefined) {
+    console.log(`learned       : ${result.learnedSuggestions} suggestion(s) from report`);
+  }
+  if (release) {
+    console.log(`release decision: ${release.decision}`);
+    console.log(
+      `  precision ${release.precision.toFixed(3)} · recall ${release.recall.toFixed(3)} · regressions ${release.regressions}`,
+    );
+    for (const r of release.reasons) console.log(`  - ${r}`);
+  }
+
+  if (result.after) {
+    console.log();
+    printCoverage('after', result.after.coverage);
+    const d = result.after.delta;
+    console.log(
+      `delta           : coverage +${d.coverageDelta}pt · ${d.findingsAdded.length} finding(s) added · gap reduced: ${d.gapReduced}`,
+    );
+    if (d.findingsAdded.length) console.log(`  new findings: ${d.findingsAdded.join(', ')}`);
+  }
+
+  if (result.queue) {
+    console.log(
+      `queue           : ${result.queue.open} open · ${result.queue.closed} closed · ${result.queue.total} total`,
+    );
+  }
+  printSchedule(result.schedule);
+}
+
+function printSchedule(schedule: EvolutionCycleOutput['schedule']): void {
+  if (!schedule) return;
+  for (const c of schedule.candidates) {
+    const blocked = c.blockedReason ? ` · blocked: ${c.blockedReason}` : '';
+    console.log(
+      `schedule        : ${c.capabilityId} → ${c.outcome} ` +
+        `(precision ${c.release.precision.toFixed(3)} · recall ${c.release.recall.toFixed(3)} · ` +
+        `regressions ${c.release.regressions}, closed: ${c.closedGapIds.length} gap(s))${blocked}`,
+    );
+  }
+  console.log(
+    `schedule        : ${schedule.attempted} attempted · ${schedule.released} released · ${schedule.rejected} rejected`,
+  );
+}
+
+function printQueue(queue: QueueSummary | undefined): void {
+  if (!queue) return;
+  console.log(
+    `queue           : ${queue.open} open · ${queue.closed} closed · ${queue.total} total`,
+  );
+}
+
+function printCoverage(label: string, cov: CoverageModel): void {
+  console.log(
+    `${label.padEnd(16)}: language coverage ${cov.languageCoverage}% · automation ${cov.automationCoverage}%`,
+  );
+  if (cov.unsupportedLanguages.length) {
+    console.log(`  unsupported : ${cov.unsupportedLanguages.join(', ')}`);
+  }
+}
+
+function printGaps(gaps: CapabilityGap[]): void {
+  if (gaps.length === 0) {
+    console.log('gaps           : none');
+    return;
+  }
+  console.log(`gaps           : ${gaps.length}`);
+  for (const g of gaps) console.log(`  - ${g.id} [${g.priority}] ${g.requiredCapability}`);
+}
+
+function printProposed(proposed: CandidateCapability[]): void {
+  for (const c of proposed) {
+    const langs = c.capability.languages?.join(', ') ?? 'unknown';
+    const rules = c.capability.pack?.rules.length ?? 0;
+    console.log(
+      `  proposed      : ${c.id} (${rules} rule(s), langs: ${langs}) → gap ${c.gapIds.join(', ')} [${c.status}]`,
+    );
+  }
+  console.log('  review required — proposals are unreviewed bootstrap packs, never registered.');
 }
 
 /* ------------------------------------------------------------------ utils -- */
@@ -430,42 +684,61 @@ function readVersion(): string {
 }
 
 const HELP = `
-usat — Universal Software Audit Template
+usa — Universal Software Auditor
 
-  usat audit [path]              Audit a project and write a Markdown report
-  usat detect [path]             Print the auto-detected facts and maturity
-  usat rules [--section S2]      List all loaded rule packs and rules
-  usat explain <RULE-ID>         Show everything about one rule
-  usat diff <before> <after>     Compare two previously generated reports
-  usat init [path]               Scaffold .usat.yaml + a GitHub Actions workflow
-  usat bootstrap [path]          Propose rule packs for stacks USAT cannot audit yet
+  usa audit [path]              Audit a project and write a Markdown report
+  usa detect [path]             Print the auto-detected facts and maturity
+  usa rules [--section S2]      List all loaded rule packs and rules
+  usa explain <RULE-ID>         Show everything about one rule
+  usa diff <before> <after>     Compare two previously generated reports
+  usa init [path]               Scaffold .usa.yaml + a GitHub Actions workflow
+  usa bootstrap [path]          Propose rule packs for stacks USA cannot audit yet
+  usa learn <report.md>         Generate suggested rules from audit findings
+  usa evolve [path]             Run the audit → gap → candidate → release loop
+
+evolve options
+  --store <dir>        Persist audit runs/results (content-addressed store)
+  --candidate <file>   A candidate capability pack (YAML) to benchmark and release
+  --propose            Auto-propose a candidate from the gaps (bootstrap catalog)
+  --all-gaps           Evaluate every proposable candidate (one per open gap)
+  --learn <report.md>  Propose a candidate from a report's open findings (usa learn)
+  --min-severity <s>   Min severity for --learn (default MEDIUM)
+  --bench-dir <dir>    Directory of benchmark case *.json files
+  --rules-dir <dir>    Rule pack directory             (default bundled rules/)
+
+learn options
+  --out <file>        Output YAML file (default learn-suggestions.yaml)
+  --min-severity <s>  Minimum severity to consider (CRITICAL|HIGH|MEDIUM|LOW|FUTURE, default MEDIUM)
 
 audit options
   --out <file>        Report path (default AUDIT.md)
   --depth <level>     quick | standard | deep          (default standard)
   --profile <stage>   auto | prototype | mvp | beta | production | legacy
   --rules-dir <dir>   Rule pack directory             (default bundled rules/)
-  --config <file>     Explicit .usat.yaml location
+  --config <file>     Explicit .usa.yaml location
   --include <packs>   Force these packs on (comma separated)
   --exclude <packs>   Force these packs off
   --fact <ns:value>   Assert a fact detection missed, e.g. --fact has:database
   --allow-commands    Run \`command:\` checks (shells out; off by default)
   --fail-on <sev>     Exit 1 on findings >= sev: critical|high|medium|low|none
   --quiet             Only errors
+  --max-files <n>     Index at most n files (overrides config; default 60000)
+  --max-bytes <n>     Skip files larger than n bytes (overrides config; default 2 MiB)
 
 bootstrap options
   --out <file|dir>    Write pack files instead of printing (default: print)
 
 examples
-  usat audit . --depth deep
-  usat bootstrap ~/code/legacy-php-app --out /tmp/packs
-  usat audit ../api --profile production --fail-on high
-  usat audit . --out reports/audit-$(date +%F).md
+  usa audit . --depth deep
+  usa bootstrap ~/code/legacy-php-app --out /tmp/packs
+  usa audit ../api --profile production --fail-on high
+  usa audit . --out reports/audit-$(date +%F).md
+  usa learn AUDIT.md --out swift-suggestions.yaml
 `.trim();
 
-const WORKFLOW_TEMPLATE = `# USAT — Universal Software Audit Template
+const WORKFLOW_TEMPLATE = `# USA — Universal Software Auditor
 # Runs on every PR and pushes a Markdown summary you can read in the Actions UI.
-name: USAT Audit
+name: USA Audit
 
 on:
   pull_request:
@@ -482,43 +755,9 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+`;
 
-jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Run USAT
-        id: usat
-        run: |
-          npx --yes usat@latest audit . \\
-            --depth \${{ inputs.depth || 'standard' }} \\
-            --out AUDIT.md
-
-      - name: Publish to job summary
-        if: always()
-        run: cat AUDIT.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: usat-audit
-          path: AUDIT.md
-
-      # Uncomment to gate the merge on HIGH findings.
-      # - name: Quality gate
-      #   run: npx --yes usat@latest audit . --fail-on high
-`.trimStart();
-
-/* Entrypoint. */
-const isDirectRun = process.argv[1] ? /usat|cli\.(ts|js)$/.test(process.argv[1]!) : false;
-if (isDirectRun) {
-  process.exitCode = main(process.argv.slice(2));
+// ---- main entry point ----
+if (import.meta.url === `file://${process.argv[1]}`) {
+  process.exit(main(process.argv.slice(2)));
 }

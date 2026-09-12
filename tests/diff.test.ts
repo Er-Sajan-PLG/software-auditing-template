@@ -24,9 +24,9 @@ const finding = (
 
 function md(findings: Finding[], overall: number, at = '2026-06-01T00:00:00.000Z'): string {
   const report: AuditReport = {
-    schema: 'usat-report-v1',
+    schema: 'usa-report-v1',
     generatedAt: at,
-    usatVersion: '1.0.0',
+    usaVersion: '1.0.0',
     target: { path: '/p', name: 'p' },
     detection: {
       maturity: 'beta',
@@ -83,7 +83,7 @@ const after = md(
   71,
 );
 
-describe('usat diff', () => {
+describe('usa diff', () => {
   it('reports the net movement', () => {
     const out = diffReports(parseTrailer(before)!, parseTrailer(after)!);
     expect(out).toContain('+16');

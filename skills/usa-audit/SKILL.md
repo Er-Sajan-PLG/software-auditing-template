@@ -1,7 +1,7 @@
 ---
-name: usat-audit
+name: usa-audit
 description: >
-  Audit any software repository with USAT (Universal Software Audit Template).
+  Audit any software repository with USA (Universal Software Auditor).
   Use when asked to audit, review, assess, or score a codebase; when asked for a
   security review, code-quality review, tech-debt assessment, pre-release check,
   or "is this production-ready?". Auto-detects the stack, activates the applicable
@@ -10,7 +10,7 @@ description: >
 license: MIT
 ---
 
-# USAT audit
+# USA audit
 
 Audit any project, any stack, any stage — and grade it against a bar appropriate to
 how old it is.
@@ -20,7 +20,7 @@ how old it is.
 - "Audit this repo" / "review this codebase" / "is this production-ready?"
 - Security review, tech-debt assessment, pre-release or pre-raise diligence
 - Onboarding onto an unfamiliar codebase (the report is a map)
-- Periodic drift checks: run it monthly and `usat diff` against the last one
+- Periodic drift checks: run it monthly and `usa diff` against the last one
 
 ## Do not
 
@@ -34,16 +34,16 @@ how old it is.
 ### 1 · Detect
 
 ```bash
-npx @xenos1996/usat detect .
+npx @xenos1996/usa detect .
 ```
 
 Read the facts. If any are wrong, say so — the operator can assert them with
-`--fact has:database` or in `.usat.yaml`.
+`--fact has:database` or in `.usa.yaml`.
 
 ### 2 · Deterministic pass
 
 ```bash
-npx @xenos1996/usat audit . --out AUDIT.md --depth standard
+npx @xenos1996/usa audit . --out AUDIT.md --depth standard
 # --depth deep        for architecture/coupling/complexity rules
 # --profile production to grade against the full bar regardless of age
 ```
@@ -125,4 +125,4 @@ production.
 - [`references/report-template.md`](references/report-template.md) — output structure
 - [`references/agent-prompt.md`](references/agent-prompt.md) — a prompt you can paste
 
-Upstream: [`USAT.md`](../../USAT.md) · [`docs/`](../../docs)
+Upstream: [`USA.md`](../../USA.md) · [`docs/`](../../docs)

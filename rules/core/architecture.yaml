@@ -4,7 +4,7 @@ section: S4
 section_title: Architecture & Design
 description: >
   Structure, boundaries, and the decisions behind them. Mostly judgement —
-  USAT automates the parts that show up as files and flags the rest for
+  USA automates the parts that show up as files and flags the rest for
   review rather than pretending a regex can measure coupling.
 version: '1.0'
 

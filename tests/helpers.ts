@@ -5,13 +5,13 @@ import { Project } from '../src/util/project.js';
 import { loadDetectorFile, detect } from '../src/detect/index.js';
 import { loadRulePacks } from '../src/engine/loader.js';
 import { runAudit } from '../src/engine/audit.js';
-import type { Facts, UsatConfig } from '../src/types.js';
+import type { Facts, UsaConfig } from '../src/types.js';
 
 const RULES_DIR = path.resolve(process.cwd(), 'rules');
 
 /** Creates a throwaway project on disk and returns { root, write }. */
 export function makeProject(files: Record<string, string>): { root: string; cleanup: () => void } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'usat-test-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'usa-test-'));
   for (const [rel, content] of Object.entries(files)) {
     const abs = path.join(root, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -35,7 +35,7 @@ export function auditAt(
   opts: Partial<{
     depth: 'quick' | 'standard' | 'deep';
     profile: 'auto' | 'prototype' | 'mvp' | 'beta' | 'production' | 'legacy';
-    config: UsatConfig;
+    config: UsaConfig;
     allowCommands: boolean;
     include: string[];
     exclude: string[];
@@ -48,7 +48,7 @@ export function auditAt(
     profile: opts.profile ?? 'auto',
     config: opts.config ?? { version: 1 },
     allowCommands: opts.allowCommands ?? false,
-    usatVersion: 'test',
+    usaVersion: 'test',
     includePacks: opts.include,
     excludePacks: opts.exclude,
   });

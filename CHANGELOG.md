@@ -5,38 +5,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0](https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.2.0...v1.3.0) (2026-09-09)
+## [1.1.0](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.0.0...v1.1.0) (2026-09-09)
 
 
 ### Features
 
-* self-extension via usat bootstrap + honest scale limits ([#24](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/24)) ([0307920](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/03079204e4e1fe8069b4216609965d7fc5dbb7c8))
-
-## [1.2.0](https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.1.0...v1.2.0) (2026-09-09)
-
-
-### Features
-
-* mirror releases to GitHub Packages ([#22](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/22)) ([aeb3102](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/aeb3102ecdc91fb51bb79fd37eed66ac32c59edb))
+* **release:** developer-style versioning via release-please + commitlint ([#16](https://github.com/Er-Sajan-PLG/universal-software-auditor/issues/16)) ([6dc28e3](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/6dc28e3a49c92f2da39fb17755c77ab72f4ca6fd))
 
 
 ### Bug Fixes
 
-* release-please uses PAT; release.yml gains manual dispatch ([#20](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/20)) ([84ec763](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/84ec763a363612255ec49354cb48fb1d303fc766))
-
-## [1.1.0](https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.0.0...v1.1.0) (2026-09-09)
-
-
-### Features
-
-* **release:** developer-style versioning via release-please + commitlint ([#16](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/16)) ([6dc28e3](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/6dc28e3a49c92f2da39fb17755c77ab72f4ca6fd))
-
-
-### Bug Fixes
-
-* Node 24 + npm floor for OIDC trusted publishing ([#15](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/15)) ([73f321d](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/73f321d4302eec13e7187ceb58dd5d56922b5a89))
-* pin scorecard-action to v2.4.4 (no v2 major tag exists) ([#17](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/17)) ([9967ddf](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/9967ddf564d4883426961091fe8170bf85578ac0))
-* unblock releases — SUP-008 self-finding, CHANGELOG prettierignore, TEST-005 pattern ([#19](https://github.com/Er-Sajan-PLG/software-auditing-template/issues/19)) ([9304f0a](https://github.com/Er-Sajan-PLG/software-auditing-template/commit/9304f0a32e465507e526ca6adc44a157246b7f9a))
+* Node 24 + npm floor for OIDC trusted publishing ([#15](https://github.com/Er-Sajan-PLG/universal-software-auditor/issues/15)) ([73f321d](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/73f321d4302eec13e7187ceb58dd5d56922b5a89))
+* pin scorecard-action to v2.4.4 (no v2 major tag exists) ([#17](https://github.com/Er-Sajan-PLG/universal-software-auditor/issues/17)) ([9967ddf](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/9967ddf564d4883426961091fe8170bf85578ac0))
+* unblock releases — SUP-008 self-finding, CHANGELOG prettierignore, TEST-005 pattern ([#19](https://github.com/Er-Sajan-PLG/universal-software-auditor/issues/19)) ([9304f0a](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/9304f0a32e465507e526ca6adc44a157246b7f9a))
 
 ## [Unreleased]
 
@@ -50,12 +31,12 @@ TypeScript. Everything below is new.
 
 **The engine**
 
-- A deterministic audit engine in TypeScript (`src/`), published as the `usat` CLI:
+- A deterministic audit engine in TypeScript (`src/`), published as the `usa` CLI:
   `audit` · `detect` · `rules` · `explain` · `diff` · `init`.
 - Dependency-free glob matching, a project index that respects `.gitignore`, and
   git-aware checks (`tracked_present` / `tracked_absent`) so committed build output and
   committed `.env` files are detectable.
-- Zero runtime dependencies except `yaml`. No network access at audit time; USAT never
+- Zero runtime dependencies except `yaml`. No network access at audit time; USA never
   uploads anything.
 
 **Detection**
@@ -82,7 +63,7 @@ TypeScript. Everything below is new.
   `tracked_absent`, `count_min`, `file_lines_max`, `json_path`, `command`, `manual`,
   `info`.
 
-**Sections new in USAT**
+**Sections new in USA**
 
 - **S3 Supply Chain & Build Provenance** — promoted from four bullets under dependency
   security. SLSA v1.2 provenance, workflow script injection, token permissions, action
@@ -106,24 +87,24 @@ TypeScript. Everything below is new.
   _"— not verified"_ rather than quietly scoring 10/10.
 - **Approved-risk suppressions** — excluded from the score, still listed in the report,
   and always require a reason.
-- **`usat diff`** — every report embeds a machine-readable YAML trailer, so consecutive
+- **`usa diff`** — every report embeds a machine-readable YAML trailer, so consecutive
   audits produce fixed / regressed / newly-applicable lists and a net movement.
 
 **Integrations**
 
-- `action.yml` composite action; `usat init` scaffolds `.usat.yaml` and a workflow.
-- Agent Skills pack (`skills/usat-audit/SKILL.md`) following the `SKILL.md` convention,
+- `action.yml` composite action; `usa init` scaffolds `.usa.yaml` and a workflow.
+- Agent Skills pack (`skills/usa-audit/SKILL.md`) following the `SKILL.md` convention,
   with `references/`.
 - `templates/AGENTS.audit.md` — drop into any repository to make it agent-auditable.
 - Public TypeScript API (`src/index.ts`).
 
 **Docs**
 
-- `USAT.md` — the full template: 16 sections, severity model, maturity profiles,
+- `USA.md` — the full template: 16 sections, severity model, maturity profiles,
   scoring, agent behaviour rules, and the report template.
 - `docs/` — getting started, concepts, configuration, rule-pack authoring, detectors,
   maturity profiles, agent integration, CI integration, and a standards mapping
-  comparing USAT to ASVS 5.0, NIST SSDF, SLSA v1.2, OpenSSF Scorecard, ISO/IEC 5055,
+  comparing USA to ASVS 5.0, NIST SSDF, SLSA v1.2, OpenSSF Scorecard, ISO/IEC 5055,
   WCAG 2.2, EU CRA, and the OWASP LLM/ASI Top 10 (2026).
 
 **Operations**
@@ -137,5 +118,5 @@ TypeScript. Everything below is new.
   engines for a template is a liability. The rule packs are pure YAML, so a Python
   implementation remains possible without a rewrite of the rules.
 
-[Unreleased]: https://github.com/Er-Sajan-PLG/software-auditing-template/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Er-Sajan-PLG/software-auditing-template/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Er-Sajan-PLG/universal-software-auditor/releases/tag/v1.0.0

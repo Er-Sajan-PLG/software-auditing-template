@@ -5,7 +5,7 @@
 
 ## Context
 
-USAT is a template that other people will fork and extend. Every non-obvious
+USA is a template that other people will fork and extend. Every non-obvious
 choice in it will be questioned by a contributor who was not in the room: "why
 is the engine TypeScript instead of Python?", "why is everything YAML instead of
 code?", "why is the output only Markdown?"
@@ -24,7 +24,7 @@ gets a new ADR that supersedes the old one, rather than an edit.
 ## Consequences
 
 **Good:** the reasoning survives the people; disagreeing with a decision becomes
-a reviewable act rather than an archaeology project; USAT's own `ARCH-002` rule
+a reviewable act rather than an archaeology project; USA's own `ARCH-002` rule
 (ADRs exist) now passes on itself, which is the only honest way to ship a rule.
 
 **Bad:** ADRs rot. An ADR whose context no longer holds is worse than no ADR,

@@ -1,18 +1,18 @@
-# USAT configuration for this repository (it audits itself).
+# USA configuration for this repository (it audits itself).
 # Docs: docs/configuration.md
 version: 1
 
-# `rules/` is USAT's *content*, not its source. Grepping it would report every
+# `rules/` is USA's *content*, not its source. Grepping it would report every
 # technology this template merely mentions — "dynamodb" appears in a rule pack,
 # not in an import — so it is excluded from the index, the same way node_modules
 # is. (Markdown and docs/ are already skipped by the detector itself.)
 ignore:
   - 'rules/**'
-  - '.usat.yaml'
+  - '.usa.yaml'
   # `examples/demo-app` is *deliberately* full of defects — it exists so
   # examples/sample-report.md shows what a bad audit looks like. Auditing it as
   # part of this repo would report every one of those planted findings against
-  # USAT itself. Run `usat audit examples/demo-app` to see the real thing.
+  # USA itself. Run `usa audit examples/demo-app` to see the real thing.
   - 'examples/demo-app/**'
 
 # Suppressions — accepted risk, always with a reason. They stay visible in the
@@ -26,14 +26,14 @@ suppressions:
 
   - rule: CICD-006
     reason: >-
-      No infrastructure to define. USAT is a CLI distributed through npm and
+      No infrastructure to define. USA is a CLI distributed through npm and
       GitHub Actions; it has no servers, clusters, or cloud resources to
       provision, so there is nothing for Terraform or a Dockerfile to describe.
       Revisit the day the project ships a hosted service.
 
   - rule: CICD-008
     reason: >-
-      Deliberately no error tracking. USAT runs on other people's machines and
+      Deliberately no error tracking. USA runs on other people's machines and
       reads their private source trees; phoning home to Sentry or Datadog would
       be a privacy violation, not an observability win. Crashes are reported by
       humans through GitHub issues instead.
@@ -47,7 +47,7 @@ suppressions:
 
   - rule: REL-004
     reason: >-
-      No staged-rollout surface exists to flag. USAT ships as a versioned CLI
+      No staged-rollout surface exists to flag. USA ships as a versioned CLI
       through npm (and a composite action); risky changes gate on CI, review,
       and the release-please Release PR instead of runtime flags. Revisit the
       day the project ships a hosted service.

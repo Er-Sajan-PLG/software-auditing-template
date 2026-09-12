@@ -57,7 +57,17 @@ rules:
     class: security
     check:
       kind: command
-      run: '! git log -p --all | grep -qiE "(api[_-]?key|secret|password|passwd|token|private[_-]?key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9/+_-]{16,}"'
+      # NOTE: stage 1 allows one optional quote: most real secrets in history
+      # are quoted (`"token": "abc…"`, `key = "abc…"`), and a rule blind to
+      # them is decorative. Stage 2 drops only unquoted type-annotation
+      # shapes (`privateKey: NIOSSLPrivateKey`, `token: String`) — a bare
+      # capitalized identifier after a colon is a type, not a value. Exit
+      # algebra: the first grep runs WITHOUT -q so lines flow; only the
+      # final grep is quiet (matches must never reach CI logs). -v exits 1
+      # (→ PASS) only when every match was a declaration; any other hit
+      # exits 0 (→ FAIL). Quoted values and `=` assignments are never
+      # excluded — recall first for a CRITICAL history scan.
+      run: '! git log -p --all | grep -iE "(api[_-]?key|secret|password|passwd|token|private[_-]?key)[[:space:]]*[:=][[:space:]]*[\"'']?[A-Za-z0-9/+_-]{16,}" | grep -qiEv "(api[_-]?key|secret|password|passwd|token|private[_-]?key)[[:space:]]*:[[:space:]]*[A-Z][A-Za-z0-9_]*[[:space:]]*[,);]*[[:space:]]*\{?[[:space:]]*$"'
       expect_exit: 0
     why: 'Deleting a secret from HEAD does not delete it from history. Anyone who cloned the repo still has it.'
     evidence: 'Command output, or a manual `gitleaks detect --log-opts=--all` run.'

@@ -1,12 +1,12 @@
 # Implementation plan — SOTA hardening program
 
-One tracking file for the multi-PR program that brought USAT's own hygiene
+One tracking file for the multi-PR program that brought USA's own hygiene
 to the level it demands of others. Each item links its PR; checked means
 merged to `master`.
 
 ## PR #9 — Self-audit gate fix (CQ-013)
 
-- [x] Run USAT against itself (`--depth deep`): 99.8/100, one open finding
+- [x] Run USA against itself (`--depth deep`): 99.8/100, one open finding
 - [x] Enable warn-only `complexity` rule (max 10) in `eslint.config.mjs`
 - [x] Re-audit: 100/100 · `main` · commit `e23af70`
 
@@ -15,7 +15,7 @@ merged to `master`.
 - [x] Decompose all 23 flagged functions to ≤ 10 (dispatch tables,
       per-section renderers, pipeline phases, per-clause matchers)
 - [x] Verify: lint 0 warnings, tsc clean, 118/118 tests, self-audit 100/100,
-      `usat diff` zero regressions · branch `refactor/complexity-hotspots`
+      `usa diff` zero regressions · branch `refactor/complexity-hotspots`
 
 ## PR #11 — SOTA hardening (this program)
 
@@ -87,11 +87,26 @@ npm run build && node dist/cli.js audit . --depth deep # self-audit: expect 100/
 node dist/cli.js diff <previous-AUDIT> AUDIT.md        # expect no regressions
 ```
 
+## Graduation round (standing rule: bigger repos permanently expand the template)
+
+- [x] REPO-003 history scan: type-annotation exclusion (`Key: TypeName`),
+      quoted-value recall added (quoted secrets were invisible), shell-quoting
+      correctness — proven on Vapor history vs planted secrets
+- [x] Engine upgrades: configurable index caps (config + CLI, validated),
+      thin-history warnings (non-git + single-commit), bounded LRU content
+      cache (1000 entries, behavior-identical eviction)
+- [x] Swift graduated to shipped `stacks/swift.yaml` (library-scoped
+      SW-003 via new `swift:executable` fact); `fw:vapor` + platform mapping
+      added; swift removed from the bootstrap catalog (replaced, not forked)
+- [x] Vapor stress matrix: standard/deep/quick, production profile,
+      --allow-commands, fail-on gates — 18 newly-applicable rules via the
+      platform cascade, zero regressions
+
 ## Self-extension round (this program)
 
 - [x] Honest scale: `MAX_FILES` truncation flag + oversize counter, both
       surfaced as end-of-audit warnings (were silent); caps documented
-- [x] `usat bootstrap`: curated starter packs for php/ruby/cpp/csharp/
+- [x] `usa bootstrap`: curated starter packs for php/ruby/cpp/csharp/
       swift + generic fallback, fail-closed (never registers, REVIEW header)
 - [x] Proof on Vapor (Swift, 249 files, zero shipped coverage): baseline
       71.8 → +4 Swift rules applicable, zero regressions, diff-verified
@@ -110,7 +125,7 @@ Vigorous re-verification on `master` found and fixed:
 - [x] No CI net for rule-pattern rot — new test asserts all 270+ shipped
       grep patterns compile and all `applies_when` validate warning-free
 - [x] Scorecard workflow added (API-verified hygiene counterpart)
-- [x] 14-check end-to-end harness (`usat` CLI on fixtures: SEC-003/025,
+- [x] 14-check end-to-end harness (`usa` CLI on fixtures: SEC-003/025,
       expiry, overrides, sections, maturity, loader guards, diff) — 14/14
 - [x] One-time owner actions outstanding (not code): enable the npmjs
       trusted publisher for OIDC; review first Scorecard/Security-tab results

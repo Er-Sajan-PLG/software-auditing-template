@@ -6,7 +6,7 @@ import { SEVERITY_LADDER } from './loader.js';
  * neither passing, unverified, nor explicitly accepted by project policy.
  *
  * Suppressed findings never block — that is the entire point of recording an
- * accepted risk in `.usat.yaml`. UNKNOWN never blocks either: "needs a human"
+ * accepted risk in `.usa.yaml`. UNKNOWN never blocks either: "needs a human"
  * is not "failed", and gating on it would make every manual rule a CI failure.
  */
 export function blockingFindings(report: AuditReport, threshold: Severity): Finding[] {

@@ -3,20 +3,20 @@
 ## Install
 
 ```bash
-npx @xenos1996/usat audit .          # zero-install
-npm i -g @xenos1996/usat             # or globally
-npm i -D @xenos1996/usat             # or per project, so CI and laptops agree
+npx @xenos1996/usa audit .          # zero-install
+npm i -g @xenos1996/usa             # or globally
+npm i -D @xenos1996/usa             # or per project, so CI and laptops agree
 ```
 
-Requires Node 20+. No network access is needed at audit time, and USAT never
+Requires Node 20+. No network access is needed at audit time, and USA never
 uploads anything — it reads files and writes one Markdown file.
 
 ## Your first audit
 
 ```bash
 cd ~/code/my-project
-usat detect .     # 1. check what it thinks you are
-usat audit .      # 2. audit it
+usa detect .     # 1. check what it thinks you are
+usa audit .      # 2. audit it
 open AUDIT.md
 ```
 
@@ -24,7 +24,7 @@ Start with `detect`. If the detected facts are wrong, the report will be wrong �
 and fixing it takes one line of config:
 
 ```yaml
-# .usat.yaml
+# .usa.yaml
 facts: ['has:database'] # assert anything detection missed
 ```
 
@@ -38,7 +38,7 @@ Expected band for Beta / Growing: 60–85 — within the expected band 👍
 ```
 
 A 55/100 on a prototype is healthy. The same 55/100 on a production service is a
-problem. USAT tells you which you are looking at.
+problem. USA tells you which you are looking at.
 
 **2 · Read Immediate Action Required.** CRITICAL and security-HIGH findings, with
 location and fix. Everything else waits.
@@ -65,14 +65,14 @@ ignore _at this stage_.
 ## Common flags
 
 ```bash
-usat audit . --depth deep                 # include deep-only rules (cycles, duplication, complexity)
-usat audit . --profile production         # grade against the full bar regardless of age
-usat audit . --fail-on high               # exit 1 on HIGH+ (for CI gates)
-usat audit . --out reports/2026-09.md     # dated reports, so you can diff them later
-usat audit . --allow-commands             # run shell checks (npm audit, depcheck, dpdm)
-usat audit . --include stacks/solidity    # force a pack on
-usat rules --section S2                   # list rules
-usat explain SEC-001                      # everything about one rule
+usa audit . --depth deep                 # include deep-only rules (cycles, duplication, complexity)
+usa audit . --profile production         # grade against the full bar regardless of age
+usa audit . --fail-on high               # exit 1 on HIGH+ (for CI gates)
+usa audit . --out reports/2026-09.md     # dated reports, so you can diff them later
+usa audit . --allow-commands             # run shell checks (npm audit, depcheck, dpdm)
+usa audit . --include stacks/solidity    # force a pack on
+usa rules --section S2                   # list rules
+usa explain SEC-001                      # everything about one rule
 ```
 
 `--allow-commands` is **off by default** because it shells out. Those rules appear
@@ -82,10 +82,10 @@ they just need your permission to run.
 ## Compare two audits
 
 ```bash
-usat audit . --out reports/2026-06.md
+usa audit . --out reports/2026-06.md
 # ... three months of work ...
-usat audit . --out reports/2026-09.md
-usat diff reports/2026-06.md reports/2026-09.md
+usa audit . --out reports/2026-09.md
+usa diff reports/2026-06.md reports/2026-09.md
 ```
 
 The diff reads the YAML trailer embedded in every report — so a Markdown report is
@@ -94,6 +94,6 @@ still the only artefact you need to keep.
 ## Next steps
 
 - [Concepts](concepts.md) — how severity, status, and scoring actually work
-- [Configuration](configuration.md) — `.usat.yaml` reference
+- [Configuration](configuration.md) — `.usa.yaml` reference
 - [Rule packs](rule-packs.md) — write your own rules
-- [Agent integration](agent-integration.md) — drive USAT from Claude, Cursor, Codex
+- [Agent integration](agent-integration.md) — drive USA from Claude, Cursor, Codex

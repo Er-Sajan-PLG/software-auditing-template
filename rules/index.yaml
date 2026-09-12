@@ -1,12 +1,12 @@
 # =============================================================================
-# USAT rule pack registry  (schema: usat-rules-index-v1)
+# USA rule pack registry  (schema: usa-rules-index-v1)
 # -----------------------------------------------------------------------------
 # Each entry is a path (relative to this file) or { file, enabled }.
 # Packs self-select via `skip_when` / per-rule `applies_when`, so the list below
-# is just "what exists" — USAT decides "what applies" at audit time.
+# is just "what exists" — USA decides "what applies" at audit time.
 # =============================================================================
 
-schema: usat-rules-index-v1
+schema: usa-rules-index-v1
 
 packs:
   # ---- universal: every project gets these ---------------------------------
@@ -39,3 +39,4 @@ packs:
   - stacks/api-backend.yaml
   - stacks/compliance.yaml
   - stacks/ai-era.yaml
+  - stacks/swift.yaml

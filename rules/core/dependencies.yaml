@@ -4,7 +4,7 @@ section: S10
 section_title: Dependencies & Third-Party
 description: >
   Every dependency is a bet on someone else's maintenance discipline.
-  USAT scores the observable parts and hands the rest to review.
+  USA scores the observable parts and hands the rest to review.
 version: '1.0'
 
 rules:

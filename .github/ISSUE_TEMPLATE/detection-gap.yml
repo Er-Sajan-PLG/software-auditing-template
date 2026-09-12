@@ -1,6 +1,6 @@
 name: Detection gap
-description: USAT failed to notice a language, framework, or platform
-title: '[DETECT] USAT missed <technology>'
+description: USA failed to notice a language, framework, or platform
+title: '[DETECT] USA missed <technology>'
 labels: ['detection', 'rules']
 body:
   - type: input

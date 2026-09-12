@@ -205,6 +205,14 @@ export interface GrepHit {
  * A snapshot of the audited tree. Built once, reused by every rule evaluation —
  * the whole audit is O(files) on disk and O(patterns × files) in memory.
  */
+export interface ProjectLimits {
+  maxFiles?: number;
+  maxBytes?: number;
+}
+
+/** Reads cached under a bounded LRU: big trees must not grow memory with files. */
+const CONTENT_CACHE_CAP = 1000;
+
 export class Project {
   readonly root: string;
   readonly files: string[] = [];
@@ -212,6 +220,8 @@ export class Project {
   private readonly contentCache = new Map<string, string | null>();
   private readonly dirCache = new Set<string>();
   private tracked: string[] | null = null;
+  readonly maxFiles: number;
+  readonly maxBytes: number;
   /**
    * True when indexing stopped at MAX_FILES — the tree is bigger than the
    * audit can see, so PASS verdicts may rest on unindexed files. Always
@@ -221,9 +231,11 @@ export class Project {
   /** Files skipped for exceeding MAX_FILE_BYTES (counted once each). */
   skippedLarge = 0;
 
-  constructor(root: string, extraIgnores: string[] = []) {
+  constructor(root: string, extraIgnores: string[] = [], limits: ProjectLimits = {}) {
     this.root = path.resolve(root);
     this.ignores = [...DEFAULT_IGNORES, ...extraIgnores.map(normalizeIgnore)];
+    this.maxFiles = normalizeLimit(limits.maxFiles, MAX_FILES);
+    this.maxBytes = normalizeLimit(limits.maxBytes, MAX_FILE_BYTES);
     this.walk();
   }
 
@@ -238,7 +250,7 @@ export class Project {
 
     while (stack.length > 0) {
       const relDir = stack.pop()!;
-      if (this.files.length >= MAX_FILES) {
+      if (this.files.length >= this.maxFiles) {
         this.truncated = true;
         return;
       }
@@ -250,6 +262,13 @@ export class Project {
         continue;
       }
       for (const entry of entries) {
+        // Per-file bound (the per-directory check above only saves a
+        // readdir): with huge flat directories the cap must bite exactly,
+        // or a "max 3 files" audit silently audits 5.
+        if (this.files.length >= this.maxFiles) {
+          this.truncated = true;
+          return;
+        }
         this.visitEntry(entry, relDir, gitignore, stack);
       }
     }
@@ -315,12 +334,13 @@ export class Project {
 
   /** File contents, or null when unreadable / binary / too large. */
   read(rel: string): string | null {
-    if (this.contentCache.has(rel)) return this.contentCache.get(rel) ?? null;
+    const cached = this.cacheFetch(rel);
+    if (cached.hit) return cached.value;
     let text: string | null = null;
     try {
       const abs = path.join(this.root, rel);
       const st = fs.statSync(abs);
-      if (st.isFile() && st.size > MAX_FILE_BYTES) {
+      if (st.isFile() && st.size > this.maxBytes) {
         // Counted once per file (cache guard above): oversized files are
         // invisible to every content check, so the audit must say so.
         this.skippedLarge++;
@@ -333,8 +353,25 @@ export class Project {
     } catch {
       text = null;
     }
-    this.contentCache.set(rel, text);
+    this.cacheStore(rel, text);
     return text;
+  }
+
+  private cacheFetch(rel: string): { hit: boolean; value: string | null } {
+    if (!this.contentCache.has(rel)) return { hit: false, value: null };
+    const value = this.contentCache.get(rel) ?? null;
+    // Refresh recency: re-insertion moves the entry to the young end.
+    this.contentCache.delete(rel);
+    this.contentCache.set(rel, value);
+    return { hit: true, value };
+  }
+
+  private cacheStore(rel: string, text: string | null): void {
+    this.contentCache.set(rel, text);
+    if (this.contentCache.size > CONTENT_CACHE_CAP) {
+      const oldest = this.contentCache.keys().next();
+      if (!oldest.done) this.contentCache.delete(oldest.value);
+    }
   }
 
   readJson(rel: string): unknown | null {
@@ -492,6 +529,15 @@ function compileGrepPattern(pattern: string, flags: string): RegExp | null {
 }
 
 /* ---------------------------------------------------------------- helpers -- */
+
+/**
+ * Caps are operator intent, not attacker input — but garbage still must not
+ * produce a zero-file index or an unbounded one. Non-positive garbage falls
+ * back to the default (the caller warns; see audit.ts resolveLimits).
+ */
+function normalizeLimit(v: number | undefined, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : fallback;
+}
 
 function isDir(p: string): boolean {
   try {

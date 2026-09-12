@@ -3,7 +3,7 @@ title: Testing & Quality Assurance
 section: S7
 section_title: Testing & Quality Assurance
 description: >
-  Coverage is a weak proxy for confidence; USAT separates "tests exist",
+  Coverage is a weak proxy for confidence; USA separates "tests exist",
   "tests run in CI", and "tests actually cover the paths that matter".
 version: '1.0'
 
@@ -28,6 +28,8 @@ rules:
         - '**/*Test.php'
         - '**/tests/**/*.rs'
         - '**/__tests__/**'
+        - '**/Tests/**/*.swift'
+        - '**/*Tests.swift'
     why: 'A project with zero tests has no definition of "working" that a machine can check.'
     remediation: 'Start with the happy path of the main flow and every bug you have already fixed once.'
     references: ['OpenSSF-Scorecard:CI-Tests', 'NIST-SSDF-RV.1.1']
@@ -41,7 +43,7 @@ rules:
     applies_when: { fact: 'has:ci' }
     check:
       kind: grep_present
-      pattern: '(npm (run )?test|npm (run )?test:ci|vitest run|jest --ci|pytest|go test|cargo test|mvn test|gradle test|rspec|phpunit|dotnet test|make test)'
+      pattern: '(npm (run )?test|npm (run )?test:ci|vitest run|jest --ci|pytest|go test|cargo test|swift test|mvn test|gradle test|rspec|phpunit|dotnet test|make test)'
       include:
         [
           '.github/workflows/*.yml',
@@ -122,7 +124,7 @@ rules:
       kind: grep_present
       # NOTE: `coverage\s*:\s*\{` covers Vitest-style `coverage: { thresholds:
       # … }` blocks — the earlier `coverage\s*{` (no colon) missed exactly
-      # the config form this repo itself uses, so the rule failed USAT's own
+      # the config form this repo itself uses, so the rule failed USA's own
       # self-audit the week thresholds were added. Keep both alternatives.
       pattern: '(coverageThreshold|failUnder|--fail-under|min-coverage|coverage\s*\{|coverage\s*:\s*\{|\[tool\.coverage\.report\]\s*\n[^\n]*fail_under)'
       include:

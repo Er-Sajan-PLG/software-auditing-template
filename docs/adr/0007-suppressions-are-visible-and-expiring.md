@@ -18,7 +18,7 @@ assurance — the one failure it must never have.
 
 ## Decision
 
-Suppressions live in `.usat.yaml`, each with a mandatory `reason` and an
+Suppressions live in `.usa.yaml`, each with a mandatory `reason` and an
 optional `until` date:
 
 1. A suppressed finding is **excluded from the score and the severity

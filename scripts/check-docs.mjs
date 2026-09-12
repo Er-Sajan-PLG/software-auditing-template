@@ -3,7 +3,7 @@
  *
  * Fails when:
  * - the README `rules-NNN+` badge floor exceeds the actual rule count, or
- * - a section id in `rules/sections.yaml` is never mentioned in `USAT.md`.
+ * - a section id in `rules/sections.yaml` is never mentioned in `USA.md`.
  *
  * Usage: `node scripts/check-docs.mjs` (exit 1 on any violation).
  * Needs `node_modules` (uses the `yaml` dependency).
@@ -60,21 +60,21 @@ if (!badge) {
   console.log(`rule count: OK (${ruleCount} rules, badge floor ${badge[1]})`);
 }
 
-// 2. Section coverage in USAT.md ---------------------------------------------
+// 2. Section coverage in USA.md ---------------------------------------------
 // Sections are defined in code (src/engine/sections.ts DEFAULT_SECTIONS;
 // rules/sections.yaml is an optional override), so the source of truth is
 // the `id: 'S…'` literals in that file.
 const sectionsSrc = fs.readFileSync(path.join(ROOT, 'src/engine/sections.ts'), 'utf8');
 const ids = [...new Set([...sectionsSrc.matchAll(/id:\s*'(S\d+)'/g)].map((m) => m[1]))];
-const usat = fs.readFileSync(path.join(ROOT, 'USAT.md'), 'utf8');
-const missing = ids.filter((id) => !usat.includes(id));
+const usa = fs.readFileSync(path.join(ROOT, 'USA.md'), 'utf8');
+const missing = ids.filter((id) => !usa.includes(id));
 if (missing.length > 0) {
-  failures.push(`USAT.md never mentions section(s): ${missing.join(', ')}`);
+  failures.push(`USA.md never mentions section(s): ${missing.join(', ')}`);
 } else {
-  console.log(`section coverage: OK (${ids.length} sections referenced in USAT.md)`);
+  console.log(`section coverage: OK (${ids.length} sections referenced in USA.md)`);
 }
 
-// 3. Every --flag in `usat …` doc snippets exists in --help ------------------
+// 3. Every --flag in `usa …` doc snippets exists in --help ------------------
 // Only command lines count (prose may recommend flags for *other* tools,
 // e.g. --dry-run for audited CLIs). Lines are matched loosely; anything the
 // matcher misses merely weakens the check, it can never false-positive.
@@ -83,20 +83,20 @@ const known = new Set([...help.matchAll(/--([a-z][a-z0-9-]*)/g)].map((m) => m[1]
 const docFiles = [
   'README.md',
   'CONTRIBUTING.md',
-  'USAT.md',
+  'USA.md',
   ...walkDocs('docs'),
   ...walkDocs('templates'),
   ...walkDocs('skills'),
   ...walkDocs('examples'),
 ];
 const cmdLine =
-  /^[ \t]*(?:\$\s*)?(?:npx(?:\s+[^\s\\]+)*\s+)?(?:@\S+\/usat|usat(?:@\S+)?|npm run usat --)(.*)$/gm;
+  /^[ \t]*(?:\$\s*)?(?:npx(?:\s+[^\s\\]+)*\s+)?(?:@\S+\/usa|usa(?:@\S+)?|npm run usa --)(.*)$/gm;
 for (const rel of docFiles) {
   const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   for (const m of text.matchAll(cmdLine)) {
     for (const f of m[1].matchAll(/--([a-z][a-z0-9-]*)/g)) {
       if (!known.has(f[1])) {
-        failures.push(`${rel}: documents unknown usat flag --${f[1]}`);
+        failures.push(`${rel}: documents unknown usa flag --${f[1]}`);
       }
     }
   }

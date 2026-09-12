@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 # Least privilege: the default GITHUB_TOKEN gets read-only unless a job asks for
-# more. (Yes, USAT checks this on the projects it audits — it applies to itself.)
+# more. (Yes, USA checks this on the projects it audits — it applies to itself.)
 permissions:
   contents: read
 
@@ -102,7 +102,7 @@ jobs:
 
   # Docs rot faster than code, and ADRs rot fastest of all (ADR-0001 says so
   # explicitly). These two scripts assert the machine-checkable invariants:
-  # the README rule-count floor, USAT.md section coverage, and ADR
+  # the README rule-count floor, USA.md section coverage, and ADR
   # numbering/index completeness. See scripts/check-docs.mjs,
   # scripts/check-adrs.mjs, ROADMAP.md ("doc sync") and PLAN.md.
   # Commit messages drive releases (release-please reads them), so they are
@@ -165,7 +165,7 @@ jobs:
       - name: CLI reference is generated and committed
         run: node scripts/gen-cli-docs.mjs --check
 
-  # USAT audits supply-chain hygiene on other people's repos, so it runs the
+  # USA audits supply-chain hygiene on other people's repos, so it runs the
   # same three scanners on itself. These are the checks behind SUP-005..007.
   security:
     name: Security scans

@@ -1,8 +1,8 @@
 # =============================================================================
-# USAT — Auto-detection signal registry  (schema: usat-detectors-v1)
+# USA — Auto-detection signal registry  (schema: usa-detectors-v1)
 # -----------------------------------------------------------------------------
 # Every rule pack declares `applies_when` over the FACTS produced here, so
-# USAT "adapts to the project" purely by data. Add a signal, and every pack
+# USA "adapts to the project" purely by data. Add a signal, and every pack
 # that cares about it starts applying — no code change required.
 #
 # Fact namespaces
@@ -681,6 +681,27 @@ detectors:
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:nuxt'] }
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:remix'] }
   - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:sveltekit'] }
+  # Swift ecosystem, graduated from the bootstrap proof on vapor/vapor:
+  # framework identity, executable-vs-library shape (Package.resolved is
+  # only meaningful for apps), and the platform consequence. See ADR-0012.
+  - fact: 'fw:vapor'
+    category: framework
+    title: Vapor
+    match: { content: { include: ['Package.swift'], pattern: '[Vv]apor' } }
+  - fact: 'has:swift-validation'
+    category: has
+    title: 'Swift validation (Validatable)'
+    match: { content: { include: ['**/*.swift'], pattern: 'Validatable' } }
+  - fact: 'has:swift-security-headers'
+    category: has
+    title: 'Swift security headers middleware'
+    match:
+      { content: { include: ['**/*.swift'], pattern: 'SecurityHeadersMiddleware|CORSMiddleware' } }
+  - fact: 'swift:executable'
+    category: type
+    title: Swift executable target
+    match: { content: { include: ['Package.swift'], pattern: 'executableTarget' } }
+  - { fact: 'platform:server', category: platform, title: Server, implies: ['fw:vapor'] }
   - {
       fact: 'platform:evm',
       category: platform,
@@ -1975,59 +1996,23 @@ detectors:
       match:
         {
           any_of:
-            [
-              { any_file: ['**/RUNBOOK*', '**/runbook*'] },
-              { dir_exists: ['docs/runbooks', 'runbooks'] },
-            ],
+            [{ any_file: ['**/RUNBOOK*', '**/runbook*'] }, { dir_exists: ['ops', 'runbooks'] }],
         },
     }
   - {
-      fact: 'doc:onboarding',
+      fact: 'doc:governance',
       category: doc,
-      title: Onboarding guide,
+      title: Governance docs,
       match:
         {
-          any_of:
-            [
-              { any_file: ['**/ONBOARDING*', '**/onboarding*', 'docs/GETTING_STARTED*'] },
-              { dir_exists: ['docs/onboarding'] },
-            ],
+          any_file:
+            ['GOVERNANCE.md', 'docs/GOVERNANCE.md', 'ADOPTERS.md', 'ROADMAP.md', 'MAINTAINERS.md'],
         },
-    }
-  - {
-      fact: 'doc:env-example',
-      category: doc,
-      title: '.env.example',
-      match: { any_file: ['.env.example', '.env.sample', '.env.template', 'env.example'] },
-    }
-  - {
-      fact: 'doc:gitignore',
-      category: doc,
-      title: '.gitignore',
-      match: { file_exists: ['.gitignore'] },
-    }
-  - {
-      fact: 'doc:codeowners',
-      category: doc,
-      title: CODEOWNERS,
-      match: { any_file: ['.github/CODEOWNERS', 'CODEOWNERS', 'docs/CODEOWNERS'] },
-    }
-  - {
-      fact: 'doc:pr-template',
-      category: doc,
-      title: PR template,
-      match: { any_file: ['.github/PULL_REQUEST_TEMPLATE*', 'docs/PULL_REQUEST_TEMPLATE*'] },
-    }
-  - {
-      fact: 'doc:issue-templates',
-      category: doc,
-      title: Issue templates,
-      match: { dir_exists: ['.github/ISSUE_TEMPLATE'] },
     }
   - {
       fact: 'doc:agents',
       category: doc,
-      title: 'Agent instruction file',
+      title: Agent instructions,
       match:
         {
           any_file:
@@ -2037,219 +2022,7 @@ detectors:
               '.cursorrules',
               '.github/copilot-instructions.md',
               'codex.md',
+              '.windsurfrules',
             ],
         },
-    }
-
-  # --------------------------------------------------------------- practices
-  - {
-      fact: 'practice:conventional-commits',
-      category: practice,
-      title: Conventional commits,
-      match:
-        {
-          any_of:
-            [
-              {
-                content:
-                  {
-                    include:
-                      ['CONTRIBUTING.md', 'docs/**/*.md', 'commitlint.config.*', '.versionrc*'],
-                    pattern: 'conventional[- ]commits?',
-                  },
-              },
-              { any_file: ['commitlint.config.*', '.commitlintrc*'] },
-            ],
-        },
-    }
-  - {
-      fact: 'practice:codeowners',
-      category: practice,
-      title: Code owners,
-      implies: ['doc:codeowners'],
-    }
-  - {
-      fact: 'practice:signed-commits',
-      category: practice,
-      title: Signed commits/attestations,
-      match:
-        {
-          content:
-            {
-              include: ['.github/workflows/*.yml'],
-              pattern: '(actions/attest|sigstore|gpg-sign|slsa)',
-            },
-        },
-    }
-  - {
-      fact: 'practice:branch-protection-doc',
-      category: practice,
-      title: Branch protection documented,
-      match:
-        {
-          any_of:
-            [
-              { any_file: ['.github/branch-protection*', 'docs/BRANCHING*'] },
-              { content: { include: ['**/*.md'], pattern: 'branch protection' } },
-            ],
-        },
-    }
-  - {
-      fact: 'practice:pinned-versions',
-      category: practice,
-      title: Pinned dependency versions,
-      match:
-        {
-          content:
-            {
-              include: ['package.json', 'requirements*.txt'],
-              pattern: '"[^"]*":\\s*"\\d+\\.\\d+\\.\\d+"|^[a-z0-9-]+==\\d',
-            },
-        },
-    }
-  - {
-      fact: 'practice:i18n',
-      category: practice,
-      title: i18n,
-      match:
-        {
-          any_of:
-            [
-              { dir_exists: ['i18n', 'locales', 'translations', 'src/i18n'] },
-              {
-                content:
-                  {
-                    include: ['package.json'],
-                    pattern: '(i18next|react-intl|vue-i18n|lingui|next-intl)',
-                  },
-              },
-            ],
-        },
-    }
-  - {
-      fact: 'practice:feature-flags',
-      category: practice,
-      title: Feature flags,
-      match:
-        {
-          content:
-            {
-              include: ['**/*.{ts,js,py,go,rs}'],
-              pattern: '(launchdarkly|unleash|flagsmith|growthbook|posthog.*flag|isFeatureEnabled|featureFlag)',
-            },
-        },
-    }
-  - {
-      fact: 'practice:queue',
-      category: practice,
-      title: Background jobs/queues,
-      match:
-        {
-          content:
-            {
-              include: ['package.json', 'requirements*.txt', 'go.mod', '**/*.{ts,js,py,go}'],
-              pattern: '(bullmq|bull|amqplib|kafkajs|celery|rq|sqs|nats|temporal)',
-            },
-        },
-    }
-  - { fact: 'practice:cache', category: practice, title: Caching layer, implies: ['db:redis'] }
-  - {
-      fact: 'practice:monorepo-tool-turborepo',
-      category: practice,
-      title: Turborepo,
-      match: { file_exists: ['turbo.json'] },
-    }
-  - {
-      fact: 'practice:monorepo-tool-nx',
-      category: practice,
-      title: Nx,
-      match: { file_exists: ['nx.json'] },
-    }
-
-  # ---------------------------------------------------------------- security
-  - {
-      fact: 'has:crypto',
-      category: security,
-      title: Cryptography usage,
-      match:
-        {
-          content:
-            {
-              include: ['**/*.{ts,js,py,go,rs,java}'],
-              pattern: '(bcrypt|argon2|scrypt|pbkdf2|crypto\\.createCipher|createHash|jose|nacl)',
-            },
-        },
-    }
-  - {
-      fact: 'has:file-upload',
-      category: security,
-      title: File uploads,
-      match:
-        {
-          content:
-            {
-              include: ['**/*.{ts,js,py,go,rs}'],
-              pattern: '(multer|formidable|busboy|UploadedFile|multipart)',
-            },
-        },
-    }
-  - {
-      fact: 'has:payments',
-      category: security,
-      title: Payments,
-      match:
-        {
-          content:
-            {
-              include: ['package.json', 'requirements*.txt', '**/*.{ts,js,py}'],
-              pattern: '(stripe|braintree|paypal|razorpay|adyen|@stripe/)',
-            },
-        },
-    }
-  - {
-      fact: 'has:pii',
-      category: security,
-      title: PII handling,
-      match:
-        {
-          content:
-            {
-              include: ['**/*.{ts,js,py,sql,prisma}'],
-              pattern: '(\\bssn\\b|social[_-]?security|date[_-]?of[_-]?birth|passport[_-]?(no|number)|credit[_-]?card|card[_-]?number|phone[_-]?number|email[_-]?address|home[_-]?address|ip[_-]?address)',
-            },
-        },
-    }
-  - {
-      fact: 'has:csp',
-      category: security,
-      title: CSP / security headers,
-      match:
-        {
-          content:
-            {
-              include: ['**/*.{ts,js,json,conf,nginx,yaml,yml}'],
-              pattern: '(Content-Security-Policy|helmet|Strict-Transport-Security)',
-            },
-        },
-    }
-  - {
-      fact: 'has:rate-limit',
-      category: security,
-      title: Rate limiting,
-      match:
-        {
-          content:
-            {
-              include: ['package.json', '**/*.{ts,js,py,go}'],
-              pattern: '(express-rate-limit|rate-limit|ratelimit|tower.*limit|slowapi)',
-            },
-        },
-    }
-
-  # ------------------------------------------------------------------ git
-  - {
-      fact: 'git:initialized',
-      category: git,
-      title: Git repository,
-      match: { dir_exists: ['.git'] },
     }

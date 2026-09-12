@@ -1,9 +1,9 @@
 name: Scorecard
 
-# OpenSSF Scorecard: the machine-checkable counterpart to the posture USAT
+# OpenSSF Scorecard: the machine-checkable counterpart to the posture USA
 # claims in docs/standards-mapping.md. Runs the same hygiene checks (branch
 # protection, token permissions, pinned deps, SAST presence, license, …)
-# from the *platform* side — the API-verified view USAT's file-text rules
+# from the *platform* side — the API-verified view USA's file-text rules
 # approximate. Results publish to the Security tab and the public dataset.
 on:
   push:

@@ -1,7 +1,20 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { makeProject, auditAt, loadedPacks } from './helpers.js';
+
+/** Turns a throwaway fixture dir into a one-commit git repo. */
+function gitCommit(root: string): void {
+  const run = (args: string[]) =>
+    execFileSync('git', ['-c', 'user.email=t@t.t', '-c', 'user.name=t', ...args], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  run(['init']);
+  run(['add', '-A']);
+  run(['commit', '-qm', 'x']);
+}
 import { renderMarkdown } from '../src/report/markdown.js';
 import { parseTrailer } from '../src/report/markdown.js';
 import { loadProfiles } from '../src/engine/maturity.js';
@@ -179,6 +192,68 @@ describe('end-to-end audits', () => {
     expect(md).toContain('Licence decision pending');
   });
 
+  it('REPO-003 passes type annotations, fails real secrets in history', () => {
+    const decl = build({
+      'src/auth.swift': 'let token: NIOSSLPrivateKey\ninit(key: NIOSSLPrivateKey) {}\n',
+    });
+    gitCommit(decl);
+    const clean = auditAt(decl, { allowCommands: true });
+    expect(clean.report.findings.find((f) => f.ruleId === 'REPO-003')!.status).toBe('PASS');
+
+    const quoted = build({ 'c.py': 'api_key = "quotedsecret123456"\n' });
+    gitCommit(quoted);
+    const caught = auditAt(quoted, { allowCommands: true });
+    expect(caught.report.findings.find((f) => f.ruleId === 'REPO-003')!.status).toBe('FAIL');
+
+    const bare = build({ 'c.py': 'api_key = plainsecretvalue123\n' });
+    gitCommit(bare);
+    const caughtBare = auditAt(bare, { allowCommands: true });
+    expect(caughtBare.report.findings.find((f) => f.ruleId === 'REPO-003')!.status).toBe('FAIL');
+  });
+
+  it('warns on history-thin targets and honours limits config', () => {
+    const plain = build({ 'src/index.ts': 'export const a = 1;\n' });
+    const noGit = auditAt(plain, {});
+    expect(noGit.warnings.some((w) => w.includes('not a git repository'))).toBe(true);
+
+    const shallow = build({ 'src/index.ts': 'export const a = 1;\n' });
+    gitCommit(shallow);
+    const thin = auditAt(shallow, {});
+    expect(thin.warnings.some((w) => w.includes('single-commit history'))).toBe(true);
+
+    const roomy = build({ 'a.ts': 'x\n', 'b.ts': 'y\n' });
+    const capped = auditAt(roomy, { config: { version: 1, limits: { max_files: 1 } } });
+    expect(capped.warnings.some((w) => w.includes('truncated'))).toBe(true);
+
+    const badLimits = auditAt(plain, {
+      // @ts-expect-error intentionally invalid limits
+      config: { version: 1, limits: { max_files: -2 } },
+    });
+    expect(badLimits.warnings.some((w) => w.includes('invalid limits.max_files'))).toBe(true);
+  });
+
+  it('SW-003 applies to apps, not libraries', () => {
+    const libFiles = {
+      'Package.swift': 'let package = Package(name: "Lib", targets: [.target(name: "Lib")])\n',
+      'Sources/Lib/lib.swift': 'public func f() {}\n',
+    };
+    const lib = auditAt(build(libFiles), {});
+    expect(lib.report.findings.some((f) => f.ruleId === 'SW-003')).toBe(false);
+
+    const appFiles = {
+      'Package.swift':
+        'let package = Package(name: "App", targets: [.executableTarget(name: "App")])\n',
+      'Sources/App/main.swift': 'print("hi")\n',
+    };
+    const appMissing = auditAt(build(appFiles), {});
+    const finding = appMissing.report.findings.find((f) => f.ruleId === 'SW-003');
+    expect(finding).toBeDefined();
+    expect(finding?.status).toBe('MISSING');
+
+    const appPinned = auditAt(build({ ...appFiles, 'Package.resolved': '{"version": 1}\n' }), {});
+    expect(appPinned.report.findings.find((f) => f.ruleId === 'SW-003')!.status).toBe('PASS');
+  });
+
   it('honours disabled rules', () => {
     const root = build({ 'src/index.ts': 'export const a = 1;\n' });
     const { report } = auditAt(root, {
@@ -218,7 +293,8 @@ describe('end-to-end audits', () => {
       config: { version: 1, maturity: 'production' },
     });
     expect(report.detection.maturity).toBe('production');
-    expect(warnings).toEqual([]);
+    // History warnings are orthogonal here (fixture has no .git).
+    expect(warnings.filter((w) => !w.includes('not a git repository'))).toEqual([]);
   });
 
   it('warns on an invalid config maturity and falls back to detection', () => {
@@ -236,7 +312,8 @@ describe('end-to-end audits', () => {
     const { report, warnings } = auditAt(root, {
       config: { version: 1, sections: ['S2'] },
     });
-    expect(warnings).toEqual([]);
+    // History warnings are orthogonal here (fixture has no .git).
+    expect(warnings.filter((w) => !w.includes('not a git repository'))).toEqual([]);
     expect(report.findings.length).toBeGreaterThan(0);
     for (const f of report.findings) expect(f.section).toBe('S2');
     for (const s of report.score.sections) expect(s.id).toBe('S2');

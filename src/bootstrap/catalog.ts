@@ -1,7 +1,7 @@
 import type { RuleClass, Severity } from '../types.js';
 
 /**
- * Bootstrap knowledge: starter checks for languages USAT detects but ships
+ * Bootstrap knowledge: starter checks for languages USA detects but ships
  * no stack pack for. Every entry is a *proposal*, never a verdict — the
  * generator emits packs for human review, and nothing it writes is
  * registered or trusted until reviewed (see ADR-0012).
@@ -44,6 +44,11 @@ export interface BootstrapLang {
 
 const TEST_EXCLUDES = ['**/*.test.*', '**/*.spec.*', '**/test/**', '**/tests/**'];
 
+/**
+ * Graduated languages are REMOVED here, not left to rot: swift shipped as
+ * stacks/swift.yaml (proven on vapor/vapor) and is covered below. A catalog
+ * entry proposing what the registry already enforces would fork the truth.
+ */
 export const BOOTSTRAP_CATALOG: BootstrapLang[] = [
   {
     lang: 'php',
@@ -368,70 +373,6 @@ export const BOOTSTRAP_CATALOG: BootstrapLang[] = [
           'Default-deny with FallbackPolicy or explicit [Authorize] everywhere; verify resource-level checks, not just authentication.',
         evidence: 'Fallback policy or endpoint audit file:line, plus one ownership check.',
         references: ['ASVS-4.2.1'],
-      },
-    ],
-  },
-  {
-    lang: 'swift',
-    packId: 'stacks/swift',
-    title: 'Swift',
-    description:
-      'Starter checks for Swift projects. Generated — review every pattern before trusting.',
-    frameworkHints: [
-      'vapor (Package.swift: .package(url: ...vapor...)), swiftui (import SwiftUI), combine',
-    ],
-    checks: [
-      {
-        id: 'SW-001',
-        title: 'No force-unwrap or force-try in application code',
-        severity: 'MEDIUM',
-        ruleClass: 'correctness',
-        kind: 'grep_wrong',
-        pattern: '(try!\\s|as!\\s)',
-        include: ['**/*.swift'],
-        exclude: [...TEST_EXCLUDES],
-        why: 'try!/as! turn recoverable failures into crashes. Tests may keep them; shipped code should not.',
-        remediation:
-          'Handle errors with do/catch or propagate with try; replace as! with as? plus a guard.',
-        references: ['CWE-754'],
-      },
-      {
-        id: 'SW-002',
-        title: 'App Transport Security is not disabled',
-        severity: 'HIGH',
-        ruleClass: 'security',
-        kind: 'grep_wrong',
-        pattern: '(NSAllowsArbitraryLoads|NSExceptionAllowsInsecureHTTPLoads)',
-        include: ['**/*.plist', '**/*.swift'],
-        exclude: [...TEST_EXCLUDES],
-        why: 'Disabling ATS reopens plaintext HTTP for the whole app or exception domains.',
-        remediation:
-          'Remove the exception keys; pin exception domains narrowly with justification if truly required.',
-        references: ['CWE-319'],
-      },
-      {
-        id: 'SW-003',
-        title: 'Dependencies are pinned',
-        severity: 'MEDIUM',
-        ruleClass: 'supply-chain',
-        kind: 'file_exists',
-        files: ['Package.resolved'],
-        why: 'An unpinned Package.swift resolves newest compatibles at build time.',
-        remediation: 'Commit Package.resolved so every build resolves identically.',
-        references: ['CWE-829'],
-      },
-      {
-        id: 'SW-004',
-        title: 'Secrets live in the Keychain with data protection',
-        severity: 'HIGH',
-        ruleClass: 'security',
-        kind: 'manual',
-        why: 'UserDefaults/plist storage of tokens and missing file-protection classes need a human to confirm.',
-        remediation:
-          'Store credentials via SecItem with kSecAttrAccessibleWhenUnlockedThisDeviceOnly or stronger; set NSFileProtectionComplete.',
-        evidence:
-          'SecItem call sites file:line, UserDefaults keys inventory, file-protection settings.',
-        references: ['ASVS-2.10.1', 'MASVS-STORAGE'],
       },
     ],
   },

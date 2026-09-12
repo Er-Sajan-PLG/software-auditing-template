@@ -7,7 +7,7 @@ import type {
   Maturity,
   RulePack,
   Suppression,
-  UsatConfig,
+  UsaConfig,
 } from '../types.js';
 import type { SectionDef } from './sections.js';
 import { SEVERITY_LADDER } from './loader.js';
@@ -50,12 +50,23 @@ export interface AuditOptions {
   rulesDir?: string;
   depth?: Depth;
   profile?: Maturity | 'auto';
-  config?: UsatConfig;
+  config?: UsaConfig;
   allowCommands?: boolean;
-  usatVersion?: string;
+  usaVersion?: string;
   /** Force these pack ids on/off regardless of detection. */
   includePacks?: string[];
   excludePacks?: string[];
+  /** Indexing caps for bigger-than-comfortable trees (CLI wins over config). */
+  maxFiles?: number;
+  maxBytes?: number;
+  /**
+   * Extra rule packs merged into the loaded set for this run only. This is how
+   * the evolution layer injects a *released* capability into a re-audit without
+   * mutating the on-disk `rules/` registry — the resolved capability set lives
+   * in `capabilitySetId`, not in the filesystem. The CLI never passes this, so
+   * `usa audit` behaviour is unchanged.
+   */
+  extraPacks?: RulePack[];
 }
 
 export interface AuditOutcome {
@@ -70,13 +81,20 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   const config = options.config ?? loadConfig(options.target);
   const opts = normalizeAuditOptions(options, config);
   const warnings: string[] = [];
-  const project = new Project(opts.target, config.ignore ?? []);
+  const project = new Project(
+    opts.target,
+    config.ignore ?? [],
+    resolveLimits(options, config, warnings),
+  );
   const git = project.gitInfo();
+  appendHistoryWarnings(git, warnings);
   const detectors = loadDetectorFile(opts.rulesDir);
   const detection = detect(project, detectors, git, config.facts ?? []);
 
   const { packs, warnings: packWarnings } = loadRulePacks(opts.rulesDir);
   warnings.push(...packWarnings);
+
+  mergeExtraPacks(packs, options.extraPacks);
 
   const { disabled, overrides } = collectRuleSettings(config, warnings);
   applyRuleOverrides(packs, overrides);
@@ -141,13 +159,30 @@ export function runAudit(options: AuditOptions): AuditOutcome {
   return { report, warnings, profile };
 }
 
-function normalizeAuditOptions(options: AuditOptions, config: UsatConfig) {
+/**
+ * Merges an additional capability set into the loaded packs for a single run.
+ * A pack id already present in the base registry wins (the registry is the
+ * source of truth); duplicate ids from `extraPacks` are dropped silently so a
+ * released capability cannot shadow a shipped one.
+ */
+function mergeExtraPacks(packs: RulePack[], extra: RulePack[] | undefined): void {
+  if (!extra || extra.length === 0) return;
+  const seen = new Set(packs.map((p) => p.id));
+  for (const p of extra) {
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      packs.push(p);
+    }
+  }
+}
+
+function normalizeAuditOptions(options: AuditOptions, config: UsaConfig) {
   return {
     rulesDir: options.rulesDir ?? DEFAULT_RULES_DIR,
     depth: options.depth ?? ('standard' as Depth),
     profile: options.profile ?? ('auto' as Maturity | 'auto'),
     allowCommands: options.allowCommands ?? false,
-    usatVersion: options.usatVersion ?? DEFAULT_VERSION,
+    usaVersion: options.usaVersion ?? DEFAULT_VERSION,
     target: options.target,
     config,
   };
@@ -202,7 +237,7 @@ function resolveMaturity(
   if (configMaturity === undefined) return detected;
   if ((MATURITIES as readonly string[]).includes(configMaturity)) return configMaturity;
   warnings.push(
-    `.usat.yaml: invalid maturity "${String(configMaturity)}" — using auto-detected ${detected}`,
+    `.usa.yaml: invalid maturity "${String(configMaturity)}" — using auto-detected ${detected}`,
   );
   return detected;
 }
@@ -216,7 +251,7 @@ function selectSections(
   if (!wanted || wanted.length === 0) return all;
   const known = new Set(all.map((s) => s.id));
   for (const id of wanted) {
-    if (!known.has(id)) warnings.push(`.usat.yaml: unknown section "${id}" in sections — ignored`);
+    if (!known.has(id)) warnings.push(`.usa.yaml: unknown section "${id}" in sections — ignored`);
   }
   return all.filter((s) => wanted.includes(s.id));
 }
@@ -240,9 +275,65 @@ function appendIndexWarnings(project: Project, warnings: string[]): void {
   }
 }
 
+/**
+ * CLI flags win over config file; both are validated with warnings.
+ * Invalid values fall back to engine defaults (never zero, never infinite).
+ */
+function resolveLimits(
+  options: AuditOptions,
+  config: UsaConfig,
+  warnings: string[],
+): { maxFiles?: number; maxBytes?: number } {
+  return {
+    maxFiles: validatedLimit(
+      options.maxFiles ?? config.limits?.max_files,
+      'limits.max_files / --max-files',
+      warnings,
+    ),
+    maxBytes: validatedLimit(
+      options.maxBytes ?? config.limits?.max_bytes,
+      'limits.max_bytes / --max-bytes',
+      warnings,
+    ),
+  };
+}
+
+function validatedLimit(
+  v: number | undefined,
+  name: string,
+  warnings: string[],
+): number | undefined {
+  if (v === undefined) return undefined;
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.floor(v);
+  warnings.push(`invalid ${name} "${String(v)}" (must be a positive number) — using defaults`);
+  return undefined;
+}
+
+/**
+ * History-thin targets blind the history-dependent rules (REPO-003 scans
+ * `git log`, REL-002 needs tags, maturity signals need commits). The
+ * negation in REPO-003 even turns git errors into PASS — true only in the
+ * vacuous sense. Say so loudly instead of scoring blind confidence.
+ */
+function appendHistoryWarnings(git: ReturnType<Project['gitInfo']>, warnings: string[]): void {
+  if (!git.isRepo) {
+    warnings.push(
+      'not a git repository — history and provenance checks cannot verify anything; ' +
+        'treat history-dependent findings as vacuous',
+    );
+    return;
+  }
+  if (git.commits <= 1) {
+    warnings.push(
+      'single-commit history (shallow clone?) — maturity signals, tag checks, and ' +
+        'history scans are under-verified; prefer a full clone for release-grade audits',
+    );
+  }
+}
+
 function resolvePackSets(
   options: AuditOptions,
-  config: UsatConfig,
+  config: UsaConfig,
 ): { include: Set<string>; exclude: Set<string> } {
   return {
     include: new Set(options.includePacks ?? config.include ?? []),
@@ -253,7 +344,7 @@ function resolvePackSets(
 type RuleOverride = { severity?: Finding['severity']; weight?: number };
 
 function collectRuleSettings(
-  config: UsatConfig,
+  config: UsaConfig,
   warnings: string[],
 ): {
   disabled: Set<string>;
@@ -401,7 +492,7 @@ function buildReport(
     depth: Depth;
     profile: Maturity | 'auto';
     rulesDir: string;
-    usatVersion: string;
+    usaVersion: string;
   },
   git: ReturnType<Project['gitInfo']>,
   detection: ReturnType<typeof detect>,
@@ -413,9 +504,9 @@ function buildReport(
   packsSkipped: string[],
 ): AuditReport {
   return {
-    schema: 'usat-report-v1',
+    schema: 'usa-report-v1',
     generatedAt: new Date().toISOString(),
-    usatVersion: opts.usatVersion,
+    usaVersion: opts.usaVersion,
     target: {
       path: path.resolve(opts.target),
       name: path.basename(path.resolve(opts.target)) || opts.target,

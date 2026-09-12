@@ -1,6 +1,6 @@
 # What to look for, per section
 
-The condensed version. The full catalogue is [`USAT.md`](../../../USAT.md) and the
+The condensed version. The full catalogue is [`USA.md`](../../../USA.md) and the
 executable rules live in [`rules/`](../../../rules).
 
 ## S1 Repository

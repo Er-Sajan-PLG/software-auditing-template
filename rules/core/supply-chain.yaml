@@ -3,7 +3,7 @@ title: Supply Chain & Build Provenance
 section: S3
 section_title: Supply Chain & Build Provenance
 description: >
-  Promoted to its own section in USAT. You can write perfect code and still
+  Promoted to its own section in USA. You can write perfect code and still
   ship someone else's backdoor: these controls cover the path from a
   contributor's editor to the artifact your users run.
   Aligned with SLSA v1.2, NIST SSDF (SP 800-218), and the OpenSSF Scorecard.

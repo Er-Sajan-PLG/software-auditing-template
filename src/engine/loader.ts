@@ -30,12 +30,23 @@ export interface LoaderResult {
   warnings: string[];
 }
 
+/**
+ * Load a single pack file (not the registry). Used by the evolution CLI to load
+ * a candidate capability pack that is *not* (yet) in `rules/index.yaml`.
+ */
+export function loadPackFile(file: string): { pack: RulePack | null; warnings: string[] } {
+  const warnings: string[] = [];
+  const pack = parsePack(path.resolve(file), new Map(), warnings);
+  if (pack) pack.source = path.basename(file);
+  return { pack, warnings };
+}
+
 /** Read `rules/index.yaml` and every pack it references. */
 export function loadRulePacks(rulesDir: string): LoaderResult {
   const warnings: string[] = [];
   const indexPath = path.join(rulesDir, 'index.yaml');
   if (!fs.existsSync(indexPath)) {
-    throw new Error(`Rule index not found at ${indexPath}. Pass --rules-dir or run \`usat init\`.`);
+    throw new Error(`Rule index not found at ${indexPath}. Pass --rules-dir or run \`usa init\`.`);
   }
   let indexDoc: { packs?: (string | { file: string; enabled?: boolean })[] } | null;
   try {
@@ -92,19 +103,43 @@ function parsePack(
   seenRuleIds: Map<string, string>,
   warnings: string[],
 ): RulePack | null {
+  let text: string;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    warnings.push(`pack ${file} could not be read (${(err as Error).message}) — pack skipped`);
+    return null;
+  }
+  return parsePackText(text, file, seenRuleIds, warnings);
+}
+
+/**
+ * Parse a rule pack from YAML text in memory. Shared by the file loader and the
+ * evolution proposal stage, which renders a candidate pack (from the bootstrap
+ * catalog) without ever touching the checked-in registry. `sourceName` is only
+ * used in warnings and as the fallback pack id.
+ */
+export function parsePackText(
+  text: string,
+  sourceName: string,
+  seenRuleIds: Map<string, string> = new Map(),
+  warnings: string[] = [],
+): RulePack | null {
   let raw: unknown;
   try {
-    raw = parseYaml(fs.readFileSync(file, 'utf8'));
+    raw = parseYaml(text);
   } catch (err) {
     // One corrupt pack must not abort the whole audit: skip it loudly.
-    warnings.push(`pack ${file} is not valid YAML (${(err as Error).message}) — pack skipped`);
+    warnings.push(
+      `pack ${sourceName} is not valid YAML (${(err as Error).message}) — pack skipped`,
+    );
     return null;
   }
   if (!isMap(raw)) {
-    warnings.push(`${file}: not a YAML mapping`);
+    warnings.push(`${sourceName}: not a YAML mapping`);
     return null;
   }
-  const id = str(raw.id) ?? path.basename(file, path.extname(file));
+  const id = str(raw.id) ?? path.basename(sourceName, path.extname(sourceName));
   const rules: Rule[] = [];
 
   (list(raw.rules) ?? []).forEach((r, i) => {
@@ -114,7 +149,7 @@ function parsePack(
     if (firstSeen !== undefined) {
       // Duplicate rule IDs double-count weight in scoring and collide as
       // duplicate YAML keys in the report trailer (second silently wins in
-      // `usat diff`). First definition wins; the later one is dropped loudly.
+      // `usa diff`). First definition wins; the later one is dropped loudly.
       warnings.push(
         `duplicate rule id "${parsed.id}" in pack "${id}" (first defined in pack "${firstSeen}") — later rule ignored`,
       );

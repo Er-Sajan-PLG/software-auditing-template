@@ -1,0 +1,7 @@
+{
+  "id": "lua-positive",
+  "kind": "known-positive",
+  "description": "Lua file executing a shell command from user input.",
+  "fixture": { "app.lua": "local r = os.execute(\"rm -rf \" .. user_path)\n" },
+  "expected": [{ "ruleId": "LUA-001", "status": "WRONG" }]
+}

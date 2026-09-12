@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import { makeProject } from './helpers.js';
-import { Project } from '../src/util/project.js';
+import { MAX_FILES, Project } from '../src/util/project.js';
 
 const cleanups: (() => void)[] = [];
 const build = (files: Record<string, string>) => {
@@ -150,6 +150,53 @@ describe('scale honesty', () => {
         config: { version: 1 },
       });
       expect(warnings.some((w) => w.includes('exceeding') && w.includes('skipped'))).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('configurable index caps', () => {
+  it('honours maxFiles with truncation flagged', () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 5; i++) files[`f${i}.ts`] = 'export const a = 1;\n';
+    const { root, cleanup } = makeProject(files);
+    try {
+      const project = new Project(root, [], { maxFiles: 3 });
+      expect(project.files.length).toBe(3);
+      expect(project.truncated).toBe(true);
+      expect(project.maxFiles).toBe(3);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('falls back to defaults on garbage limits', () => {
+    const { root, cleanup } = makeProject({ 'a.ts': 'x\n' });
+    try {
+      const project = new Project(root, [], { maxFiles: -5, maxBytes: NaN });
+      expect(project.maxFiles).toBe(MAX_FILES);
+      expect(project.files.length).toBe(1);
+      expect(project.truncated).toBe(false);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('evicts fairly: 1050 files read back correctly under a 1000-entry cache', () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 1050; i++) files[`f${i}.ts`] = `export const v${i} = ${i};\n`;
+    const { root, cleanup } = makeProject(files);
+    try {
+      const project = new Project(root);
+      expect(project.files.length).toBe(1050);
+      for (let i = 0; i < 1050; i++) {
+        expect(project.read(`f${i}.ts`)).toBe(`export const v${i} = ${i};\n`);
+      }
+      // Eviction must have occurred (1050 > 1000 cap); re-reads recompute.
+      for (let i = 0; i < 1050; i++) {
+        expect(project.read(`f${i}.ts`)).toBe(`export const v${i} = ${i};\n`);
+      }
     } finally {
       cleanup();
     }

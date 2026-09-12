@@ -1,0 +1,7 @@
+{
+  "id": "lua-negative",
+  "kind": "known-negative",
+  "description": "Clean Lua file with no dynamic execution.",
+  "fixture": { "app.lua": "print(\"hello world\")\n" },
+  "expected": [{ "ruleId": "LUA-001", "status": "PASS" }]
+}

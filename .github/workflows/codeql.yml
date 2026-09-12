@@ -1,4 +1,4 @@
-# Static analysis. USAT's own rule SUP-006 asks whether SAST runs in CI, so this
+# Static analysis. USA's own rule SUP-006 asks whether SAST runs in CI, so this
 # repo runs it. CodeQL is free for public repositories.
 #
 # Note: this is *Advanced* setup. If the repository has CodeQL *Default* setup

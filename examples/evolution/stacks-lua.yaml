@@ -1,0 +1,24 @@
+# Candidate capability pack for Lua — a `data` capability USA does not ship yet.
+# Load it with:  usa evolve <lua-repo> --candidate stacks-lua.yaml --bench-dir bench
+id: stacks/lua
+title: Lua
+version: '0.1.0'
+description: Candidate capability detecting unsafe dynamic/shell execution in Lua.
+skip_when:
+  all:
+    - fact: lang:lua
+      op: absent
+rules:
+  - id: LUA-001
+    title: No dynamic code or shell execution
+    section: S15
+    section_title: Platform-Specific
+    severity: HIGH
+    class: security
+    check:
+      kind: grep_wrong
+      pattern: '(os\.execute|loadstring|load)\s*\('
+      include: ['**/*.lua']
+    why: os.execute/loadstring/load run attacker-controlled strings as code.
+    remediation: Restrict dynamic code to allow-listed, non-user-controlled inputs.
+    references: ['CWE-95', 'CWE-78']

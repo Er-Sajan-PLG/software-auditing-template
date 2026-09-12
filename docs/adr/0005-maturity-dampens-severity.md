@@ -16,7 +16,7 @@ _could_ be wrong.
 
 ## Decision
 
-USAT detects a lifecycle stage — `prototype`, `mvp`, `beta`, `production`,
+USA detects a lifecycle stage — `prototype`, `mvp`, `beta`, `production`,
 `legacy` — from repository signals (history, tags, CI, tests, security policy,
 contributing guide, containerisation, monitoring).
 
@@ -44,11 +44,11 @@ nothing is hidden.
 
 **Bad:** a user in a hurry reads a MEDIUM where the rule says HIGH and
 under-reacts. Mitigated by `--profile production`, which turns dampening off
-entirely, and by `usat explain <rule>`, which always shows the rule's intrinsic
+entirely, and by `usa explain <rule>`, which always shows the rule's intrinsic
 severity.
 
 **Bad:** mis-detected stage mis-dampens everything. Because of this the stage is
-always overridable (`--profile`, or `maturity:` in `.usat.yaml`) and always
+always overridable (`--profile`, or `maturity:` in `.usa.yaml`) and always
 printed with the signals that produced it, so a wrong guess is visible rather
 than silent.
 
