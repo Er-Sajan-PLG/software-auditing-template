@@ -43,6 +43,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # tests/e2e.test.ts audits this repo and asserts zero warnings; a
+          # shallow (depth-1) checkout looks like a single-commit history, so
+          # USA emits a "shallow clone?" warning and the assertion fails.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
