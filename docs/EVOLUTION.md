@@ -11,7 +11,7 @@ measurement, not an assertion.
 ## The loop
 
 ```
-SNAPSHOT → AUDIT → COVERAGE → GAPS → (CANDIDATE → BENCHMARK → RELEASE) → RE-AUDIT → DELTA
+SNAPSHOT → AUDIT → COVERAGE → GAPS → PROPOSE → CANDIDATE → BENCHMARK → RELEASE → RE-AUDIT → DELTA
 ```
 
 | Stage                     | Module                           | Status                                               |
@@ -21,10 +21,11 @@ SNAPSHOT → AUDIT → COVERAGE → GAPS → (CANDIDATE → BENCHMARK → RELEAS
 | Audit run + provenance    | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                      |
 | Coverage model            | `src/evolution/coverage.ts`      | `[IMPLEMENTED]`                                      |
 | Capability gaps           | `src/evolution/gap.ts`           | `[IMPLEMENTED]`                                      |
+| Proposal stage            | `src/evolution/propose.ts`       | `[IMPLEMENTED]` (gap→candidate; learn→candidate)     |
 | Capability-set resolution | `src/evolution/capability.ts`    | `[IMPLEMENTED]`                                      |
 | Candidate lifecycle       | (types) `src/evolution/types.ts` | `[PARTIALLY IMPLEMENTED]` (states defined; no queue) |
 | Benchmark fleet           | `src/evolution/benchmark.ts`     | `[IMPLEMENTED]` (tiny fleet)                         |
-| Release gate              | `src/evolution/release.ts`       | `[IMPLEMENTED]`                                      |
+| Release gate              | `src/evolution/release.ts`       | `[IMPLEMENTED]` (vacuous benchmarks rejected)        |
 | Re-audit delta            | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                      |
 | End-to-end orchestrator   | `src/evolution/run.ts`           | `[IMPLEMENTED]`                                      |
 | CLI                       | `usa evolve` in `src/cli.ts`     | `[IMPLEMENTED]`                                      |
@@ -56,6 +57,38 @@ snapshotId  +  capabilitySetId  +  engineVersion  →  report (content-addressed
 `capabilitySetId` is a hash of (engine version, base pack ids, extra capability
 id@version). The full `AuditReport` is stored content-addressed (`resultId`), so
 a stored run can be reconstructed byte-for-byte.
+
+## The proposal stage
+
+`src/evolution/propose.ts` answers "where does a candidate come from?" **without
+an LLM**. Two deterministic sources:
+
+- **From a gap** — `proposeCandidate(gap)` renders the bootstrap starter pack for
+  the gap's language (the same catalog `usa bootstrap` uses, the single source of
+  truth) and parses it back into a `CandidateCapability` with status `PROPOSED`.
+- **From learn suggestions** — `proposeFromSuggestions(suggestions)` turns the
+  manual checks emitted by `usa learn` into a single `learn-proposals` candidate
+  pack of `manual` checks. `manual` is the honest proposal when a missing check
+  cannot yet be expressed as data.
+
+Both are pure functions and both are **human-gated**: a proposal is unreviewed
+and never reaches `rules/index.yaml`. It only becomes trusted after it clears the
+benchmark fleet and the release gate (producer ≠ judge, per
+[ADR-0014](adr/0014-proposal-stage-and-release-evidence.md)).
+
+Enable it in the loop:
+
+```bash
+# propose from gaps, then benchmark/release the first proposable candidate
+usa evolve /some/lua/repo --propose --bench-dir examples/evolution/bench
+```
+
+## Release requires evidence
+
+`evaluateRelease` rejects a benchmark with **zero cases**. An unbenchmarked
+candidate would otherwise score a vacuous precision/recall of 1.000 and sail
+through the gate; requiring positive evidence keeps the "evidence over claims"
+invariant (ADR-0014).
 
 ## Worked example (end-to-end, runnable test)
 
@@ -89,9 +122,9 @@ usa evolve /some/lua/repo \
 
 - `[DEFERRED]` Dynamic/sandbox execution, model roles, discovery, scheduling,
   n8n, dashboards, PostgreSQL/NATS — none are needed to prove the feedback loop.
-- `[PLANNED]` Wiring `usa bootstrap` / `usa learn` into the pipeline as the
-  _proposal_ stage that feeds `CandidateCapability` (they remain human-gated,
-  per ADR-0012).
+- `[PARTIALLY IMPLEMENTED]` Wiring `usa learn` into the proposal stage is done
+  (`proposeFromSuggestions`); feeding a _report_ directly from the `evolve` CLI
+  (`--learn <report.md>`) is still `[PLANNED]`.
 - `[PARTIALLY IMPLEMENTED]` A persistent gap→candidate→release **queue**; today
   the loop runs per-invocation and persists records in the Store, but does not
   auto-schedule or re-open gaps.

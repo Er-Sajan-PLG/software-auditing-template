@@ -108,4 +108,10 @@ describe('usa evolve CLI', () => {
   it('exits 2 for a missing target', () => {
     expect(main(['evolve', '/nonexistent/path/xyz'])).toBe(2);
   });
+
+  it('auto-proposes a candidate from gaps with --propose', () => {
+    const target = makeProject({ 'app.lua': 'local r = os.execute("rm " .. p)\n' }).root;
+    cleanups.push(() => fs.rmSync(target, { recursive: true, force: true }));
+    expect(main(['evolve', target, '--propose'])).toBe(0);
+  });
 });

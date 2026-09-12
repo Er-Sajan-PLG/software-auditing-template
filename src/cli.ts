@@ -17,7 +17,12 @@ import { learnFromReport, renderSuggestions, type LearnOptions } from './learn/i
 import { Store } from './store/index.js';
 import { runEvolutionCycle, type EvolutionCycleOutput } from './evolution/run.js';
 import { capabilityFromPack } from './evolution/capability.js';
-import type { BenchmarkCase, CapabilityGap, CoverageModel } from './evolution/types.js';
+import type {
+  BenchmarkCase,
+  CandidateCapability,
+  CapabilityGap,
+  CoverageModel,
+} from './evolution/types.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_RULES_DIR = path.resolve(HERE, '..', 'rules');
@@ -477,6 +482,7 @@ function cmdEvolve(args: Args): number {
 
   const candidateCapability = loadEvolveCandidate(args);
   const cases = loadEvolveCases(args, candidateCapability);
+  const proposeFromGaps = bool(args, 'propose') && !candidateCapability;
 
   const result = runEvolutionCycle({
     target,
@@ -485,6 +491,10 @@ function cmdEvolve(args: Args): number {
     candidateCapability,
     benchmarkCases: cases,
     store,
+    proposeFromGaps,
+    onUnproposable: (gap, reason) => {
+      console.error(`warning: gap ${gap.id} not proposable (${reason})`);
+    },
   });
 
   printEvolutionResult(result);
@@ -538,8 +548,14 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
 
   if (!result.candidate) {
     console.log();
-    console.log('No candidate capability supplied (--candidate <pack.yaml>).');
-    console.log('This was the deterministic BEFORE half of the loop only.');
+    if (result.proposed.length > 0) {
+      console.log(`proposed        : ${result.proposed.length} candidate(s) (none benchmarked)`);
+      printProposed(result.proposed);
+    } else {
+      console.log('No candidate capability supplied (--candidate <pack.yaml>).');
+      console.log('This was the deterministic BEFORE half of the loop only.');
+      console.log('Pass --propose to auto-propose a candidate from the gaps.');
+    }
     return;
   }
 
@@ -548,6 +564,7 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
   console.log(
     `candidate       : ${result.candidate.capabilityId} (gaps: ${result.candidate.gapIds.join(', ')})`,
   );
+  if (result.proposed.length > 0) printProposed(result.proposed);
   if (release) {
     console.log(`release decision: ${release.decision}`);
     console.log(
@@ -585,6 +602,17 @@ function printGaps(gaps: CapabilityGap[]): void {
   for (const g of gaps) console.log(`  - ${g.id} [${g.priority}] ${g.requiredCapability}`);
 }
 
+function printProposed(proposed: CandidateCapability[]): void {
+  for (const c of proposed) {
+    const langs = c.capability.languages?.join(', ') ?? 'unknown';
+    const rules = c.capability.pack?.rules.length ?? 0;
+    console.log(
+      `  proposed      : ${c.id} (${rules} rule(s), langs: ${langs}) → gap ${c.gapIds.join(', ')} [${c.status}]`,
+    );
+  }
+  console.log('  review required — proposals are unreviewed bootstrap packs, never registered.');
+}
+
 /* ------------------------------------------------------------------ utils -- */
 
 function readVersion(): string {
@@ -619,6 +647,7 @@ usa — Universal Software Auditor
 evolve options
   --store <dir>        Persist audit runs/results (content-addressed store)
   --candidate <file>   A candidate capability pack (YAML) to benchmark and release
+  --propose            Auto-propose a candidate from the gaps (bootstrap catalog)
   --bench-dir <dir>    Directory of benchmark case *.json files
   --rules-dir <dir>    Rule pack directory             (default bundled rules/)
 

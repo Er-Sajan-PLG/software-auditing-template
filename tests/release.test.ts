@@ -48,4 +48,16 @@ describe('release gate', () => {
     const b = evaluateRelease(benchFor(luaCandidate()), DEFAULT_RELEASE_GATE);
     expect(a).toEqual(b);
   });
+
+  it('rejects a vacuous benchmark: a release requires positive evidence', () => {
+    const empty: BenchmarkResult = {
+      capability: { id: 'stacks/lua', version: '0.1.0' },
+      cases: [],
+      summary: { tp: 0, tn: 0, fp: 0, fn: 0, precision: 1, recall: 1, regressions: 0 },
+    };
+    const d = evaluateRelease(empty, DEFAULT_RELEASE_GATE);
+    expect(d.decision).toBe('REJECT');
+    expect(d.testsPassed).toBe(false);
+    expect(d.reasons.join(' ')).toContain('no benchmark cases');
+  });
 });

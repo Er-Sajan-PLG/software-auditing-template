@@ -9,11 +9,13 @@ import { deriveGaps } from './gap.js';
 import { basePackIds, resolveCapabilitySetId } from './capability.js';
 import { runBenchmark } from './benchmark.js';
 import { DEFAULT_RELEASE_GATE, evaluateRelease } from './release.js';
+import { proposeCandidates } from './propose.js';
 import type {
   AuditRun,
   BenchmarkCase,
   Capability,
   CapabilityGap,
+  CandidateCapability,
   CoverageModel,
   ReAuditDelta,
   ReleaseDecision,
@@ -29,6 +31,15 @@ export interface EvolutionCycleInput {
   benchmarkCases?: BenchmarkCase[];
   releaseGate?: ReleaseGate;
   store?: Store;
+  /**
+   * When no explicit candidate is supplied, propose one (or more) from the
+   * BEFORE gaps, deterministically, and run the first proposable candidate
+   * through benchmark + release. Nothing is registered — the proposal is a
+   * candidate only. Records the full proposal list on the output.
+   */
+  proposeFromGaps?: boolean;
+  /** Called for each gap that could not be turned into a candidate. */
+  onUnproposable?: (gap: CapabilityGap, reason: string) => void;
 }
 
 export interface AuditWithCoverage {
@@ -44,11 +55,14 @@ export interface AuditWithCoverage {
 export interface EvolutionCycleOutput {
   snapshot: Snapshot;
   before: AuditWithCoverage;
+  /** Candidate actually benchmarked/released (explicit or auto-proposed). */
   candidate?: {
     capabilityId: string;
     gapIds: string[];
     release?: ReleaseDecision;
   };
+  /** All candidates proposed from gaps (empty when none were requested). */
+  proposed: CandidateCapability[];
   after?: AuditWithCoverage & { delta: ReAuditDelta };
 }
 
@@ -69,15 +83,22 @@ export function runEvolutionCycle(input: EvolutionCycleInput): EvolutionCycleOut
   const snapshot = makeSnapshot(input.target);
   const before = audit(input, snapshot, engineVersion, [], input.repository);
 
-  const out: EvolutionCycleOutput = { snapshot, before };
-  const candidate = input.candidateCapability;
+  const out: EvolutionCycleOutput = { snapshot, before, proposed: [] };
+  const candidate = resolveCandidate(input, before, out);
   if (!candidate) return out;
 
   const gate = input.releaseGate ?? DEFAULT_RELEASE_GATE;
   const bench = runBenchmark(candidate, input.benchmarkCases ?? [], input.rulesDir, engineVersion);
   const release = evaluateRelease(bench, gate);
 
-  out.candidate = { capabilityId: candidate.id, gapIds: before.gaps.map((g) => g.id), release };
+  // Associate the candidate with the gap(s) it actually targets (by required
+  // capability), not every gap the audit happened to produce.
+  const gapIds = before.gaps.filter((g) => g.requiredCapability === candidate.id).map((g) => g.id);
+  out.candidate = {
+    capabilityId: candidate.id,
+    gapIds: gapIds.length > 0 ? gapIds : before.gaps.map((g) => g.id),
+    release,
+  };
   input.store?.put({ kind: 'benchmark', capabilityId: candidate.id, ...bench });
   input.store?.put({ kind: 'release', capabilityId: candidate.id, ...release });
 
@@ -87,6 +108,26 @@ export function runEvolutionCycle(input: EvolutionCycleInput): EvolutionCycleOut
   }
 
   return out;
+}
+
+/**
+ * Choose the capability to benchmark: the explicit one, or the first candidate
+ * auto-proposed from the BEFORE gaps. When proposing, all proposals are
+ * recorded on the output (even though only the first is evaluated this run).
+ */
+function resolveCandidate(
+  input: EvolutionCycleInput,
+  before: AuditWithCoverage,
+  out: EvolutionCycleOutput,
+): Capability | undefined {
+  if (input.candidateCapability) return input.candidateCapability;
+  if (!input.proposeFromGaps) return undefined;
+  const proposed = proposeCandidates(before.coverage, before.gaps, {
+    createdBy: 'evolution:propose',
+    onUnproposable: input.onUnproposable,
+  });
+  out.proposed = proposed;
+  return proposed[0]?.capability;
 }
 
 /* -------------------------------------------------------------------- core -- */

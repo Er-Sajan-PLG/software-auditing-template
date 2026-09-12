@@ -16,6 +16,19 @@ usa — Universal Software Auditor
   usa diff <before> <after>     Compare two previously generated reports
   usa init [path]               Scaffold .usa.yaml + a GitHub Actions workflow
   usa bootstrap [path]          Propose rule packs for stacks USA cannot audit yet
+  usa learn <report.md>         Generate suggested rules from audit findings
+  usa evolve [path]             Run the audit → gap → candidate → release loop
+
+evolve options
+  --store <dir>        Persist audit runs/results (content-addressed store)
+  --candidate <file>   A candidate capability pack (YAML) to benchmark and release
+  --propose            Auto-propose a candidate from the gaps (bootstrap catalog)
+  --bench-dir <dir>    Directory of benchmark case *.json files
+  --rules-dir <dir>    Rule pack directory             (default bundled rules/)
+
+learn options
+  --out <file>        Output YAML file (default learn-suggestions.yaml)
+  --min-severity <s>  Minimum severity to consider (CRITICAL|HIGH|MEDIUM|LOW|FUTURE, default MEDIUM)
 
 audit options
   --out <file>        Report path (default AUDIT.md)
@@ -29,6 +42,8 @@ audit options
   --allow-commands    Run `command:` checks (shells out; off by default)
   --fail-on <sev>     Exit 1 on findings >= sev: critical|high|medium|low|none
   --quiet             Only errors
+  --max-files <n>     Index at most n files (overrides config; default 60000)
+  --max-bytes <n>     Skip files larger than n bytes (overrides config; default 2 MiB)
 
 bootstrap options
   --out <file|dir>    Write pack files instead of printing (default: print)
@@ -38,6 +53,7 @@ examples
   usa bootstrap ~/code/legacy-php-app --out /tmp/packs
   usa audit ../api --profile production --fail-on high
   usa audit . --out reports/audit-$(date +%F).md
+  usa learn AUDIT.md --out swift-suggestions.yaml
 ```
 
 ## `usa rules`
@@ -413,5 +429,14 @@ examples
    AI-011     MEDIUM   security         Agent instruction files are scoped and safe
    AI-012     LOW      compliance       Model inputs and outputs are logged for audit
 
-275 rule(s) across 27 pack(s).
+## stacks/swift — Swift (6 rules)
+   Activated when Swift is detected. Graduated from a bootstrap proposal proven against vapor/vapor — see ADR-0012.
+   SW-001     MEDIUM   correctness      No force-unwrap or force-try in application code
+   SW-002     HIGH     security         App Transport Security is not disabled
+   SW-003     MEDIUM   supply-chain     Application dependencies are pinned
+   SW-004     HIGH     security         Secrets live in the Keychain with data protection
+   SW-005     HIGH     security         Request validation uses Validatable or a validation library
+   SW-006     MEDIUM   security         Security headers middleware is configured
+
+281 rule(s) across 28 pack(s).
 ```

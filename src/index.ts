@@ -7,6 +7,8 @@ export { Project } from './util/project.js';
 export { detect, loadDetectors, classifyMaturity, loadDetectorFile } from './detect/index.js';
 export {
   loadRulePacks,
+  loadPackFile,
+  parsePackText,
   applyRuleOverrides,
   validatePredicate,
   DEFAULT_WEIGHT,
@@ -37,6 +39,11 @@ export { deriveGaps } from './evolution/gap.js';
 export { resolveCapabilitySetId, capabilityFromPack, basePackIds } from './evolution/capability.js';
 export { runBenchmark } from './evolution/benchmark.js';
 export { evaluateRelease, DEFAULT_RELEASE_GATE } from './evolution/release.js';
+export {
+  proposeCandidate,
+  proposeCandidates,
+  proposeFromSuggestions,
+} from './evolution/propose.js';
 export { runEvolutionCycle } from './evolution/run.js';
 
 export type * from './types.js';

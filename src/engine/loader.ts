@@ -103,19 +103,43 @@ function parsePack(
   seenRuleIds: Map<string, string>,
   warnings: string[],
 ): RulePack | null {
+  let text: string;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    warnings.push(`pack ${file} could not be read (${(err as Error).message}) — pack skipped`);
+    return null;
+  }
+  return parsePackText(text, file, seenRuleIds, warnings);
+}
+
+/**
+ * Parse a rule pack from YAML text in memory. Shared by the file loader and the
+ * evolution proposal stage, which renders a candidate pack (from the bootstrap
+ * catalog) without ever touching the checked-in registry. `sourceName` is only
+ * used in warnings and as the fallback pack id.
+ */
+export function parsePackText(
+  text: string,
+  sourceName: string,
+  seenRuleIds: Map<string, string> = new Map(),
+  warnings: string[] = [],
+): RulePack | null {
   let raw: unknown;
   try {
-    raw = parseYaml(fs.readFileSync(file, 'utf8'));
+    raw = parseYaml(text);
   } catch (err) {
     // One corrupt pack must not abort the whole audit: skip it loudly.
-    warnings.push(`pack ${file} is not valid YAML (${(err as Error).message}) — pack skipped`);
+    warnings.push(
+      `pack ${sourceName} is not valid YAML (${(err as Error).message}) — pack skipped`,
+    );
     return null;
   }
   if (!isMap(raw)) {
-    warnings.push(`${file}: not a YAML mapping`);
+    warnings.push(`${sourceName}: not a YAML mapping`);
     return null;
   }
-  const id = str(raw.id) ?? path.basename(file, path.extname(file));
+  const id = str(raw.id) ?? path.basename(sourceName, path.extname(sourceName));
   const rules: Rule[] = [];
 
   (list(raw.rules) ?? []).forEach((r, i) => {
