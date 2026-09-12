@@ -485,6 +485,7 @@ function cmdEvolve(args: Args): number {
   const cases = loadEvolveCases(args, candidateCapability);
   const learnReportPath = loadEvolveLearn(args);
   const proposeFromGaps = bool(args, 'propose') && !candidateCapability && !learnReportPath;
+  const allGaps = bool(args, 'all-gaps');
 
   const result = runEvolutionCycle({
     target,
@@ -497,6 +498,7 @@ function cmdEvolve(args: Args): number {
     learnMinSeverity: str(args, 'min-severity', 'MEDIUM') as
       'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'FUTURE',
     proposeFromGaps,
+    allGaps,
     onUnproposable: (gap, reason) => {
       console.error(`warning: ${gap.id} not proposable (${reason})`);
     },
@@ -573,6 +575,7 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
       console.log('Pass --propose to auto-propose a candidate from the gaps.');
     }
     printQueue(result.queue);
+    printSchedule(result.schedule);
     return;
   }
 
@@ -608,6 +611,22 @@ function printEvolutionResult(result: EvolutionCycleOutput): void {
       `queue           : ${result.queue.open} open · ${result.queue.closed} closed · ${result.queue.total} total`,
     );
   }
+  printSchedule(result.schedule);
+}
+
+function printSchedule(schedule: EvolutionCycleOutput['schedule']): void {
+  if (!schedule) return;
+  for (const c of schedule.candidates) {
+    const blocked = c.blockedReason ? ` · blocked: ${c.blockedReason}` : '';
+    console.log(
+      `schedule        : ${c.capabilityId} → ${c.outcome} ` +
+        `(precision ${c.release.precision.toFixed(3)} · recall ${c.release.recall.toFixed(3)} · ` +
+        `regressions ${c.release.regressions}, closed: ${c.closedGapIds.length} gap(s))${blocked}`,
+    );
+  }
+  console.log(
+    `schedule        : ${schedule.attempted} attempted · ${schedule.released} released · ${schedule.rejected} rejected`,
+  );
 }
 
 function printQueue(queue: QueueSummary | undefined): void {
@@ -681,6 +700,7 @@ evolve options
   --store <dir>        Persist audit runs/results (content-addressed store)
   --candidate <file>   A candidate capability pack (YAML) to benchmark and release
   --propose            Auto-propose a candidate from the gaps (bootstrap catalog)
+  --all-gaps           Evaluate every proposable candidate (one per open gap)
   --learn <report.md>  Propose a candidate from a report's open findings (usa learn)
   --min-severity <s>   Min severity for --learn (default MEDIUM)
   --bench-dir <dir>    Directory of benchmark case *.json files

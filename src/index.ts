@@ -45,6 +45,7 @@ export {
   proposeFromSuggestions,
 } from './evolution/propose.js';
 export { GapQueue } from './evolution/queue.js';
+export { scheduleCandidates } from './evolution/schedule.js';
 export { runEvolutionCycle } from './evolution/run.js';
 
 export type * from './types.js';

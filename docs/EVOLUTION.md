@@ -113,6 +113,34 @@ across runs without ever mutating a record.
 usa evolve /some/lua/repo --store /tmp/usa-store
 ```
 
+## The queue-driven scheduler
+
+`src/evolution/schedule.ts` is the unattended half of the loop. Where a normal
+cycle evaluates **one** candidate, the scheduler walks **every** proposable
+candidate (one per open gap, in priority order) through BENCHMARK → RELEASE and
+closes the queue gap for each acceptance. It never proposes and never audits on
+its own — it coordinates only the stages that already exist, so it cannot invent
+work the proposal and gate steps would not have produced.
+
+```bash
+# evaluate every open gap in one deterministic run (opt-in)
+usa evolve /some/multi-lang/repo --all-gaps --store /tmp/usa-store
+```
+
+The scheduler is **opt-in** (`--all-gaps` / `allGaps`); the default stays
+single-candidate and backward compatible.
+
+### The scheduler refuses vacuous releases
+
+A gate `ACCEPT` only proves a candidate matches its fixtures. A capability whose
+pack is **entirely `manual` checks** proves nothing automated: every `manual`
+check reports `UNKNOWN`, so it trivially scores zero FP/FN and would pass a
+vacuous benchmark. Releasing it would close a real gap with a capability that
+detects nothing. The scheduler therefore rejects such a candidate even when the
+gate accepts, with a `blockedReason` (ADR-0016). This is what makes the
+auto-proposed bootstrap _fallbacks_ safe: they are surfaced as proposals, never
+silently promoted to released capabilities.
+
 ## Learning a candidate from a report
 
 `usa evolve --learn <report.md>` turns the open findings of a previously
@@ -158,10 +186,9 @@ usa evolve /some/lua/repo \
 
 - `[DEFERRED]` Dynamic/sandbox execution, model roles, discovery, scheduling,
   n8n, dashboards, PostgreSQL/NATS — none are needed to prove the feedback loop.
-- `[PARTIALLY IMPLEMENTED]` The queue is persistent and reports open/closed. An
-  **auto-scheduler** that walks `openGaps()` and drives a batch of proposals
-  through the loop unattended is still `[PLANNED]`; today a run evaluates only
-  the first proposable candidate.
+- `[IMPLEMENTED]` The queue-driven scheduler (`--all-gaps`) evaluates every
+  proposable candidate per run. A **background/daemon** mode that runs the
+  scheduler on a timer with no operator is still `[DEFERRED]`.
 - `[DEFERRED]` Model runtime (`ModelRuntime`, model bundle in provenance) — a
   later, optional layer; producer/judge separation is already enforced by the
   deterministic gate.

@@ -12,6 +12,7 @@ import { DEFAULT_RELEASE_GATE, evaluateRelease } from './release.js';
 import { proposeCandidates, proposeFromSuggestions } from './propose.js';
 import { learnFromReport } from '../learn/index.js';
 import { GapQueue, type QueueSummary } from './queue.js';
+import { scheduleCandidates, type ScheduleResult } from './schedule.js';
 import type {
   AuditRun,
   BenchmarkCase,
@@ -52,6 +53,12 @@ export interface EvolutionCycleInput {
   /** Minimum severity considered when learning from `learnReportPath`. */
   learnMinSeverity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'FUTURE';
   /**
+   * When true, and only when there is no explicit `candidateCapability` and no
+   * `learnReportPath`, evaluate EVERY proposable candidate (one per open gap)
+   * via `scheduleCandidates` instead of just the first. Ignored otherwise.
+   */
+  allGaps?: boolean;
+  /**
    * Persist gaps into the persistent queue and close the targeted gap(s) when a
    * candidate is accepted. Defaults to true when a `store` is present. Requires
    * a store; ignored otherwise.
@@ -84,6 +91,8 @@ export interface EvolutionCycleOutput {
   learnedSuggestions?: number;
   /** Persistent-queue view after the run (when a store was used). */
   queue?: QueueSummary;
+  /** Batch scheduler outcome (only in `allGaps` mode). */
+  schedule?: ScheduleResult;
   after?: AuditWithCoverage & { delta: ReAuditDelta };
 }
 
@@ -112,6 +121,10 @@ export function runEvolutionCycle(input: EvolutionCycleInput): EvolutionCycleOut
   }
 
   const candidate = resolveCandidate(input, before, out);
+  if (isAllGapsMode(input)) {
+    runAllGaps(input, snapshot, before, out, queue, engineVersion);
+    return out;
+  }
   if (!candidate) return out;
 
   const gate = input.releaseGate ?? DEFAULT_RELEASE_GATE;
@@ -138,6 +151,69 @@ export function runEvolutionCycle(input: EvolutionCycleInput): EvolutionCycleOut
   }
 
   return out;
+}
+
+/**
+ * Whether this run should sweep every proposable candidate. Only an explicit
+ * `allGaps` with no explicit candidate and no report to learn from qualifies;
+ * everything else keeps the single-candidate behavior.
+ */
+function isAllGapsMode(input: EvolutionCycleInput): boolean {
+  return !!input.allGaps && !input.candidateCapability && !input.learnReportPath;
+}
+
+/**
+ * The batch, queue-driven half of the loop: evaluate EVERY proposable
+ * candidate (one per open gap) through the scheduler. The first RELEASED
+ * candidate defines the output `candidate` and drives a single re-audit; if
+ * nothing releases, `candidate` reflects the first attempt and `after` stays
+ * undefined. Never runs the single-candidate path, so nothing is benchmarked
+ * twice.
+ */
+function runAllGaps(
+  input: EvolutionCycleInput,
+  snapshot: Snapshot,
+  before: AuditWithCoverage,
+  out: EvolutionCycleOutput,
+  queue: GapQueue | undefined,
+  engineVersion: string,
+): void {
+  const proposed = proposeCandidates(before.coverage, before.gaps, {
+    createdBy: 'evolution:propose',
+    onUnproposable: input.onUnproposable,
+  });
+  out.proposed = proposed;
+
+  const result = scheduleCandidates({
+    candidates: proposed,
+    gaps: before.gaps,
+    benchmarkCases: input.benchmarkCases,
+    rulesDir: input.rulesDir,
+    engineVersion,
+    releaseGate: input.releaseGate,
+    queue,
+    persist: input.store ? (kind, body) => input.store!.put({ kind, ...body }) : undefined,
+  });
+  out.schedule = result;
+  if (queue) out.queue = queue.summarize();
+
+  const firstReleased = result.candidates.find((c) => c.outcome === 'RELEASED');
+  const primary = firstReleased ?? result.candidates[0];
+  if (!primary) return;
+
+  out.candidate = {
+    capabilityId: primary.capabilityId,
+    gapIds: primary.gapIds,
+    release: primary.release,
+  };
+  if (!firstReleased) return;
+
+  const capability = proposed.find(
+    (c) => c.capability.id === firstReleased.capabilityId,
+  )?.capability;
+  if (!capability) return;
+  const after = audit(input, snapshot, engineVersion, [capability], input.repository);
+  out.after = { ...after, delta: compareReAudit(before, after) };
 }
 
 /** A released capability closes exactly the queue gaps it targeted. */
