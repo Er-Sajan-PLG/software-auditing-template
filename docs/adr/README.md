@@ -25,6 +25,7 @@ a changed decision gets a _new_ ADR that supersedes the old one).
 | 0014 | Deterministic proposal stage; release requires evidence    | Accepted | —          |
 | 0015 | Persistent gap queue: append-only state, derived latest    | Accepted | —          |
 | 0016 | Scheduler requires automated evidence to release           | Accepted | —          |
+| 0017 | Every automatable rule ships a positive/negative fixture   | Accepted | —          |
 
 ## Coverage map (what has no ADR, and why)
 

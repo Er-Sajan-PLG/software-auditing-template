@@ -1,0 +1,11 @@
+rule: SEC-001
+negative:
+  files:
+    src/config.ts: |
+      export const apiKey = process.env.API_KEY;
+      const password = getSecret('db');
+positive:
+  files:
+    src/config.ts: |
+      const apiKey = "EXAMPLE_NOT_A_REAL_KEY_0123456789";
+  expect: FAIL
