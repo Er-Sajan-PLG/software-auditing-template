@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v2.0.0...v2.0.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* **cli:** run installed bin through npm symlink ([ae8cd53](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/ae8cd53880c6f57bb070316280ba359556e0ade0))
+* **release:** cut 2.0.1 for the shipped CLI entry-point fix ([80884a4](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/80884a4edb6f98bca67685cfab8da28fd334f825))
+
 ## [2.0.0](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.3.0...v2.0.0) (2026-09-12)
 
 
