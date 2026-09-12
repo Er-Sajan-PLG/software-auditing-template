@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { main } from '../src/cli.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { main, isEntryPoint } from '../src/cli.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -53,5 +57,44 @@ describe('global flags', () => {
     const badBytes = run(['audit', '.', '--max-bytes', '0']);
     expect(badBytes.code).toBe(2);
     expect(badBytes.err).toContain('--max-bytes must be a positive number');
+  });
+
+  describe('entry-point guard (npm bin symlink regression)', () => {
+    // Regression: npm installs the `usa` bin as a symlink to dist/cli.js.
+    // process.argv[1] is then the symlink path while import.meta.url is the
+    // real path, so a naive `file://${argv[1]}` comparison never matches and
+    // the installed CLI exited 0 without doing anything.
+    it('recognises the entry point through a symlink', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'usa-bin-'));
+      try {
+        const real = path.join(dir, 'cli.js');
+        fs.writeFileSync(real, '// stub\n');
+        const link = path.join(dir, 'usa');
+        fs.symlinkSync(real, link);
+        const thisUrl = pathToFileURL(real).href;
+
+        expect(isEntryPoint(link, thisUrl)).toBe(true);
+        expect(isEntryPoint(real, thisUrl)).toBe(true);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('rejects a different file, a missing file, and an undefined argv', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'usa-bin-'));
+      try {
+        const real = path.join(dir, 'cli.js');
+        fs.writeFileSync(real, '// stub\n');
+        const other = path.join(dir, 'other.js');
+        fs.writeFileSync(other, '// other\n');
+        const thisUrl = pathToFileURL(real).href;
+
+        expect(isEntryPoint(other, thisUrl)).toBe(false);
+        expect(isEntryPoint(path.join(dir, 'missing.js'), thisUrl)).toBe(false);
+        expect(isEntryPoint(undefined, thisUrl)).toBe(false);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 });

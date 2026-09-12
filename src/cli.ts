@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { AuditReport, Depth, Maturity, Rule, Severity } from './types.js';
 import { runAudit } from './engine/audit.js';
 import { loadRulePacks, loadPackFile } from './engine/loader.js';
@@ -758,6 +758,25 @@ permissions:
 `;
 
 // ---- main entry point ----
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run only when this file is the entry point. Comparing `import.meta.url` to
+// `file://${process.argv[1]}` breaks under npm's bin symlinks: argv[1] is the
+// `.bin/usa` symlink while import.meta.url is the real dist/cli.js path, so
+// the guard never matches and the CLI exits silently. Resolve argv[1] to its
+// real path first (and guard the fs call so a non-file argv never throws).
+function isEntryPoint(
+  argv1: string | undefined = process.argv[1],
+  thisUrl: string = import.meta.url,
+): boolean {
+  if (!argv1) return false;
+  try {
+    return thisUrl === pathToFileURL(fs.realpathSync(argv1)).href;
+  } catch {
+    return false;
+  }
+}
+
+export { isEntryPoint };
+
+if (isEntryPoint()) {
   process.exit(main(process.argv.slice(2)));
 }
