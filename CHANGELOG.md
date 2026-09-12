@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.3.0...v1.3.1) (2026-09-12)
+
+
+### Changed
+
+* **BREAKING:** renamed the project and package from `@xenos1996/usat`
+  (USAT, Software Auditing Template) to `@xenos1996/usa` (Universal Software
+  Auditor); the CLI binary is now `usa`. This supersedes the `usat` 1.3.0 line.
+* Added the deterministic evolution loop (snapshot, coverage, gaps,
+  proposal, benchmark, release gate), the persistent gap queue, and the
+  queue-driven scheduler (`usa evolve --all-gaps`). See ADR-0013..0016.
+
+
 ## [1.1.0](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v1.0.0...v1.1.0) (2026-09-09)
 
 
