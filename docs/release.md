@@ -67,6 +67,14 @@ publish directly_. From that point on, tags publish themselves; re-run
 the failed Release run to confirm. This was done for the `usat → usa`
 rename: `usat` got the same treatment at 1.0.0.
 
+**Reading the re-run correctly.** Once the Trusted Publisher is wired,
+re-running a tag whose version is already on the registry fails with
+`You cannot publish over the previously published versions: X.Y.Z` — that
+is the fix working, not a regression: OIDC authenticated and the registry
+recognised the package, it simply refuses the duplicate. The definitive
+green is the **next** new version: it publishes with no manual step. Do
+not "fix" the duplicate-version error; it is the fail-closed contract.
+
 ## Recurring (calendar, not automation)
 
 - **PAT expiry** — the one thing that silently breaks releases. Check the
@@ -79,22 +87,24 @@ rename: `usat` got the same treatment at 1.0.0.
 
 ## Troubleshooting (every failure hit so far, in order)
 
-| Symptom                                                | Cause                                                                                 | Fix                                                                                                        |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `403 … too similar to existing packages` on publish    | npm typosquat filter on the bare name                                                 | Scoped name (`@xenos1996/usa`). Decided, shipped.                                                          |
-| `bin[usa]` "invalid and removed" warning on publish    | npm v12 rejects `./`-prefixed bin targets; tarball ships with **no executable**       | `bin` value is `dist/cli.js` (no prefix). Never re-add `./`.                                               |
-| `npm sbom -o` → `EUNKNOWNCONFIG`                       | No `-o` flag exists; SBOM goes to stdout                                              | Redirect: `npm sbom … > sbom.cdx.json`, after a clean `npm ci` (partial trees fail with `ESBOMPROBLEMS`).  |
-| PUT 404 with provenance signed fine                    | Runner npm too old for the registry OIDC exchange (needs npm ≥ 11.5.1 / Node ≥ 22.14) | `release.yml` pins Node 24 + `npm@^11.15.0` floor. Do not downgrade.                                       |
-| PUT 404 on a **brand-new** package, provenance fine    | Trusted publishing cannot create a package that does not exist yet                    | One-time manual `npm publish` first, then configure Trusted Publisher. See bootstrap section above.        |
-| Tag cut, GitHub Release created, **nothing published** | Tags pushed by `GITHUB_TOKEN` never fire downstream workflows (loop prevention)       | release-please uses the PAT, never the default token.                                                      |
-| Release PR lint red on `CHANGELOG.md`                  | release-please writes double blank lines; prettier wants single                       | `CHANGELOG.md` is prettier-ignored (machine-written).                                                      |
-| `Unable to resolve action ossf/scorecard-action@v2`    | Upstream publishes no `v2` major tag                                                  | Pinned exact `v2.4.4`. Check for newer semver occasionally.                                                |
-| Installed bin exits 0 and prints **nothing**           | Entry guard compared `import.meta.url` to `file://${argv[1]}`; under npm's bin        | Resolve `argv[1]` with `fs.realpathSync` before comparing. Regression-tested in `tests/cli.test.ts`.       |
-|                                                        | symlink those never match, so `main()` never ran                                      |                                                                                                            |
-| `npx @xenos1996/usa …` → `usa: command not found`      | Run from **inside the USA repo**: npx sees cwd's `package.json` is the same package,  | Run `npx` from any other directory, or `npm install -g @xenos1996/usa`, or use `npm run usa -- …` in-repo. |
-|                                                        | skips the registry install, and there is no local `.bin/usa`                          |                                                                                                            |
-| `usat --help` audited the repo                         | Arg parser files `--flags`, never positionals; the switch cases were dead code        | Fixed in `cli.ts` with regression tests. Do not reintroduce flag handling without a test.                  |
-| `SEC-003` failing on `https://` URLs (pre-1.0 history) | Pattern used `https?://` for a plaintext-HTTP rule                                    | Fixed to `http://`; rule carries a `NOTE:` comment. See `tests/rules.test.ts`.                             |
+| Symptom                                                | Cause                                                                                 | Fix                                                                                                          |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `403 … too similar to existing packages` on publish    | npm typosquat filter on the bare name                                                 | Scoped name (`@xenos1996/usa`). Decided, shipped.                                                            |
+| `bin[usa]` "invalid and removed" warning on publish    | npm v12 rejects `./`-prefixed bin targets; tarball ships with **no executable**       | `bin` value is `dist/cli.js` (no prefix). Never re-add `./`.                                                 |
+| `npm sbom -o` → `EUNKNOWNCONFIG`                       | No `-o` flag exists; SBOM goes to stdout                                              | Redirect: `npm sbom … > sbom.cdx.json`, after a clean `npm ci` (partial trees fail with `ESBOMPROBLEMS`).    |
+| PUT 404 with provenance signed fine                    | Runner npm too old for the registry OIDC exchange (needs npm ≥ 11.5.1 / Node ≥ 22.14) | `release.yml` pins Node 24 + `npm@^11.15.0` floor. Do not downgrade.                                         |
+| PUT 404 on a **brand-new** package, provenance fine    | Trusted publishing cannot create a package that does not exist yet                    | One-time manual `npm publish` first, then configure Trusted Publisher. See bootstrap section above.          |
+| `You cannot publish over the previously published …`   | Re-running a tag whose version is already on the registry (e.g. after a manual        | **Expected / success.** OIDC works; the registry is fail-closed on duplicates. Verify with the next version. |
+|                                                        | first publish). Not an error to "fix".                                                |                                                                                                              |
+| Tag cut, GitHub Release created, **nothing published** | Tags pushed by `GITHUB_TOKEN` never fire downstream workflows (loop prevention)       | release-please uses the PAT, never the default token.                                                        |
+| Release PR lint red on `CHANGELOG.md`                  | release-please writes double blank lines; prettier wants single                       | `CHANGELOG.md` is prettier-ignored (machine-written).                                                        |
+| `Unable to resolve action ossf/scorecard-action@v2`    | Upstream publishes no `v2` major tag                                                  | Pinned exact `v2.4.4`. Check for newer semver occasionally.                                                  |
+| Installed bin exits 0 and prints **nothing**           | Entry guard compared `import.meta.url` to `file://${argv[1]}`; under npm's bin        | Resolve `argv[1]` with `fs.realpathSync` before comparing. Regression-tested in `tests/cli.test.ts`.         |
+|                                                        | symlink those never match, so `main()` never ran                                      |                                                                                                              |
+| `npx @xenos1996/usa …` → `usa: command not found`      | Run from **inside the USA repo**: npx sees cwd's `package.json` is the same package,  | Run `npx` from any other directory, or `npm install -g @xenos1996/usa`, or use `npm run usa -- …` in-repo.   |
+|                                                        | skips the registry install, and there is no local `.bin/usa`                          |                                                                                                              |
+| `usat --help` audited the repo                         | Arg parser files `--flags`, never positionals; the switch cases were dead code        | Fixed in `cli.ts` with regression tests. Do not reintroduce flag handling without a test.                    |
+| `SEC-003` failing on `https://` URLs (pre-1.0 history) | Pattern used `https?://` for a plaintext-HTTP rule                                    | Fixed to `http://`; rule carries a `NOTE:` comment. See `tests/rules.test.ts`.                               |
 
 ## Manual fallback
 
