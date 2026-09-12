@@ -9,6 +9,11 @@ examples/demo-app/
 
 # Generated artefact.
 AUDIT.md
+
+# Experiment evidence (docs/EXPERIMENT_PROTOCOL.md). These reports are
+# machine-generated audit output preserved verbatim; formatting them would
+# alter the very line numbers and tables the run is evidence for.
+experiments/
 examples/sample-report.md
 .gitleaks.toml
 

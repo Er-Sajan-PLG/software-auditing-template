@@ -19,11 +19,7 @@
   "files": [
     "dist",
     "rules",
-    "templates",
-    "schema",
-    "docs",
     "USA.md",
-    "AGENTS.md",
     "README.md",
     "LICENSE"
   ],

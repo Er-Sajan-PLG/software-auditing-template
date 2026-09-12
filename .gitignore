@@ -45,5 +45,7 @@ config.local.json
 *.crt
 secrets/
 credentials/
-# Generated audit reports
-AUDIT.md
+# Generated audit reports (root-level scratch; canonical reports live under
+# experiments/<run_id>/ per docs/EXPERIMENT_PROTOCOL.md)
+/AUDIT.md
+/AUDIT_*.md
