@@ -1,4 +1,4 @@
-# The 16 sections and when each applies
+# The <!-- usa:fact sections -->16<!-- /usa:fact --> sections and when each applies
 
 Sections are activated by detection, not by the auditor's attention span. The CLI
 handles this; use this table when you are auditing by hand, or to sanity-check why a

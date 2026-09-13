@@ -7,7 +7,7 @@
 | **Project** | `demo-app` |
 | **Path** | `/home/user/universal-software-auditor/examples/demo-app` |
 | **Commit** | n/a (detached) |
-| **Date** | 2026-09-13T02:06:54.434Z |
+| **Date** | 2026-01-01T00:00:00.000Z |
 | **USA version** | 2.0.1 |
 | **Detected type** | unclassified |
 | **Platform** | server |
@@ -474,7 +474,7 @@ Rule packs skipped as not applicable (14): stacks/python, stacks/go, stacks/rust
 <!-- USA:TRAILER:BEGIN -->
 ```yaml
 schema: usa-report-v1
-generated_at: 2026-09-13T02:06:54.434Z
+generated_at: 2026-01-01T00:00:00.000Z
 usa_version: 2.0.1
 overall: 45.2
 sections:

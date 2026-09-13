@@ -101,7 +101,7 @@ See the full report: [`examples/sample-report.md`](examples/sample-report.md).
 
 ## 🔍 How it adapts
 
-**1 · Detect.** ~236 declarative signals in [`rules/detectors.yaml`](rules/detectors.yaml)
+**1 · Detect.** <!-- usa:fact detectors-approx -->~230<!-- /usa:fact --> declarative signals in [`rules/detectors.yaml`](rules/detectors.yaml)
 produce facts about your project — language, framework, package manager, platform,
 database, auth, CI, AI stack, and more.
 
@@ -176,14 +176,16 @@ Override it: `usa audit . --profile production` — the "what would it take to s
 
 ## 📦 What it checks
 
-**16 sections**, S1–S16, in [`USA.md`](USA.md) — the human/agent-facing document.
+**<!-- usa:fact sections -->16<!-- /usa:fact --> sections**, S1–S16, in [`USA.md`](USA.md) — the human/agent-facing document.
 
-**280+ rules** in [`rules/`](rules) — the machine-facing ones:
+**<!-- usa:fact rules-floor -->280+<!-- /usa:fact --> rules** in [`rules/`](rules) — the machine-facing ones:
+
+<!-- usa:begin rules-tree -->
 
 ```
 rules/
 ├── index.yaml              pack registry
-├── detectors.yaml          236 detection signals → facts
+├── detectors.yaml          ~230 detection signals → facts
 ├── profiles/maturity.yaml  the five lifecycle profiles
 ├── core/                   11 universal packs
 │   ├── repo.yaml           ├── security.yaml      ├── supply-chain.yaml
@@ -197,6 +199,8 @@ rules/
     ├── data                ├── api-backend ├── compliance ├── ai-era
     └── swift
 ```
+
+<!-- usa:end rules-tree -->
 
 ### What USA adds beyond a conventional audit checklist
 

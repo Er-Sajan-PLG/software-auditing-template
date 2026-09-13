@@ -121,7 +121,7 @@ Sections are activated by detection, not by the auditor's attention span. `S15 Â
 | **S15** | Platform-Specific                     | per stack: Node, Python, Go, Rust, JVM, Web, Mobile, Containers, IaC, Solidity, ML, CLI, API | 1.0     |
 | **S16** | Future Readiness                      | always                                                                                       | 0.4     |
 
-The machine-readable rules live in [`rules/core/`](rules/core) and [`rules/stacks/`](rules/stacks). Section titles and weights are defined in [`src/engine/sections.ts`](src/engine/sections.ts); override them per-repo with an optional `rules/sections.yaml` (`$rulesDir/sections.yaml`).
+The machine-readable rules live in [`rules/core/`](rules/core) and [`rules/stacks/`](rules/stacks). Section titles and weights are defined in [`src/engine/sections.ts`](src/engine/sections.ts); override them per-repo with an optional `sections.yaml` in your rules directory (`$rulesDir/sections.yaml`).
 
 ### What USA added to the classic 14-section audit
 

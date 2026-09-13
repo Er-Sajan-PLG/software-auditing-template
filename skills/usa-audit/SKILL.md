@@ -120,7 +120,7 @@ production.
 
 ## References
 
-- [`references/sections.md`](references/sections.md) — the 16 sections and when each applies
+- [`references/sections.md`](references/sections.md) — the <!-- usa:fact sections -->16<!-- /usa:fact --> sections and when each applies
 - [`references/check-catalogue.md`](references/check-catalogue.md) — what to look for, per section
 - [`references/report-template.md`](references/report-template.md) — output structure
 - [`references/agent-prompt.md`](references/agent-prompt.md) — a prompt you can paste

@@ -82,14 +82,30 @@ CI enforces most of this (see `tests/e2e.test.ts`).
 
 ## Contributor gates (all enforced in CI)
 
-| Gate              | Rule                                                                                                                            | Where                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| Complexity budget | Functions stay at cyclomatic complexity ≤ 10 (warn-only). Over? Split: one branch = one function, dispatch tables over switches | `eslint.config.mjs`             |
-| Coverage ratchet  | Thresholds sit at the measured number and only rise (`vitest.config.ts`). Lowering a threshold needs an ADR-level reason        | `npm run test:cov`              |
-| Rule fixtures     | Every automatable rule ships a `tests/fixtures/rules/<ID>.yaml` fixture; the coverage gate fails an untested rule (ADR-0017)    | `tests/rule-fixtures.test.ts`   |
-| ADR hygiene       | Filenames sequential, title numbers match, Date + Status present, index complete                                                | `node scripts/check-adrs.mjs`   |
-| Doc sync          | README rule-count floor holds; every section id appears in `USA.md`; every `--flag` in docs exists in `--help`                  | `node scripts/check-docs.mjs`   |
-| CLI reference     | `docs/reference/cli.md` is generated — never hand-edit it; regenerate and commit                                                | `node scripts/gen-cli-docs.mjs` |
+| Gate              | Rule                                                                                                                            | Where                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Complexity budget | Functions stay at cyclomatic complexity ≤ 10 (warn-only). Over? Split: one branch = one function, dispatch tables over switches | `eslint.config.mjs`           |
+| Coverage ratchet  | Thresholds sit at the measured number and only rise (`vitest.config.ts`). Lowering a threshold needs an ADR-level reason        | `npm run test:cov`            |
+| Rule fixtures     | Every automatable rule ships a `tests/fixtures/rules/<ID>.yaml` fixture; the coverage gate fails an untested rule (ADR-0017)    | `tests/rule-fixtures.test.ts` |
+| ADR hygiene       | Filenames sequential, title numbers match, Date + Status present, index complete                                                | `npm run docs:adrs`           |
+| Doc governance    | Fact markers synced; links + anchors resolve; every doc indexed; version pins current; no banned stale strings (ADR-0020)       | `npm run docs:check`          |
+| CLI reference     | `docs/reference/cli.md` is generated — never hand-edit it; regenerate and commit                                                | `npm run docs:cli`            |
+
+### Documentation is generated where it can be
+
+Counts, versions, and the CLI reference are **derived from source**, not typed
+by hand. In a doc, write a fact as a marker and it keeps itself correct:
+
+```markdown
+Rules: <!-- usa:fact rules -->281<!-- /usa:fact -->
+```
+
+- `npm run docs:sync` rewrites every marker from source (also runs on commit via
+  the husky hook, so you rarely call it by hand).
+- `npm run docs:check` fails CI if a marker, link, anchor, version pin, or index
+  entry has drifted — run it before pushing.
+- A fact count is a **mirror**: edit the source (the YAML/code), not the number.
+  See [ADR-0020](docs/adr/0020-machine-synced-documentation.md).
 
 **Fixing a rule that over/under-fires** (the highest-value rule contribution):
 

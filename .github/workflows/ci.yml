@@ -162,13 +162,16 @@ jobs:
       - run: npm run build
 
       - name: ADR index and numbering
-        run: node scripts/check-adrs.mjs
+        run: npm run docs:adrs
 
-      - name: Doc sync (rule counts, section coverage, flag references)
-        run: node scripts/check-docs.mjs
+      - name: Doc governance (facts, links, index, version pins, headings)
+        run: npm run docs:check
 
       - name: CLI reference is generated and committed
-        run: node scripts/gen-cli-docs.mjs --check
+        run: npm run docs:cli
+
+      - name: Sample report is generated and committed
+        run: npm run docs:sample
 
   # USA audits supply-chain hygiene on other people's repos, so it runs the
   # same three scanners on itself. These are the checks behind SUP-005..007.
