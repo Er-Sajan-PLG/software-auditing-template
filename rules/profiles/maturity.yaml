@@ -129,7 +129,7 @@ profiles:
     focus:
       - Inventory EOL dependencies and pin a replacement date for each
       - Confirm backups restore, and that someone still knows how
-      - Keep the lights on: monitoring, alerting, and an owner per service
+      - 'Keep the lights on: monitoring, alerting, and an owner per service'
       - Document the system well enough to hand over or retire
     defer:
       - Rewrites without a strangler plan, framework migrations for their own sake

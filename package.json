@@ -19,6 +19,7 @@
   "files": [
     "dist",
     "rules",
+    "templates",
     "USA.md",
     "README.md",
     "LICENSE"
