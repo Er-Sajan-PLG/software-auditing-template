@@ -27,7 +27,7 @@ new framework is a five-line YAML diff rather than a release.
         │                                     ▼
         │                        ┌──────────────────────────┐
         │                        │  Rule evaluation         │
-        │                        │  15 check kinds → status │
+        │                        │  16 check kinds → status │
         │                        └────────────┬─────────────┘
         │                                     ▼
         │                        ┌──────────────────────────┐

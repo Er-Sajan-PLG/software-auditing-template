@@ -111,6 +111,7 @@ const TEXT_EXT = new Set([
   '.json',
   '.jsonc',
   '.json5',
+  '.sarif',
   '.yaml',
   '.yml',
   '.toml',

@@ -133,6 +133,146 @@ describe('check kinds', () => {
     ).toBe('FAIL');
   });
 
+  describe('oracle (ingest external evidence)', () => {
+    const sarif = (results: { level: string; ruleId: string }[]) =>
+      JSON.stringify({ version: '2.1.0', runs: [{ tool: {}, results }] });
+
+    it('counts SARIF results and passes under the bound', () => {
+      const root = build({
+        'reports/codeql.sarif': sarif([
+          { level: 'error', ruleId: 'js/sql-injection' },
+          { level: 'warning', ruleId: 'js/xss' },
+        ]),
+      });
+      const check = {
+        kind: 'oracle' as const,
+        source: 'sarif' as const,
+        file: 'reports/codeql.sarif',
+        op: 'at_most' as const,
+        value: 5,
+      };
+      const r = evaluateAt(root, check);
+      expect(r.status).toBe('PASS');
+      expect(r.message).toContain('2 <= 5');
+    });
+
+    it('fails when the SARIF count exceeds the bound', () => {
+      const root = build({
+        'reports/codeql.sarif': sarif([
+          { level: 'error', ruleId: 'a' },
+          { level: 'error', ruleId: 'b' },
+          { level: 'error', ruleId: 'c' },
+        ]),
+      });
+      const r = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'sarif',
+        file: 'reports/codeql.sarif',
+        levels: ['error'],
+        op: 'at_most',
+        value: 2,
+      });
+      expect(r.status).toBe('FAIL');
+    });
+
+    it('filters by level and rule id', () => {
+      const root = build({
+        'x.sarif': sarif([
+          { level: 'error', ruleId: 'js/sql-injection' },
+          { level: 'note', ruleId: 'js/sql-injection' },
+          { level: 'error', ruleId: 'js/xss' },
+        ]),
+      });
+      const onlyErrors = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'sarif',
+        file: 'x.sarif',
+        levels: ['error'],
+        op: 'equals',
+        value: 2,
+      });
+      expect(onlyErrors.status).toBe('PASS');
+      const onlySql = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'sarif',
+        file: 'x.sarif',
+        rules: ['sql-injection'],
+        op: 'equals',
+        value: 2,
+      });
+      expect(onlySql.status).toBe('PASS');
+    });
+
+    it('reads a JSON number at a dotted path with at_least', () => {
+      const root = build({
+        'reports/cov.json': JSON.stringify({ total: { lines: { pct: 87.5 } } }),
+      });
+      const pass = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'json',
+        file: 'reports/cov.json',
+        path: 'total.lines.pct',
+        op: 'at_least',
+        value: 80,
+      });
+      expect(pass.status).toBe('PASS');
+      const fail = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'json',
+        file: 'reports/cov.json',
+        path: 'total.lines.pct',
+        op: 'at_least',
+        value: 90,
+      });
+      expect(fail.status).toBe('FAIL');
+    });
+
+    it('MISSING when the artifact is absent (no evidence ≠ pass)', () => {
+      const root = build({ 'a.ts': 'x' });
+      const r = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'sarif',
+        file: 'reports/missing.sarif',
+        value: 0,
+      });
+      expect(r.status).toBe('MISSING');
+    });
+
+    it('UNKNOWN (fail closed) when the artifact is not valid JSON', () => {
+      const root = build({ 'broken.sarif': 'this is not json' });
+      const r = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'sarif',
+        file: 'broken.sarif',
+        value: 0,
+      });
+      expect(r.status).toBe('UNKNOWN');
+    });
+
+    it('UNKNOWN when a JSON oracle path is not a number', () => {
+      const root = build({ 'x.json': JSON.stringify({ coverage: 'high' }) });
+      const r = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'json',
+        file: 'x.json',
+        path: 'coverage',
+        value: 0,
+      });
+      expect(r.status).toBe('UNKNOWN');
+    });
+
+    it('UNKNOWN when SARIF has no runs[].results', () => {
+      const root = build({ 'x.sarif': JSON.stringify({ version: '2.1.0' }) });
+      const r = evaluateAt(root, {
+        kind: 'oracle',
+        source: 'sarif',
+        file: 'x.sarif',
+        value: 0,
+      });
+      expect(r.status).toBe('UNKNOWN');
+    });
+  });
+
   it('excludes test files from security greps', () => {
     const root = build({
       'src/a.ts': 'const secret = process.env.SECRET;',

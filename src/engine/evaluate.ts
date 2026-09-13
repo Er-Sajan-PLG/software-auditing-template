@@ -398,6 +398,115 @@ function checkCommand(check: Extract<Check, { kind: 'command' }>, h: CheckHelper
   return runShellCheck(h.project, check.run, check.expect_exit ?? 0, h.pass);
 }
 
+/**
+ * Ingests machine evidence from an external scanner (ADR-0011) and asserts a
+ * numeric bound. Read-only and offline: the artifact is a committed file, not
+ * a live probe. Verdicts stay honest about provenance:
+ *   - artifact absent            → MISSING ("no evidence"), never a silent PASS
+ *   - artifact unparseable       → UNKNOWN (fail closed, a human must look)
+ *   - `at_most`/`at_least`/`equals` satisfied → PASS; violated → FAIL
+ */
+function checkOracle(check: Extract<Check, { kind: 'oracle' }>, h: CheckHelpers): CheckOutcome {
+  const files = h.project.glob([check.file]);
+  if (files.length === 0) {
+    return h.missing(`${check.file} not found — no ${check.source} evidence to ingest`);
+  }
+  const file = files[0]!;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(h.project.read(file) ?? '');
+  } catch {
+    return unknownOutcome(`${file} is not valid JSON — cannot ingest ${check.source} evidence.`);
+  }
+
+  const selected =
+    check.source === 'sarif' ? countSarifResults(raw, check) : readJsonNumber(raw, check);
+  if (selected === null) {
+    return unknownOutcome(
+      check.source === 'json'
+        ? `\`${check.path}\` in ${file} is not a number.`
+        : `${file} is not a SARIF log with a runs[].results array.`,
+    );
+  }
+
+  const op = check.op ?? 'at_most';
+  const ok = compare(selected, op, check.value);
+  const detail = `${selected} ${opPhrase(op)} ${check.value} (${describeOracle(check)}) from ${file}`;
+  return ok
+    ? h.pass(detail, [toLocation(file)])
+    : {
+        status: 'FAIL',
+        message: `Oracle threshold violated — ${detail}.`,
+        locations: [toLocation(file)],
+      };
+}
+
+/** Total SARIF results, filtered by level and ruleId substrings when given. */
+function countSarifResults(raw: unknown, check: Extract<Check, { kind: 'oracle' }>): number | null {
+  const runs = (raw as { runs?: unknown[] }).runs;
+  if (!Array.isArray(runs)) return null;
+  const keep = sarifFilter(check);
+  let count = 0;
+  for (const run of runs) {
+    const results = (run as { results?: unknown[] }).results;
+    if (!Array.isArray(results)) continue;
+    for (const r of results) {
+      if (keep(r)) count++;
+    }
+  }
+  return count;
+}
+
+/** Builds the predicate a SARIF result must satisfy to be counted. */
+function sarifFilter(check: Extract<Check, { kind: 'oracle' }>): (result: unknown) => boolean {
+  const levels = check.levels && check.levels.length > 0 ? new Set(check.levels) : null;
+  const rules = check.rules && check.rules.length > 0 ? check.rules : null;
+  if (!levels && !rules) return () => true;
+  return (result) => {
+    const level = (result as { level?: string }).level ?? 'warning';
+    if (levels && !levels.has(level as never)) return false;
+    if (rules) {
+      const ruleId = String((result as { ruleId?: unknown }).ruleId ?? '');
+      if (!rules.some((needle) => ruleId.includes(needle))) return false;
+    }
+    return true;
+  };
+}
+
+/** Reads the numeric value at `path`, or null when it is not a finite number. */
+function readJsonNumber(raw: unknown, check: Extract<Check, { kind: 'oracle' }>): number | null {
+  const value = resolvePath(raw, check.path ?? '');
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function compare(
+  actual: number,
+  op: NonNullable<Extract<Check, { kind: 'oracle' }>['op']>,
+  bound: number,
+): boolean {
+  switch (op) {
+    case 'at_least':
+      return actual >= bound;
+    case 'equals':
+      return actual === bound;
+    default:
+      return actual <= bound;
+  }
+}
+
+function opPhrase(op: string): string {
+  return op === 'at_least' ? '>=' : op === 'equals' ? '==' : '<=';
+}
+
+function describeOracle(check: Extract<Check, { kind: 'oracle' }>): string {
+  const parts: string[] = [check.source];
+  if (check.levels && check.levels.length > 0) parts.push(`levels: ${check.levels.join('/')}`);
+  if (check.rules && check.rules.length > 0) parts.push(`rules: ${check.rules.join('|')}`);
+  if (check.source === 'json') parts.push(check.path ?? '');
+  return parts.join(' ');
+}
+
 /** One check kind per entry — adding a kind means adding a line, not a branch. */
 const CHECK_HANDLERS: {
   [K in Check['kind']]: (check: Extract<Check, { kind: K }>, h: CheckHelpers) => CheckOutcome;
@@ -417,6 +526,7 @@ const CHECK_HANDLERS: {
   json_path: checkJsonPath,
   count_min: checkCountMin,
   command: checkCommand,
+  oracle: checkOracle,
 };
 
 function runCheck(

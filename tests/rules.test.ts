@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parse } from 'yaml';
 import fs from 'node:fs';
 import { makeProject, evaluateAt } from './engine-helpers.js';
+import { parsePackText } from '../src/engine/loader.js';
 import type { Check } from '../src/types.js';
 
 const RULES = path.resolve(process.cwd(), 'rules');
@@ -216,5 +217,96 @@ describe('stacks/swift rules', () => {
       'Sources/App/Middleware.swift': 'import Vapor\napp.middleware.use(SomeOtherMiddleware())\n',
     });
     expect(evaluateAt(root, sw006.check).status).toBe('MISSING');
+  });
+});
+
+describe('oracle check loading (fail closed)', () => {
+  const pack = (check: string) => `
+id: test/pack
+title: Test
+rules:
+  - id: ORC-001
+    title: Oracle rule
+    section: S3
+    severity: HIGH
+    class: supply-chain
+    check:
+${check}
+    why: evidence
+    remediation: fix it
+`;
+
+  it('loads a valid SARIF oracle check', () => {
+    const warnings: string[] = [];
+    const p = parsePackText(
+      pack(`      kind: oracle
+      source: sarif
+      file: reports/codeql.sarif
+      value: 0`),
+      'test.yaml',
+      new Map(),
+      warnings,
+    );
+    expect(warnings).toEqual([]);
+    expect(p!.rules[0]!.check).toMatchObject({ kind: 'oracle', source: 'sarif', value: 0 });
+  });
+
+  it('rejects an oracle check with no file', () => {
+    const warnings: string[] = [];
+    const p = parsePackText(
+      pack(`      kind: oracle
+      source: sarif
+      value: 0`),
+      'test.yaml',
+      new Map(),
+      warnings,
+    );
+    expect(p!.rules).toHaveLength(0);
+    expect(warnings.some((w) => w.includes('missing "file"'))).toBe(true);
+  });
+
+  it('rejects an unknown oracle source', () => {
+    const warnings: string[] = [];
+    const p = parsePackText(
+      pack(`      kind: oracle
+      source: xml
+      file: x.xml
+      value: 0`),
+      'test.yaml',
+      new Map(),
+      warnings,
+    );
+    expect(p!.rules).toHaveLength(0);
+    expect(warnings.some((w) => w.includes('source must be'))).toBe(true);
+  });
+
+  it('rejects a json oracle with no path', () => {
+    const warnings: string[] = [];
+    const p = parsePackText(
+      pack(`      kind: oracle
+      source: json
+      file: cov.json
+      value: 80`),
+      'test.yaml',
+      new Map(),
+      warnings,
+    );
+    expect(p!.rules).toHaveLength(0);
+    expect(warnings.some((w) => w.includes('needs "path"'))).toBe(true);
+  });
+
+  it('rejects an oracle with a non-finite value', () => {
+    const warnings: string[] = [];
+    const p = parsePackText(
+      pack(`      kind: oracle
+      source: sarif
+      file: x.sarif
+      value: not-a-number`),
+      'test.yaml',
+      new Map(),
+      warnings,
+    );
+    expect(p!.rules).toHaveLength(0);
+    expect(warnings.some((w) => w.includes('finite "value"'))).toBe(true);
   });
 });

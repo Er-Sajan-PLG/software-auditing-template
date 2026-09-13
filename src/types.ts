@@ -125,8 +125,37 @@ export type Check =
   | { kind: 'file_lines_max'; patterns: string[]; max_lines: number }
   /** PASS when the command exits with `expect_exit` (default 0). Opt-in. */
   | { kind: 'command'; run: string; expect_exit?: number }
+  /**
+   * Ingest machine evidence produced by an external scanner (ADR-0011) and
+   * assert a numeric bound. Offline and read-only: it never mints findings,
+   * only checks that an oracle the project already runs reported what the
+   * rule requires. `sarif` counts results (optionally filtered by level /
+   * rule id); `json` reads the number at `path`.
+   */
+  | {
+      kind: 'oracle';
+      source: 'sarif' | 'json';
+      /** Artifact path (literal or glob), e.g. `reports/codeql.sarif`. */
+      file: string;
+      /** JSON only: dotted path to the number to read. */
+      path?: string;
+      /** SARIF only: count only results at these levels (default: all). */
+      levels?: OracleLevel[];
+      /** SARIF only: count only results whose ruleId contains one of these. */
+      rules?: string[];
+      /** Comparison operator (default: `at_most`). */
+      op?: OracleOp;
+      /** Bound the selected value is compared against. */
+      value: number;
+    }
   /** Never evaluated — informational context for the reader/agent. */
   | { kind: 'info' };
+
+/** SARIF result levels USA understands when counting oracle evidence. */
+export type OracleLevel = 'error' | 'warning' | 'note';
+
+/** Numeric bound operators for `oracle` evidence assertions. */
+export type OracleOp = 'at_most' | 'at_least' | 'equals';
 
 export interface Rule {
   id: string;

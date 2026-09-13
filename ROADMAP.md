@@ -27,9 +27,10 @@ Items graduate to ADRs when decided and to `CHANGELOG.md` when shipped.
       rule run in CI (`codeql test` model). Rule packs are the highest FP/FN
       risk in the system; fixtures catch silent rule rot. _(shipped — 174
       automatable rules fixtured, coverage gate blocks untested rules; ADR-0017)_
-- [ ] **Oracle-ingestion check kinds** — `evidence: { source: sarif|json }`
+- [x] **Oracle-ingestion check kinds** — `evidence: { source: sarif|json }`
       for coverage numbers, CVE counts, attestation verification. Opt-in,
-      offline-by-default preserved. _(M)_
+      offline-by-default preserved. _(shipped — `oracle` check kind ingests a
+      committed SARIF/JSON artifact and asserts a bound; ADR-0019)_
 - [ ] **Catalogue pinning + automatability tags** — `catalogue: asvs@5.0.0`,
       `automatability: full|assist|manual` per rule; makes
       `docs/standards-mapping.md` machine-checkable. _(S)_

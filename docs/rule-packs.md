@@ -189,6 +189,52 @@ check:
 **Skipped unless `--allow-commands`** — reported as ❓ NEEDS REVIEW otherwise.
 USA never shells out without being asked.
 
+### `oracle`
+
+Ingests machine evidence an external scanner already produced (ADR-0011) and
+asserts a numeric bound. Offline and read-only: it reads a _committed artifact_,
+never a live probe, so it stays deterministic. It never re-derives the
+scanner's findings — it consumes them as evidence, exactly the way ADR-0011
+requires.
+
+```yaml
+# Count SARIF results (optionally filtered) and cap them.
+check:
+  kind: oracle
+  source: sarif
+  file: reports/codeql.sarif
+  levels: [error] # optional: error | warning | note
+  rules: ['sql-injection'] # optional: ruleId substrings
+  op: at_most # optional: at_most (default) | at_least | equals
+  value: 0
+```
+
+```yaml
+# Read one number out of any JSON report.
+check:
+  kind: oracle
+  source: json
+  file: reports/coverage.json
+  path: total.lines.pct
+  op: at_least
+  value: 80
+```
+
+Verdicts stay honest about provenance:
+
+| Artifact state             | Status     | Why                                         |
+| -------------------------- | ---------- | ------------------------------------------- |
+| absent                     | 🚫 MISSING | No evidence is not a pass.                  |
+| present, unparseable       | ❓ UNKNOWN | Fail closed (ADR-0009) — a human must look. |
+| present, path not a number | ❓ UNKNOWN | Cannot assert a bound on a non-number.      |
+| bound satisfied            | ✅ PASS    |                                             |
+| bound violated             | 🔴 FAIL    |                                             |
+
+`source: sarif` counts `runs[].results` across every run; a result with no
+`level` counts as `warning`. `source: json` reads the dotted `path` with the
+same resolver as `json_path`. Both `.sarif` and `.json` artifacts are read from
+the audited tree and must be committed for the check to see them.
+
 ### `info`
 
 Context only, never scored. Useful for explaining a section to a reader.

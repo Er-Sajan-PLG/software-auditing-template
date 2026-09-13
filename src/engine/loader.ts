@@ -2,7 +2,16 @@ import { parse as parseYaml } from 'yaml';
 import { asMap, isMap, list, num, scalar, str, strList, type YamlMap } from '../util/yaml.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Check, Depth, Rule, RuleClass, RulePack, Severity } from '../types.js';
+import type {
+  Check,
+  Depth,
+  OracleLevel,
+  OracleOp,
+  Rule,
+  RuleClass,
+  RulePack,
+  Severity,
+} from '../types.js';
 
 export const SEVERITY_LADDER: Severity[] = ['FUTURE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 export const RULE_CLASSES: RuleClass[] = [
@@ -295,6 +304,18 @@ const CHECK_BUILDERS: Record<string, (c: YamlMap) => Check> = {
     run: str(c.run) ?? '',
     expect_exit: num(c.expect_exit) ?? 0,
   }),
+  oracle: (c) => ({
+    kind: 'oracle',
+    source: (str(c.source) ?? 'sarif') as 'sarif' | 'json',
+    file: str(c.file) ?? '',
+    path: str(c.path),
+    levels: (strList(c.levels) ?? []).filter(isOracleLevel),
+    rules: strList(c.rules) ?? [],
+    op: (str(c.op) ?? 'at_most') as OracleOp,
+    // A missing or non-numeric bound becomes NaN so validation rejects the
+    // rule; defaulting to 0 would silently turn a typo into "at most 0".
+    value: num(c.value) ?? NaN,
+  }),
 };
 
 function parseCheck(raw: unknown, where: string, warnings: string[]): Check | null {
@@ -319,7 +340,43 @@ function parseCheck(raw: unknown, where: string, warnings: string[]): Check | nu
     );
     return null;
   }
+  if (built.kind === 'oracle') {
+    const problem = oracleProblem(built);
+    if (problem) {
+      warnings.push(`${where}: ${problem} — rule ignored`);
+      return null;
+    }
+  }
   return built;
+}
+
+/**
+ * Validates an `oracle` check's shape. An assertion with no file, an unknown
+ * source/op, a missing JSON path, or a non-finite bound could compare
+ * `undefined` and silently pass — so any of those returns a message and the
+ * rule is dropped (ADR-0009).
+ */
+function oracleProblem(check: Extract<Check, { kind: 'oracle' }>): string | null {
+  if (check.file === '') return 'oracle check missing "file"';
+  if (!isOracleSource(check.source)) return 'oracle source must be "sarif" or "json"';
+  if (!isOracleOp(check.op)) return 'oracle op must be at_most|at_least|equals';
+  if (!Number.isFinite(check.value)) return 'oracle check needs a finite "value"';
+  if (check.source === 'json' && (check.path === undefined || check.path === '')) {
+    return 'oracle json source needs "path"';
+  }
+  return null;
+}
+
+function isOracleSource(v: string): v is 'sarif' | 'json' {
+  return v === 'sarif' || v === 'json';
+}
+
+function isOracleOp(v: string | undefined): v is OracleOp {
+  return v === 'at_most' || v === 'at_least' || v === 'equals';
+}
+
+function isOracleLevel(v: string): v is OracleLevel {
+  return v === 'error' || v === 'warning' || v === 'note';
 }
 
 /** Predicate operators the evaluator understands. Anything else fails closed. */

@@ -27,6 +27,7 @@ a changed decision gets a _new_ ADR that supersedes the old one).
 | 0016 | Scheduler requires automated evidence to release           | Accepted   | —          |
 | 0017 | Every automatable rule ships a positive/negative fixture   | Accepted   | —          |
 | 0018 | JSON and SARIF renderers join Markdown                     | Accepted   | 0004       |
+| 0019 | Oracle-ingestion check kind consumes evidence              | Accepted   | —          |
 
 ## Coverage map (what has no ADR, and why)
 
