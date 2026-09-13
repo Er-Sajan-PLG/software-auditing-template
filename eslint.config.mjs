@@ -26,12 +26,21 @@ export default tseslint.config(
   {
     // Node scripts (scripts/*.mjs) run under plain node, which js.configs
     // .recommended does not know about — without this, `process` and `console`
-    // are reported as undefined.
+    // are reported as undefined. The fetch/Abort/timeout globals are Node 20+.
     files: ['**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
-      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly' },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        AbortController: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
     },
   },
 );

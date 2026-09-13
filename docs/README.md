@@ -16,6 +16,7 @@
 | [Evolution loop](EVOLUTION.md)                | The deterministic self-extension pipeline: snapshot → gap → propose → benchmark → release                                            |
 | [Experiment protocol](EXPERIMENT_PROTOCOL.md) | The mandatory process for capability-stress experiments                                                                              |
 | [Release runbook](release.md)                 | How releases, publishing, and trusted publishing work (maintainers)                                                                  |
+| [Writing docs](writing-docs.md)               | **The documentation contract** — how to write docs that never go stale                                                               |
 | [API reference](reference/api.md)             | Programmatic use: `runAudit`, `detect`, `Project`, scoring, diffing, renderers                                                       |
 | [CLI reference](reference/cli.md)             | Generated from the real `--help` — every command and flag                                                                            |
 | [ADRs](adr/)                                  | The decisions behind the design, and what each one cost                                                                              |

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { computeFacts, regenerate, BLOCKS } from '../scripts/lib/docs-sync.mjs';
+import {
+  computeFacts,
+  regenerate,
+  BLOCKS,
+  findUnmarkedClaims,
+  stripMarkedRegions,
+} from '../scripts/lib/docs-sync.mjs';
 
 /**
  * The docs governance engine (ADR-0020). These tests pin the pure parts:
@@ -73,5 +79,65 @@ describe('marker rewriting', () => {
   it('exposes a rules-tree block generator', () => {
     expect(typeof BLOCKS['rules-tree']).toBe('function');
     expect(BLOCKS['rules-tree'](facts)).toContain('~5 detection signals');
+  });
+});
+
+describe('unmarked claim scanner', () => {
+  const facts = {
+    rules: 281,
+    rulesFloor: 280,
+    packs: 28,
+    core: 11,
+    stacks: 17,
+    detectors: 236,
+    detectorsApprox: '~230',
+    sections: 16,
+    checkKinds: 16,
+    adrs: 20,
+    version: '1.0.0',
+    versionMajor: '1',
+  };
+
+  it('flags a bare count that is not the current value', () => {
+    const found = findUnmarkedClaims('We ship 999 rules today.', facts);
+    expect(found).toHaveLength(1);
+    expect(found[0].text).toBe('999 rules');
+    expect(found[0].key).toBe('rules');
+  });
+
+  it('does not flag a bare count that matches the current value', () => {
+    expect(findUnmarkedClaims('We ship 281 rules today.', facts)).toEqual([]);
+  });
+
+  it('does not flag a marked fact', () => {
+    const text = 'We ship <!-- usa:fact rules -->281<!-- /usa:fact --> rules today.';
+    expect(findUnmarkedClaims(text, facts)).toEqual([]);
+  });
+
+  it('honours the explicit usa:allow-claim opt-out', () => {
+    expect(findUnmarkedClaims('The spec has 3 sections. <!-- usa:allow-claim -->', facts)).toEqual(
+      [],
+    );
+  });
+
+  it('matches section, detector, and ADR nouns', () => {
+    for (const [text, key] of [
+      ['999 sections', 'sections'],
+      ['999 detectors', 'detectors'],
+      ['999 ADRs', 'adrs'],
+    ] as const) {
+      const found = findUnmarkedClaims(text, facts);
+      expect(found[0]?.key, text).toBe(key);
+    }
+  });
+
+  it('stripMarkedRegions removes inline facts and blocks but keeps prose', () => {
+    const text =
+      'keep <!-- usa:fact rules -->999<!-- /usa:fact --> keep\n\n<!-- usa:begin rules-tree -->\n900 rules\n<!-- usa:end rules-tree -->\nend';
+    const stripped = stripMarkedRegions(text);
+    expect(stripped).not.toContain('999');
+    expect(stripped).not.toContain('900 rules');
+    expect(stripped).toContain('keep');
+    expect(stripped).toContain('end');
   });
 });

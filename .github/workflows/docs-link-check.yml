@@ -1,0 +1,44 @@
+name: Docs external links
+
+# External link checker (ADR-0020). USA never touches the network at audit time
+# — offline is a hard invariant — so external links are unchecked at commit.
+# This scheduled job fetches every http(s) link in the docs and opens ONE
+# deduped issue naming the dead ones. Every 15 days.
+on:
+  schedule:
+    - cron: '0 8 */15 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Check external links
+        id: check
+        run: node scripts/check-links.mjs
+        continue-on-error: true
+
+      - name: Open or update an issue for dead links
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TITLE="[automation] dead documentation links"
+          BODY="$(printf 'The scheduled external-link check found dead links.\n\n%s\n\n<sub>From `.github/workflows/docs-link-check.yml` (ADR-0020). Fix the links, then close.</sub>\n' "$(cat /tmp/dead-links.md 2>/dev/null || echo 'See the run log.')")"
+          EXISTING="$(gh issue list --search "$TITLE in:title" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --label documentation --body "$BODY"
+          fi

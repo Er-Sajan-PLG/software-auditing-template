@@ -102,10 +102,13 @@ Rules: <!-- usa:fact rules -->281<!-- /usa:fact -->
 
 - `npm run docs:sync` rewrites every marker from source (also runs on commit via
   the husky hook, so you rarely call it by hand).
-- `npm run docs:check` fails CI if a marker, link, anchor, version pin, or index
-  entry has drifted — run it before pushing.
+- `npm run docs:check` fails CI if a marker, claim, link, anchor, version pin, or
+  index entry has drifted — run it before pushing.
 - A fact count is a **mirror**: edit the source (the YAML/code), not the number.
-  See [ADR-0020](docs/adr/0020-machine-synced-documentation.md).
+- **Full contract:** [docs/writing-docs.md](docs/writing-docs.md) — read this
+  before writing any non-trivial docs. It is the reason you should never need to
+  be told to update the docs again.
+- **See also:** [ADR-0020](docs/adr/0020-machine-synced-documentation.md).
 
 **Fixing a rule that over/under-fires** (the highest-value rule contribution):
 

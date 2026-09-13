@@ -13,7 +13,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { computeFacts, docFiles, readDoc, regenerate, ROOT } from './lib/docs-sync.mjs';
+import { computeFacts, docFiles, readDoc, regenerate, ROOT, META_DOCS } from './lib/docs-sync.mjs';
 
 const check = process.argv.includes('--check');
 const facts = computeFacts();
@@ -22,7 +22,7 @@ const drift = [];
 let changed = 0;
 
 for (const rel of docFiles()) {
-  if (rel.startsWith('docs/adr/')) continue; // ADRs are immutable; markers there are examples
+  if (rel.startsWith('docs/adr/') || META_DOCS.has(rel)) continue; // ADRs immutable; meta-docs quote the machinery
   const before = readDoc(rel);
   const after = regenerate(before, facts);
   if (before === after) continue;

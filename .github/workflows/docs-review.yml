@@ -1,0 +1,66 @@
+name: Docs review due
+
+# Redundancy net (ADR-0020). CI blocks mechanical doc drift on every commit;
+# this scheduled check catches the residue no commit-time gate can see — prose
+# that was true when written and quietly stopped being true. It opens ONE
+# deduped issue with a checklist rather than editing anything, because the
+# remaining gap is judgement, and judgement needs a human or an agent, not a
+# script. Every 15 days.
+on:
+  schedule:
+    - cron: '0 9 */15 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  nudge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Open a docs-review issue if none is open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TITLE="[automation] docs review due"
+          if gh issue list --search "$TITLE in:title" --state open --json title \
+              --jq -e '. | length | . > 0' >/dev/null; then
+            echo "docs-review issue already open."
+            exit 0
+          fi
+          # Point the reviewer at the highest-value prose: the living docs.
+          DOCS="$(git ls-files '*.md' \
+            | grep -vE '^(experiments/|examples/demo-app/|docs/adr/|CHANGELOG.md)' \
+            | grep -vE '^(docs/reference/cli.md|examples/sample-report.md)$' \
+            | sort)"
+          BODY="$(cat <<EOF
+          Mechanical facts are machine-checked (ADR-0020, \`npm run docs:check\`), so they
+          are not at risk. What this review covers is **prose truth** — a sentence that was
+          correct when written and quietly stopped being so (e.g. "SARIF is a renderer away"
+          after SARIF shipped).
+
+          Cadence: every 15 days. Close this issue when the pass is done; the next one opens
+          automatically.
+
+          ## Pass checklist
+
+          - [ ] Read [writing-docs.md](../blob/master/docs/writing-docs.md) — the contract.
+          - [ ] Skim each living doc below for stale claims (a feature described in the present
+                tense that is gone, a link to a removed thing, "planned" work that shipped).
+          - [ ] Prefer timeless phrasing or a link over a duplicated fact.
+          - [ ] Delete prose that no longer describes reality; do not leave it to rot.
+          - [ ] If a decision changed, write a **new ADR** superseding the old one (never edit an ADR).
+          - [ ] Run \`npm run docs:all\` and commit any fixes.
+
+          ## Living docs
+
+          $(printf -- '- [ ] \`%s\`\n' $DOCS)
+
+          <sub>Automated reminder from \`.github/workflows/docs-review.yml\` (ADR-0020).</sub>
+          EOF
+          )"
+          gh issue create --title "$TITLE" --label documentation --body "$BODY"

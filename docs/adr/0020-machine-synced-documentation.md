@@ -54,18 +54,28 @@ and `package.json` (version). Offline, deterministic, no network.
 every marker in place (idempotent). `scripts/check-docs.mjs` recomputes and
 diffs; it never trusts a stored value, so the two scripts cannot disagree.
 
-**Automation at three layers:**
+**Automation at four layers:**
 
 1. **Pre-commit** (`scripts/docs-autosync.mjs`, in the husky hook): syncs and
    re-stages marked docs, so a contributor who changes a count commits the
    corrected count without knowing the mechanism exists.
-2. **CI** (`npm run docs:check`): fails the build on any drift, and additionally
-   enforces link integrity (targets **and** heading anchors), index coverage
-   (every `docs/**/*.md` listed in `docs/README.md`), version pins
-   (`@xenos1996/usa@N` matches the major; `SECURITY.md` lists it), banned stale
-   strings (`from 'usa'`, `rules/sections.yaml`, `grep_experimental`,
-   `@xenos1996/usat`, `Section 14 template`), and unique section numbers.
-3. **Scripts** (`docs:sync`, `docs:check`, `docs:adrs`, `docs:cli`, `docs:all`).
+2. **CI** (`npm run docs:all`): fails the build on marker drift, unknown marker
+   keys, **unmarked numeric claims** (a bare "999 rules" that is neither the
+   current value nor marked must be marked or corrected — opt out explicitly
+   with a `usa:allow-claim` comment), section coverage, unknown CLI flags, link
+   (target **and** heading-anchor) integrity, index coverage, version pins,
+   banned stale strings, duplicate section numbers, and stale generated files
+   (CLI reference, sample report).
+3. **Scheduled (every 15 days)** — the residue no commit can catch:
+   - `docs-link-check.yml` runs `scripts/check-links.mjs`, which alone is
+     permitted to use the network, to fetch every external link and open one
+     deduped issue naming the dead ones.
+   - `docs-review.yml` opens one deduped issue prompting a **prose** review,
+     because "is this sentence still true?" is judgement, not computation.
+4. **Documented contract** — `docs/writing-docs.md` is the guide every human
+   and agent follows, so the gates are rarely hit: derive mechanical facts,
+   mark them, date time-sensitive prose, link instead of duplicating, and never
+   edit an accepted ADR.
 
 ## Rationale
 
@@ -96,6 +106,9 @@ their edit overwritten by the sync — that is intentional (edit the source, not
 the mirror), but it must be explained, which this ADR and the docs do.
 
 **Neutral:** the system governs only docs that opt in by containing a marker,
-plus the global checks (links, index, pins, banned strings) that apply to every
-tracked markdown file. Prose fidelity remains a periodic review, now cheap
-because the facts no longer need re-verifying.
+plus the global checks (links, index, pins, banned strings, claims) that apply
+to every tracked markdown file. Prose fidelity remains a periodic review — now
+cheap, because the facts no longer need re-verifying, and prompted by a
+scheduled issue rather than left to memory. The writing guide
+(`docs/writing-docs.md`) is the human/agent-facing half of this decision: the
+gates catch violations, the guide prevents them.

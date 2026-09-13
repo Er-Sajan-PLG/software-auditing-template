@@ -108,6 +108,78 @@ export function cliRules() {
   }
 }
 
+/* ------------------------------------------------------- claim vocabulary -- */
+
+/**
+ * Every fact can appear as a bare number in prose ("281 rules"), which would
+ * drift the moment the count moves. This maps the words that may follow a
+ * fixed number to the fact key that owns that number, so the checker can catch
+ * an unmarked claim and tell the author exactly which marker to use.
+ *
+ * A number is only flagged when it equals NO known-current value AND is not
+ * inside a marker — i.e. it is a number that *looks like* a claim about a fact
+ * but is not one the sync will maintain. (See `findUnmarkedClaims`.)
+ */
+export const CLAIM_NOUNS = [
+  { re: /\brules\b/i, key: 'rules', valueKeys: ['rules'] },
+  { re: /\bpacks\b/i, key: 'packs', valueKeys: ['packs', 'core', 'stacks'] },
+  {
+    re: /\b(?:detectors|detection signals)\b/i,
+    key: 'detectors',
+    valueKeys: ['detectors', 'detectorsApprox'],
+  },
+  { re: /\bsections\b/i, key: 'sections', valueKeys: ['sections'] },
+  { re: /\bcheck kinds\b/i, key: 'check-kinds', valueKeys: ['checkKinds'] },
+  { re: /\bADRs\b/i, key: 'adrs', valueKeys: ['adrs'] },
+  { re: /\b(?:universal|conditional)\s+packs\b/i, key: 'packs', valueKeys: ['core', 'stacks'] },
+];
+
+/** Strip generated blocks and inline markers so only living prose remains. */
+export function stripMarkedRegions(text) {
+  return text
+    .replace(BLOCK_RE, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(FACT_RE, (m) => m.replace(/[^\n]/g, ' '));
+}
+
+/**
+ * Find bare numeric claims in prose that no marker owns. Returns
+ * `{ line, text, key, suggestedMarker }` for each. A number whose noun phrase
+ * is a known fact but which is NOT the current value is reported so the author
+ * either marks it (`<!-- usa:fact KEY -->…`) or corrects it.
+ */
+export function findUnmarkedClaims(text, facts) {
+  const out = [];
+  const prose = stripMarkedRegions(text);
+  const lines = prose.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/usa:(fact|begin|end)/.test(line)) continue;
+    // Escape hatch for legitimate non-USA uses of these words (e.g. "the
+    // standard has 3 sections"). Opt a line out explicitly, never silently.
+    if (/usa:allow-claim/.test(line)) continue;
+    for (const { re, key, valueKeys } of CLAIM_NOUNS) {
+      // Match an optional `~`/`+` qualifier before the noun.
+      const full = new RegExp(`(~?)(\\d{1,4})(\\+?)\\s*(?:${re.source})`, 'gi');
+      for (const m of line.matchAll(full)) {
+        const n = Number(m[2]);
+        const current = valueKeys.some((k) => {
+          const v = String(facts[k] ?? '').replace(/[^0-9]/g, '');
+          return v !== '' && Number(v) === n;
+        });
+        if (!current) {
+          out.push({
+            line: i + 1,
+            text: m[0].trim(),
+            key,
+            suggestedMarker: `<!-- usa:fact ${key} -->…<!-- /usa:fact -->`,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
 /* ------------------------------------------------------------ marker engine */
 
 const FACT_RE = /<!--\s*usa:fact\s+([a-z][a-z0-9-]*)\s*-->[\s\S]*?<!--\s*\/usa:fact\s*-->/g;
@@ -174,7 +246,7 @@ export function regenerate(text, facts, blocks = BLOCKS) {
 
 /* ------------------------------------------------------------- doc discovery */
 
-/** Every tracked markdown doc governed by the marker system (excludes outputs). */
+/** Every tracked markdown doc governed by the marker/claim system. */
 export function docFiles() {
   const tracked = execFileSync('git', ['ls-files', '*.md'], { encoding: 'utf8', cwd: ROOT })
     .trim()
@@ -184,8 +256,23 @@ export function docFiles() {
       !f.startsWith('experiments/') &&
       !f.startsWith('examples/demo-app/') &&
       f !== 'CHANGELOG.md' && // machine-written by release-please
-      f !== 'examples/sample-report.md', // generated audit output
+      f !== 'examples/sample-report.md' && // generated audit output
+      f !== 'docs/reference/cli.md', // generated CLI reference
   );
+}
+
+/**
+ * Meta-documentation: docs that quote the governance machinery itself
+ * (example markers, banned strings, unmarked claims) as teaching material.
+ * They are exempt from the content checks — marker sync, the claim scanner,
+ * and the banned-string scan — because those would rewrite or flag the very
+ * examples the doc exists to show. They are still link- and index-checked.
+ */
+export const META_DOCS = new Set(['docs/writing-docs.md']);
+
+/** Docs the claim scanner skips entirely (generated, immutable history, or meta). */
+export function claimScannedFiles() {
+  return docFiles().filter((f) => !f.startsWith('docs/adr/') && !META_DOCS.has(f));
 }
 
 /** Read a doc's current content. */

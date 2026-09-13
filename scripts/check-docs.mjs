@@ -23,11 +23,14 @@ import path from 'node:path';
 import {
   computeFacts,
   docFiles,
+  claimScannedFiles,
+  findUnmarkedClaims,
   readDoc,
   regenerate,
   ROOT,
   DOCS,
   cliHelp,
+  META_DOCS,
 } from './lib/docs-sync.mjs';
 
 const failures = [];
@@ -50,7 +53,9 @@ const KNOWN_FACT_KEYS = new Set([
   'version-major',
 ]);
 for (const rel of docFiles()) {
-  if (rel.startsWith('docs/adr/')) continue; // ADRs are immutable records, not live claims
+  // ADRs are immutable records; meta-docs quote the machinery. Both are exempt
+  // from marker sync, but still link- and index-checked elsewhere.
+  if (rel.startsWith('docs/adr/') || META_DOCS.has(rel)) continue;
   const text = readDoc(rel);
   if (!/usa:(fact|begin)/.test(text)) continue;
   if (regenerate(text, facts) !== text) {
@@ -110,18 +115,29 @@ function anchorsOf(text) {
 for (const rel of docFiles()) {
   const text = readDoc(rel);
   const dir = path.dirname(rel);
+  const selfPath = path.join(ROOT, rel);
   for (const m of text.matchAll(/\]\(([^)\s]+)\)/g)) {
     const raw = m[1];
-    if (/^(https?:|mailto:|#)/.test(raw)) continue;
-    const [target, anchor] = raw.split('#');
-    const abs = target === '' ? path.join(ROOT, rel) : path.join(ROOT, dir, target);
-    if (target !== '' && !fs.existsSync(abs)) {
-      fail(`${rel}: link target does not exist: ${raw}`);
-      continue;
+    if (/^(https?:|mailto:)/.test(raw)) continue;
+    // A bare `#anchor` points within this file; `file.md#anchor`/`file.md` point
+    // at a sibling. Both are validated, so a renamed heading breaks the build.
+    let targetFile;
+    let anchor;
+    if (raw.startsWith('#')) {
+      targetFile = selfPath;
+      anchor = raw.slice(1);
+    } else {
+      const [target, a] = raw.split('#');
+      anchor = a ?? null;
+      targetFile = path.join(ROOT, dir, target);
+      if (!fs.existsSync(targetFile)) {
+        fail(`${rel}: link target does not exist: ${raw}`);
+        continue;
+      }
     }
-    if (anchor && fs.existsSync(abs) && abs.endsWith('.md')) {
-      if (!anchorsOf(fs.readFileSync(abs, 'utf8')).has(anchor)) {
-        fail(`${rel}: anchor not found in ${target || path.basename(rel)}: #${anchor}`);
+    if (anchor && targetFile.endsWith('.md') && fs.existsSync(targetFile)) {
+      if (!anchorsOf(fs.readFileSync(targetFile, 'utf8')).has(anchor)) {
+        fail(`${rel}: anchor not found in ${path.relative(ROOT, targetFile)}: #${anchor}`);
       }
     }
   }
@@ -170,7 +186,7 @@ const BANNED = [
   { re: /Section 14 template/i, why: 'report template is no longer §14' },
 ];
 for (const rel of docFiles()) {
-  if (rel.startsWith('docs/adr/')) continue;
+  if (rel.startsWith('docs/adr/') || META_DOCS.has(rel)) continue;
   const text = readDoc(rel);
   for (const { re, why } of BANNED) {
     if (re.test(text)) fail(`${rel}: contains banned stale text (${why})`);
@@ -183,6 +199,20 @@ for (const rel of docFiles()) {
   for (const m of readDoc(rel).matchAll(/^##\s+(\d+)\s/gm)) {
     if (seen.has(m[1])) fail(`${rel}: duplicate section number ## ${m[1]}`);
     seen.add(m[1]);
+  }
+}
+
+/* 9 · Every numeric claim is marked or correct ----------------------------- */
+// A bare "281 rules" in prose rots the moment the count moves. If it is not
+// the current value and not wrapped in a marker, the author must either mark it
+// (so it self-maintains) or correct it. Opt a legitimate non-USA use out with
+// an inline `usa:allow-claim` comment on the line.
+for (const rel of claimScannedFiles()) {
+  for (const claim of findUnmarkedClaims(readDoc(rel), facts)) {
+    fail(
+      `${rel}:${claim.line}: unmarked claim "${claim.text}" — wrap it as ${claim.suggestedMarker} ` +
+        `(or add a usa:allow-claim comment)`,
+    );
   }
 }
 
