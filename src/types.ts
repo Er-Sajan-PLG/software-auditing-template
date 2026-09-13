@@ -157,6 +157,24 @@ export type OracleLevel = 'error' | 'warning' | 'note';
 /** Numeric bound operators for `oracle` evidence assertions. */
 export type OracleOp = 'at_most' | 'at_least' | 'equals';
 
+/**
+ * How much of a rule the engine can decide without a human (ADR-0021).
+ *
+ * - `full`   — a deterministic check settles it (grep/file/json/count kinds).
+ * - `assist` — a deterministic check exists but is opt-in or evidence-based:
+ *              `command` (needs `--allow-commands`) and `oracle` (reads an
+ *              artifact another tool produced). The engine helps; a human still
+ *              owns the verdict.
+ * - `manual` — only judgement settles it.
+ *
+ * Derived from the check kind by default (see `automatabilityOf`); a pack may
+ * override it, but the loader refuses `full` on a check that cannot deliver it.
+ */
+export type Automatability = 'full' | 'assist' | 'manual';
+
+/** Every automatability level, weakest to strongest automation. */
+export const AUTOMATABILITY_LADDER: Automatability[] = ['manual', 'assist', 'full'];
+
 export interface Rule {
   id: string;
   title: string;
@@ -176,6 +194,16 @@ export interface Rule {
   remediation?: string;
   references?: string[];
   tags?: string[];
+  /**
+   * The engine's honest assessment of how much it can decide; derived from the
+   * check kind unless the pack overrides it (ADR-0021).
+   */
+  automatability?: Automatability;
+  /**
+   * Catalogue a rule draws from, with the pinned version it was written
+   * against, e.g. `asvs@5.0.0`. Makes the standards mapping checkable.
+   */
+  catalogue?: string;
 }
 
 export interface RulePack {
@@ -190,6 +218,11 @@ export interface RulePack {
   skipWhen?: Predicate;
   /** Extra facts this pack contributes simply by being loaded. */
   provides?: string[];
+  /**
+   * Default `catalogue` for rules in this pack, e.g. `asvs@5.0.0`. A rule may
+   * override it. Surfaced in `docs/standards-mapping.md` (ADR-0021).
+   */
+  catalogue?: string;
   rules: Rule[];
   source?: string;
 }

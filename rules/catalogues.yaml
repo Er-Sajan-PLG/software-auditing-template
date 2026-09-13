@@ -1,0 +1,109 @@
+# =============================================================================
+# USA catalogue registry  (schema: usa-catalogues-v1)
+# -----------------------------------------------------------------------------
+# The named standards USA's rules draw from, each pinned to the version the
+# rules were written against (ADR-0021). A rule's catalogue is derived from its
+# `references:` (the first prefix that matches an entry below), so this file is
+# the single place a standard's version is recorded.
+#
+# `prefixes` are matched case-insensitively against the start of each reference
+# (e.g. `ASVS-2.10.4` matches the `ASVS` prefix). `usa standards` reports how
+# many rules draw from each catalogue and how many the engine can fully decide.
+#
+# Adding a standard: give it a stable `id`, a human `name`, a `version`, and the
+# reference `prefixes`. Never leave `version` blank — an unpinned catalogue is
+# exactly the drift this file exists to prevent.
+# =============================================================================
+
+schema: usa-catalogues-v1
+
+catalogues:
+  - id: asvs
+    name: OWASP ASVS
+    version: '5.0.0'
+    prefixes: [ASVS]
+    url: https://owasp.org/www-project-application-security-verification-standard/
+
+  - id: cwe
+    name: MITRE CWE
+    version: '4.19'
+    prefixes: [CWE]
+    url: https://cwe.mitre.org/
+
+  - id: owasp-top10
+    name: OWASP Top 10
+    version: '2021'
+    prefixes: [OWASP-A, OWASP-LLM, OWASP-ASI, OWASP]
+    url: https://owasp.org/Top10/
+
+  - id: ssdf
+    name: NIST SSDF (SP 800-218)
+    version: '1.1'
+    prefixes: [NIST-SSDF, NIST]
+    url: https://csrc.nist.gov/pubs/sp/800/218/final
+
+  - id: slsa
+    name: SLSA
+    version: '1.2'
+    prefixes: [SLSA]
+    url: https://slsa.dev/
+
+  - id: scorecard
+    name: OpenSSF Scorecard
+    version: '5.5.0'
+    prefixes: [OPENSSF, OpenSSF]
+    url: https://github.com/ossf/scorecard
+
+  - id: cis
+    name: CIS Benchmarks
+    version: '1.8'
+    prefixes: [CIS]
+    url: https://www.cisecurity.org/cis-benchmarks
+
+  - id: wcag
+    name: WCAG
+    version: '2.2'
+    prefixes: [WCAG, EN]
+    url: https://www.w3.org/TR/WCAG22/
+
+  - id: iso-5055
+    name: ISO/IEC 5055
+    version: '2021'
+    prefixes: [ISO]
+    url: https://www.iso.org/standard/80623.html
+
+  - id: cii
+    name: OpenSSF Best Practices (CII)
+    version: '1.0'
+    prefixes: [CII]
+    url: https://bestpractices.coreinfrastructure.org/
+
+  - id: gdpr
+    name: GDPR
+    version: '2016/679'
+    prefixes: [GDPR]
+    url: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+
+  - id: cra
+    name: EU Cyber Resilience Act
+    version: '2024/2847'
+    prefixes: [EU-CRA]
+    url: https://eur-lex.europa.eu/eli/reg/2024/2847/oj
+
+  - id: swc
+    name: Smart Contract Weakness Classification
+    version: '1.0'
+    prefixes: [SWC]
+    url: https://swcregistry.io/
+
+  - id: masvs
+    name: OWASP MASVS
+    version: '2.1.0'
+    prefixes: [MASVS]
+    url: https://mas.owasp.org/MASVS/
+
+  - id: dora
+    name: DORA
+    version: '2024'
+    prefixes: [DORA]
+    url: https://dora.dev/

@@ -124,6 +124,42 @@ and the fact that `AGENTS.md` is executable-ish instruction that commits like co
 
 ---
 
+## Catalogue coverage
+
+Every rule that draws from a codified standard carries a catalogue, pinned to the
+exact version it was written against in [`rules/catalogues.yaml`](../rules/catalogues.yaml).
+The catalogue is derived from the rule's `references:` — the first reference
+matching a registered prefix wins — so the mapping cannot drift from the citations
+that already justify it. This table is generated from the real loaded rules by
+`usa standards`. "Fully automated" means the engine decides the rule on its own;
+"assisted" means it needs `--allow-commands` or an external oracle artifact;
+"manual" means a human owns the verdict. Rules with no codified standard behind
+them (internal heuristics, tooling hints, or conceptual attributions) fall in the
+`(uncatalogued)` bucket — an honest count, not an omission. <!-- usa:fact rules -->281<!-- /usa:fact --> rules total.
+
+<!-- usa:begin standards-coverage -->
+
+| Catalogue                                          | Rules | Fully automated | Assisted | Manual |
+| -------------------------------------------------- | ----- | --------------- | -------- | ------ |
+| OWASP ASVS (`asvs@5.0.0`)                          | 15    | 9               | 0        | 6      |
+| OpenSSF Best Practices (CII) (`cii@1.0`)           | 6     | 4               | 0        | 2      |
+| CIS Benchmarks (`cis@1.8`)                         | 6     | 6               | 0        | 0      |
+| MITRE CWE (`cwe@4.19`)                             | 53    | 43              | 1        | 9      |
+| DORA (`dora@2024`)                                 | 7     | 4               | 0        | 3      |
+| GDPR (`gdpr@2016/679`)                             | 5     | 0               | 0        | 5      |
+| ISO/IEC 5055 (`iso-5055@2021`)                     | 7     | 4               | 0        | 3      |
+| OWASP Top 10 (`owasp-top10@2021`)                  | 19    | 4               | 0        | 15     |
+| OpenSSF Scorecard (`scorecard@5.5.0`)              | 31    | 23              | 1        | 7      |
+| SLSA (`slsa@1.2`)                                  | 9     | 5               | 0        | 4      |
+| NIST SSDF (SP 800-218) (`ssdf@1.1`)                | 21    | 11              | 1        | 9      |
+| Smart Contract Weakness Classification (`swc@1.0`) | 6     | 4               | 0        | 2      |
+| WCAG (`wcag@2.2`)                                  | 9     | 2               | 0        | 7      |
+| (uncatalogued) (`(uncatalogued)`)                  | 87    | 51              | 1        | 35     |
+
+<!-- usa:end standards-coverage -->
+
+---
+
 ## Deliberate gaps
 
 Things USA intentionally does **not** do. An audit tool that oversells is worse than

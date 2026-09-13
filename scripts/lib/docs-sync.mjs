@@ -108,6 +108,41 @@ export function cliRules() {
   }
 }
 
+/**
+ * The `usa standards --format json` rows (requires `dist/`). Structured rather
+ * than pre-rendered so the doc block can format a Prettier-stable table (see
+ * `markdownTable`) independent of the CLI's terminal presentation.
+ */
+export function standardsRows() {
+  try {
+    return JSON.parse(
+      execFileSync('node', ['dist/cli.js', 'standards', '--format', 'json'], {
+        encoding: 'utf8',
+        cwd: ROOT,
+      }),
+    );
+  } catch {
+    console.error(
+      'docs-sync: `node dist/cli.js standards --format json` failed — run `npm run build` first.',
+    );
+    process.exit(2);
+  }
+}
+
+/**
+ * Render a markdown table in exactly Prettier's canonical style: every cell
+ * left-aligned and padded to its column's widest entry, separator dashes
+ * matching the padded width. Generated blocks are compared as raw text by the
+ * checker, so the output must survive `prettier --write` unchanged.
+ */
+export function markdownTable(headers, rows) {
+  const cells = [headers, ...rows].map((r) => r.map((c) => String(c)));
+  const widths = headers.map((_, col) => Math.max(...cells.map((r) => r[col].length)));
+  const line = (r) => `| ${r.map((c, i) => c.padEnd(widths[i])).join(' | ')} |`;
+  const sep = `| ${widths.map((w) => '-'.repeat(w)).join(' | ')} |`;
+  return [line(cells[0]), sep, ...cells.slice(1).map(line)].join('\n');
+}
+
 /* ------------------------------------------------------- claim vocabulary -- */
 
 /**
@@ -221,6 +256,18 @@ export const BLOCKS = {
       '```',
     ];
     return tree.join('\n');
+  },
+  // Derived from the real loaded rules via `usa standards` (ADR-0021), so the
+  // standards mapping in the docs cannot describe rules that no longer exist.
+  'standards-coverage': () => {
+    const rows = standardsRows().map((r) => [
+      `${r.name} (\`${r.catalogue}\`)`,
+      r.rules,
+      r.automatable.full,
+      r.automatable.assist,
+      r.automatable.manual,
+    ]);
+    return markdownTable(['Catalogue', 'Rules', 'Fully automated', 'Assisted', 'Manual'], rows);
   },
 };
 

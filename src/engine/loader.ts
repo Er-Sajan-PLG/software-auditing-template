@@ -3,6 +3,7 @@ import { asMap, isMap, list, num, scalar, str, strList, type YamlMap } from '../
 import fs from 'node:fs';
 import path from 'node:path';
 import type {
+  Automatability,
   Check,
   Depth,
   OracleLevel,
@@ -12,6 +13,7 @@ import type {
   RulePack,
   Severity,
 } from '../types.js';
+import { validateAutomatability, validateCatalogue } from './automatability.js';
 
 export const SEVERITY_LADDER: Severity[] = ['FUTURE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 export const RULE_CLASSES: RuleClass[] = [
@@ -151,8 +153,11 @@ export function parsePackText(
   const id = str(raw.id) ?? path.basename(sourceName, path.extname(sourceName));
   const rules: Rule[] = [];
 
+  // Pack-level catalogue is the default for its rules; validate the pin once.
+  const packCtx: PackContext = { catalogue: validPackCatalogue(raw, id, warnings) };
+
   (list(raw.rules) ?? []).forEach((r, i) => {
-    const parsed = parseRule(r, id, i, warnings);
+    const parsed = parseRule(r, id, i, warnings, packCtx);
     if (!parsed) return;
     const firstSeen = seenRuleIds.get(parsed.id);
     if (firstSeen !== undefined) {
@@ -177,11 +182,35 @@ export function parsePackText(
     sectionTitle: str(raw.section_title),
     skipWhen: isMap(raw.skip_when) ? (raw.skip_when as RulePack['skipWhen']) : undefined,
     provides: strList(raw.provides),
+    catalogue: packCtx.catalogue,
     rules,
   };
 }
 
-function parseRule(raw: unknown, packId: string, index: number, warnings: string[]): Rule | null {
+/** Defaults a pack applies to each of its rules. */
+interface PackContext {
+  catalogue?: string;
+}
+
+/** The pack's `catalogue:` pin if it is valid, else undefined (with a warning). */
+function validPackCatalogue(raw: YamlMap, id: string, warnings: string[]): string | undefined {
+  const value = str(raw.catalogue);
+  if (value === undefined) return undefined;
+  const problem = validateCatalogue(value);
+  if (problem) {
+    warnings.push(`pack ${id}: ${problem} — catalogue ignored`);
+    return undefined;
+  }
+  return value;
+}
+
+function parseRule(
+  raw: unknown,
+  packId: string,
+  index: number,
+  warnings: string[],
+  pack: PackContext,
+): Rule | null {
   const where = `${packId}[${index}]`;
   const head = readRuleHead(raw, where, warnings);
   if (!head) return null;
@@ -190,7 +219,7 @@ function parseRule(raw: unknown, packId: string, index: number, warnings: string
   const check = parseCheck(r.check, `${where} ${id}`, warnings);
   if (!check) return null;
   validatePredicate(r.applies_when, `${where} ${id}`, warnings);
-  return assembleRule(r, id, severity, ruleClass, check);
+  return assembleRule(r, id, severity, ruleClass, check, pack, warnings);
 }
 
 function assembleRule(
@@ -199,6 +228,8 @@ function assembleRule(
   severity: Severity,
   ruleClass: RuleClass,
   check: Check,
+  pack: PackContext,
+  warnings: string[],
 ): Rule {
   const depths = Array.isArray(r.depths) ? (r.depths.filter(isDepth) as Depth[]) : undefined;
   return {
@@ -217,7 +248,41 @@ function assembleRule(
     remediation: optText(r.remediation),
     references: optStrArray(r.references),
     tags: optStrArray(r.tags),
+    automatability: resolveAutomatability(r, id, check, warnings),
+    catalogue: resolveRuleCatalogue(r, id, pack, warnings),
   };
+}
+
+function resolveAutomatability(
+  r: YamlMap,
+  id: string,
+  check: Check,
+  warnings: string[],
+): Automatability | undefined {
+  const claimed = optText(r.automatability) as Automatability | undefined;
+  if (claimed === undefined) return undefined; // derived by ruleAutomatability()
+  const problem = validateAutomatability(claimed, check);
+  if (problem) {
+    warnings.push(`rule ${id}: ${problem} — using derived value`);
+    return undefined;
+  }
+  return claimed;
+}
+
+function resolveRuleCatalogue(
+  r: YamlMap,
+  id: string,
+  pack: PackContext,
+  warnings: string[],
+): string | undefined {
+  const own = optText(r.catalogue);
+  if (own === undefined) return pack.catalogue;
+  const problem = validateCatalogue(own);
+  if (problem) {
+    warnings.push(`rule ${id}: ${problem} — catalogue ignored`);
+    return pack.catalogue;
+  }
+  return own;
 }
 
 function optText(v: unknown): string | undefined {

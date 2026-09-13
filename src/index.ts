@@ -19,6 +19,20 @@ export { loadProfiles, dampen } from './engine/maturity.js';
 export { runAudit } from './engine/audit.js';
 export { score } from './engine/score.js';
 export { evaluateRule, evalPredicate, ruleApplies, packApplies } from './engine/evaluate.js';
+export {
+  automatabilityOf,
+  ruleAutomatability,
+  parseCatalogue,
+  validateCatalogue,
+  validateAutomatability,
+} from './engine/automatability.js';
+export {
+  loadCatalogues,
+  catalogueOf,
+  catalogueCoverage,
+  type Catalogue,
+  type CatalogueCoverage,
+} from './engine/catalogues.js';
 export { renderMarkdown, parseTrailer, trailer } from './report/markdown.js';
 export {
   renderJson,

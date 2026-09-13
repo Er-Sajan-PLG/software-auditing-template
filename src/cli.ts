@@ -20,6 +20,9 @@ import { learnFromReport, renderSuggestions, type LearnOptions } from './learn/i
 import { Store } from './store/index.js';
 import { runEvolutionCycle, type EvolutionCycleOutput } from './evolution/run.js';
 import { capabilityFromPack } from './evolution/capability.js';
+import { ruleAutomatability } from './engine/automatability.js';
+import { catalogueCoverage, catalogueOf, loadCatalogues } from './engine/catalogues.js';
+import type { Catalogue } from './engine/catalogues.js';
 import type { QueueSummary } from './evolution/queue.js';
 import type {
   BenchmarkCase,
@@ -98,6 +101,7 @@ const COMMANDS: Record<string, (args: Args) => number> = {
   bootstrap: cmdBootstrap,
   learn: cmdLearn,
   evolve: cmdEvolve,
+  standards: cmdStandards,
 };
 
 export function main(argv: string[]): number {
@@ -339,17 +343,39 @@ function cmdExplain(args: Args): number {
   }
   const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
   const { packs } = loadRulePacks(rulesDir);
+  const { catalogues } = loadCatalogues(rulesDir);
   for (const pack of packs) {
     const rule = pack.rules.find((r) => r.id.toLowerCase() === id.toLowerCase());
     if (!rule) continue;
-    printRuleDetail(pack.id, rule);
+    printRuleDetail(pack.id, rule, catalogues);
     return 0;
   }
   console.error(`Rule not found: ${id}`);
   return 1;
 }
 
-function printRuleDetail(packId: string, rule: Rule): void {
+function cmdStandards(args: Args): number {
+  const rulesDir = path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR);
+  const { packs } = loadRulePacks(rulesDir);
+  const { catalogues } = loadCatalogues(rulesDir);
+  const rows = catalogueCoverage(packs, catalogues);
+  const fmt = (str(args, 'format') ?? 'md').toLowerCase();
+  if (fmt === 'json') {
+    console.log(JSON.stringify(rows, null, 2));
+    return 0;
+  }
+  // Markdown table: catalogue → rules → how many the engine can fully decide.
+  console.log('| Catalogue | Rules | Fully automated | Assisted | Manual |');
+  console.log('| --------- | ----- | --------------- | -------- | ------ |');
+  for (const row of rows) {
+    console.log(
+      `| ${row.name} (\`${row.catalogue}\`) | ${row.rules} | ${row.automatable.full} | ${row.automatable.assist} | ${row.automatable.manual} |`,
+    );
+  }
+  return 0;
+}
+
+function printRuleDetail(packId: string, rule: Rule, catalogues: Catalogue[]): void {
   console.log(`# ${rule.id} — ${rule.title}`);
   console.log();
   console.log(`pack      : ${packId}`);
@@ -358,6 +384,9 @@ function printRuleDetail(packId: string, rule: Rule): void {
   console.log(`class     : ${rule.ruleClass}`);
   console.log(`weight    : ${rule.weight ?? 'default'}`);
   console.log(`depths    : ${rule.depths?.join(', ') ?? 'all'}`);
+  console.log(`automatable: ${ruleAutomatability(rule)}`);
+  const catalogue = catalogueOf(rule, catalogues);
+  if (catalogue) console.log(`catalogue : ${catalogue}`);
   console.log(`check     : ${JSON.stringify(rule.check)}`);
   printRuleOptional(rule);
 }
@@ -726,6 +755,7 @@ usa — Universal Software Auditor
   usa bootstrap [path]          Propose rule packs for stacks USA cannot audit yet
   usa learn <report.md>         Generate suggested rules from audit findings
   usa evolve [path]             Run the audit → gap → candidate → release loop
+  usa standards                 Report catalogue coverage and automatability
 
 evolve options
   --store <dir>        Persist audit runs/results (content-addressed store)
@@ -740,6 +770,10 @@ evolve options
 learn options
   --out <file>        Output YAML file (default learn-suggestions.yaml)
   --min-severity <s>  Minimum severity to consider (CRITICAL|HIGH|MEDIUM|LOW|FUTURE, default MEDIUM)
+
+standards options
+  --format <fmt>      md | json                       (default md)
+  --rules-dir <dir>   Rule pack directory             (default bundled rules/)
 
 audit options
   --out <file>        Report path (default AUDIT.md)

@@ -5,6 +5,7 @@ import {
   BLOCKS,
   findUnmarkedClaims,
   stripMarkedRegions,
+  markdownTable,
 } from '../scripts/lib/docs-sync.mjs';
 
 /**
@@ -79,6 +80,33 @@ describe('marker rewriting', () => {
   it('exposes a rules-tree block generator', () => {
     expect(typeof BLOCKS['rules-tree']).toBe('function');
     expect(BLOCKS['rules-tree'](facts)).toContain('~5 detection signals');
+  });
+
+  it('registers a standards-coverage block generator', () => {
+    // Derived from the real loaded rules via `usa standards` (ADR-0021); the
+    // generator needs dist/, so its output is asserted by the end-to-end gate
+    // (`npm run docs:check`) rather than here. This pins registration only.
+    expect(typeof BLOCKS['standards-coverage']).toBe('function');
+  });
+});
+
+describe('markdownTable', () => {
+  it('pads every cell to its column width (Prettier-stable form)', () => {
+    const out = markdownTable(
+      ['A', 'BB'],
+      [
+        ['x', 'y'],
+        ['longer', 'z'],
+      ],
+    );
+    expect(out).toBe(
+      ['| A      | BB |', '| ------ | -- |', '| x      | y  |', '| longer | z  |'].join('\n'),
+    );
+  });
+
+  it('handles a single row and numeric cells', () => {
+    const out = markdownTable(['Catalogue', 'Rules'], [['asvs@5.0.0', 15]]);
+    expect(out.split('\n')[1]).toBe('| ---------- | ----- |');
   });
 });
 

@@ -18,6 +18,7 @@ usa — Universal Software Auditor
   usa bootstrap [path]          Propose rule packs for stacks USA cannot audit yet
   usa learn <report.md>         Generate suggested rules from audit findings
   usa evolve [path]             Run the audit → gap → candidate → release loop
+  usa standards                 Report catalogue coverage and automatability
 
 evolve options
   --store <dir>        Persist audit runs/results (content-addressed store)
@@ -32,6 +33,10 @@ evolve options
 learn options
   --out <file>        Output YAML file (default learn-suggestions.yaml)
   --min-severity <s>  Minimum severity to consider (CRITICAL|HIGH|MEDIUM|LOW|FUTURE, default MEDIUM)
+
+standards options
+  --format <fmt>      md | json                       (default md)
+  --rules-dir <dir>   Rule pack directory             (default bundled rules/)
 
 audit options
   --out <file>        Report path (default AUDIT.md)

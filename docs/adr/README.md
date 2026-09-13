@@ -29,6 +29,7 @@ a changed decision gets a _new_ ADR that supersedes the old one).
 | 0018 | JSON and SARIF renderers join Markdown                     | Accepted   | 0004       |
 | 0019 | Oracle-ingestion check kind consumes evidence              | Accepted   | —          |
 | 0020 | Documentation facts are machine-synced and machine-checked | Accepted   | —          |
+| 0021 | Catalogues are pinned, and automatability is derived       | Accepted   | —          |
 
 ## Coverage map (what has no ADR, and why)
 

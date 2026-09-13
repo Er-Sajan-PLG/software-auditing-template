@@ -47,9 +47,12 @@ Automation and governance:
 
 ## Next: rule coverage
 
-- [ ] **Catalogue pinning + automatability tags** — `catalogue: asvs@5.0.0`,
-      `automatability: full|assist|manual` per rule; makes
-      `docs/standards-mapping.md` machine-checkable. _(S)_
+- [x] **Catalogue pinning + automatability tags** — `rules/catalogues.yaml`
+      pins every standard's version; catalogue is derived from each rule's
+      `references:` and automatability from its check kind (explicit override
+      allowed, `full` refused on non-deterministic kinds). `usa standards`
+      reports coverage; the table is machine-synced into
+      `docs/standards-mapping.md`. ADR-0021. _(S)_
 - [ ] **Provenance verification checks (verify, don't mint)** — `cosign
 verify` success, attestation/VSA presence where network allows; existence
       checks at beta, chain verification at production. _(L)_
