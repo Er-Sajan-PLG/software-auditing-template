@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v2.0.1...v2.1.0) (2026-09-13)
+
+
+### Features
+
+* **docs:** enforce no unmarked claims, add writing guide and scheduled checks ([8031ed6](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/8031ed6b650a1db2808e2b420ab94f945d455524))
+* **docs:** machine-synced, machine-checked documentation (ADR-0020) ([97f1c9d](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/97f1c9db3a62f24047a2dcc19c984db31a3b6488))
+* **engine:** add oracle check kind to ingest external scanner evidence ([1bf4f0a](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/1bf4f0a3821080d363869737af2e692b72400d25))
+* **report:** add JSON and SARIF renderers ([95fafef](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/95fafeffb62bc9f5ceb4b078de177fcef25aeaef))
+* **standards:** pin catalogues and derive automatability (ADR-0021) ([18a26d7](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/18a26d7890cc87f2ea8a4501a11f1a28d28aadd9))
+
+
+### Bug Fixes
+
+* legacy maturity focus and shipped template asset ([f88b5de](https://github.com/Er-Sajan-PLG/universal-software-auditor/commit/f88b5de553335841f2b56ea71bb0b11409877910))
+
 ## [2.0.1](https://github.com/Er-Sajan-PLG/universal-software-auditor/compare/v2.0.0...v2.0.1) (2026-09-12)
 
 
