@@ -18,13 +18,13 @@ usa audit .                      # 1. deterministic pass → AUDIT.md
 
 ## 0 · How the agent uses this template
 
-| Step | Action                                                    | Output                         |
-| ---- | --------------------------------------------------------- | ------------------------------ |
-| 1    | Run `usa detect <path>` (or read `rules/detectors.yaml`)  | The project's **facts**        |
-| 2    | Match facts against `applies_when` in `rules/`            | The **applicable rule set**    |
-| 3    | Run `usa audit <path>`                                    | Deterministic findings + score |
-| 4    | Work the **Judgement Queue** in the generated report      | Evidence-backed findings       |
-| 5    | Emit the [Section 14 report](#14--report-output-template) | The deliverable                |
+| Step | Action                                                     | Output                         |
+| ---- | ---------------------------------------------------------- | ------------------------------ |
+| 1    | Run `usa detect <path>` (or read `rules/detectors.yaml`)   | The project's **facts**        |
+| 2    | Match facts against `applies_when` in `rules/`             | The **applicable rule set**    |
+| 3    | Run `usa audit <path>`                                     | Deterministic findings + score |
+| 4    | Work the **Judgement Queue** in the generated report       | Evidence-backed findings       |
+| 5    | Emit the [report output template](#report-output-template) | The deliverable                |
 
 **Ten behaviour rules.** They are not stylistic; each one prevents a specific failure mode.
 
@@ -121,7 +121,7 @@ Sections are activated by detection, not by the auditor's attention span. `S15 �
 | **S15** | Platform-Specific                     | per stack: Node, Python, Go, Rust, JVM, Web, Mobile, Containers, IaC, Solidity, ML, CLI, API | 1.0     |
 | **S16** | Future Readiness                      | always                                                                                       | 0.4     |
 
-The machine-readable version of every section lives in [`rules/core/`](rules/core), [`rules/stacks/`](rules/stacks), and [`rules/sections.yaml`](rules/sections.yaml).
+The machine-readable rules live in [`rules/core/`](rules/core) and [`rules/stacks/`](rules/stacks). Section titles and weights are defined in [`src/engine/sections.ts`](src/engine/sections.ts); override them per-repo with an optional `rules/sections.yaml` (`$rulesDir/sections.yaml`).
 
 ### What USA added to the classic 14-section audit
 
@@ -472,7 +472,7 @@ All 🔵 `FUTURE` — these are plans, not defects, and they never block a relea
 
 ---
 
-## 14 · Report Output Template
+## Report output template
 
 > The `usa` CLI emits exactly this structure. If you are an agent writing it by hand, match it — a report that looks the same every time is a report you can diff.
 

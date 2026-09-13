@@ -22,15 +22,22 @@ Set by whoever wrote the rule. It says: _if this is violated, how bad is that?_
 
 Produced by the engine (or by a reviewer, for judgement checks).
 
-| Tag | Status         | Score credit | When                                               |
-| --- | -------------- | ------------ | -------------------------------------------------- |
-| ✅  | `GOOD`         | 1.00         | Verified present and correct                       |
-| 🧪  | `EXPERIMENTAL` | 0.50         | Present, unvalidated (`grep_experimental`)         |
-| 💀  | `DEPRECATED`   | 0.40         | Present but EOL (`grep_deprecated`)                |
-| ⚠️  | `WRONG`        | 0.15         | Present but implemented incorrectly (`grep_wrong`) |
-| 🚫  | `MISSING`      | 0.00         | Required and absent                                |
-| ❓  | `NEEDS REVIEW` | _excluded_   | Judgement required; no evidence recorded           |
-| ➖  | `SKIPPED`      | _excluded_   | Not applicable to this project                     |
+| Tag | Status         | Score credit | When                                                     |
+| --- | -------------- | ------------ | -------------------------------------------------------- |
+| ✅  | `GOOD`         | 1.00         | Verified present and correct (`PASS`)                    |
+| 🧪  | `EXPERIMENTAL` | 0.50         | Present but unvalidated (reserved; no kind emits it yet) |
+| 💀  | `DEPRECATED`   | 0.40         | Present but EOL (`grep_deprecated`)                      |
+| ⚠️  | `WRONG`        | 0.15         | Present but implemented incorrectly (`grep_wrong`)       |
+| 🚫  | `MISSING`      | 0.00         | Required and absent                                      |
+| ❌  | `FAIL`         | 0.00         | Required condition violated (`grep_absent`)              |
+| ❓  | `NEEDS REVIEW` | _excluded_   | Judgement required; no evidence recorded (`UNKNOWN`)     |
+| ➖  | `SKIPPED`      | _excluded_   | Not applicable to this project (`NOT_APPLICABLE`)        |
+
+> The engine's internal status names are `PASS`, `FAIL`, `WRONG`, `MISSING`,
+> `DEPRECATED`, `EXPERIMENTAL`, `UNKNOWN`, and `NOT_APPLICABLE`. The report
+> renders their human labels (`GOOD`, `NEEDS REVIEW`, `SKIPPED`) as shown above.
+> `EXPERIMENTAL` is scored (0.50) but no shipped check kind emits it yet — it is
+> reserved for a future check that recognises present-but-unvalidated code.
 
 **Why WRONG scores 0.15 and not 0.00.** Something exists, so there is partial
 credit — the intent was right and the surface is smaller than a greenfield fix.
@@ -86,7 +93,9 @@ the number should say so.
 | S1, S9, S12         | Repository, Release, Documentation                | 0.7     |
 | **S16**             | Future Readiness                                  | 0.4     |
 
-Override any of them in `rules/sections.yaml`.
+Override any of them by adding a `sections.yaml` to your rules directory
+(`$rulesDir/sections.yaml`); the shipped defaults live in
+[`src/engine/sections.ts`](../src/engine/sections.ts).
 
 ### Confidence
 

@@ -4,7 +4,7 @@ Everything the CLI does is available as a library. Types are exported from the
 package root.
 
 ```ts
-import { runAudit, detect, Project, renderMarkdown, diffReports } from 'usa';
+import { runAudit, detect, Project, renderMarkdown, diffReports } from '@xenos1996/usa';
 ```
 
 ## `runAudit(options): AuditOutcome`
@@ -13,7 +13,7 @@ Runs a full audit. Only `target` is required — every other option falls back t
 the same default the CLI uses.
 
 ```ts
-import { runAudit } from 'usa';
+import { runAudit } from '@xenos1996/usa';
 
 const { report, profile, warnings } = runAudit({
   // synchronous — no await needed
@@ -48,7 +48,7 @@ Returns `{ report: AuditReport, profile: MaturityProfile, warnings: string[] }`.
 Turns a tree into a fact set.
 
 ```ts
-import { Project, detect, loadDetectorFile } from 'usa';
+import { Project, detect, loadDetectorFile } from '@xenos1996/usa';
 
 const project = new Project('/path/to/project', ['vendor/**']);
 const detection = detect(
@@ -94,7 +94,7 @@ pack produces a warning and is skipped — the audit continues rather than
 failing, because one broken pack should not cost you the other twenty-six.
 
 ```ts
-import { loadRulePacks, applyRuleOverrides } from 'usa';
+import { loadRulePacks, applyRuleOverrides } from '@xenos1996/usa';
 
 const { packs, warnings } = loadRulePacks('rules');
 applyRuleOverrides(packs, { 'SEC-042': { severity: 'LOW' } });
@@ -105,7 +105,7 @@ applyRuleOverrides(packs, { 'SEC-042': { severity: 'LOW' } });
 Evaluates a single rule. Useful for testing a pack without running an audit.
 
 ```ts
-import { evaluateRule, ruleApplies, packApplies } from 'usa';
+import { evaluateRule, ruleApplies, packApplies } from '@xenos1996/usa';
 
 if (ruleApplies(rule, facts, depth)) {
   const finding = evaluateRule(rule, ctx);
@@ -116,7 +116,7 @@ if (ruleApplies(rule, facts, depth)) {
 ## `score(evaluated, sections, profile): ScoreCard`
 
 ```ts
-import { score } from 'usa';
+import { score } from '@xenos1996/usa';
 
 const card = score(evaluated, sections, profile);
 card.overall; // 88.7 — 0 when nothing resolved (never null; see below)
@@ -142,12 +142,36 @@ the trailer are YAML-quoted, so pack-author-controlled IDs cannot corrupt
 the machine-parsed channel.
 
 ```ts
-import { renderMarkdown, parseTrailer, trailer } from 'usa';
+import { renderMarkdown, parseTrailer, trailer } from '@xenos1996/usa';
 
 const md = renderMarkdown(report, profile);
 const yaml = trailer(report); // the YAML string embedded in the trailer fences
 const parsed = parseTrailer(md); // read a trailer back out (latest wins on concatenation)
 ```
+
+## JSON and SARIF renderers
+
+Two more pure projections of the same `AuditReport` (ADR-0018). The engine is
+not involved; neither introduces any non-determinism beyond the report's own
+`generatedAt`.
+
+```ts
+import { renderJson, toJsonReport, JSON_SCHEMA } from '@xenos1996/usa';
+import { renderSarif, toSarif, SARIF_VERSION } from '@xenos1996/usa';
+
+const json = renderJson(report); // schema 'usa-report-json-v1'
+const sarif = renderSarif(report); // SARIF 2.1.0 log
+```
+
+- `toJsonReport(report)` / `toSarif(report)` return the structured object
+  (`JsonReport` / `SarifLog`); `renderJson` / `renderSarif` return the
+  pretty-printed string with a trailing newline.
+- SARIF emits only actionable findings as `results` (`PASS` and
+  `NOT_APPLICABLE` are omitted); `UNKNOWN` becomes a `note`-level,
+  `informational` result; suppressed findings carry a SARIF `suppressions`
+  entry.
+- The CLI selects a renderer with `--format md|json|sarif` or by inferring the
+  format from the `--out` extension.
 
 ## `diffReports(beforeRaw, afterRaw): string`
 
@@ -158,7 +182,7 @@ first-class: `UNKNOWN → PASS` lists as fixed _(resolved by review)_ and
 `PASS → UNKNOWN` as regressed _(needs review)_.
 
 ```ts
-import { diffReports, parseTrailer } from 'usa';
+import { diffReports, parseTrailer } from '@xenos1996/usa';
 
 const md = diffReports(parseTrailer(beforeMd)!, parseTrailer(afterMd)!);
 console.log(md); // # 🔁 USA Audit Diff …
@@ -172,7 +196,7 @@ push a named warning. Use it when authoring packs programmatically —
 evaluation fails closed (rule skipped) on anything this flags.
 
 ```ts
-import { validatePredicate } from 'usa';
+import { validatePredicate } from '@xenos1996/usa';
 
 const warnings: string[] = [];
 validatePredicate({ fact: 'has:ci', op: 'bogus' }, 'my-pack MY-001', warnings);
@@ -185,9 +209,53 @@ Reads `.usa.yaml`. A missing file is not an error — it returns an empty config
 A malformed one throws, loudly, because silent config loss produces an audit
 that quietly disagrees with the user's intent.
 
+## `evaluateGate(report, failOn, quiet?): number`
+
+The CI gate behind `--fail-on`. Returns the process exit code (`0` when no
+finding is at or above `failOn` — `critical|high|medium|low|none` — else `1`).
+`blockingFindings(report, failOn)` returns the matching findings. See
+[ci-integration.md](../ci-integration.md).
+
+## Evolution layer
+
+The deterministic audit → gap → propose → benchmark → release → re-audit loop
+(ADR-0013), also exposed as the `usa evolve` CLI. See
+[EVOLUTION.md](../EVOLUTION.md) for the concepts.
+
+```ts
+import {
+  snapshotOfDir,
+  Store,
+  computeCoverage,
+  deriveGaps,
+  proposeCandidate,
+  runBenchmark,
+  evaluateRelease,
+  resolveCapabilitySetId,
+  GapQueue,
+  scheduleCandidates,
+  runEvolutionCycle,
+} from '@xenos1996/usa';
+```
+
+| Function                                 | Purpose                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------- |
+| `snapshotOfDir` / `snapshotOfProject`    | Content-address a tree (the reproducibility boundary).                    |
+| `Store`                                  | Local, content-addressed persistence for runs and results.                |
+| `computeCoverage`                        | Language/automation coverage model for a report.                          |
+| `deriveGaps`                             | Capability gaps from a report (unsupported language, unverified section). |
+| `proposeCandidate` / `proposeCandidates` | Deterministic candidate packs from gaps (bootstrap catalog).              |
+| `runBenchmark`                           | Score a candidate pack against positive/negative cases.                   |
+| `evaluateRelease`                        | The deterministic release gate (rejects vacuous benchmarks).              |
+| `resolveCapabilitySetId`                 | Hash of (engine version, base packs, extra capabilities).                 |
+| `GapQueue`                               | Append-only persistent gap queue.                                         |
+| `scheduleCandidates`                     | Walk every open gap, benchmark + release, close the gaps.                 |
+| `runEvolutionCycle`                      | The end-to-end orchestrator.                                              |
+
 ## Types
 
 `Severity` · `Status` · `RuleClass` · `Depth` · `Maturity` · `Location` ·
 `Finding` · `Predicate` · `FactOp` · `Check` · `Rule` · `RulePack` ·
 `AuditReport` · `UsaConfig` · `SectionDef` · `MaturityProfile` ·
-`ScoredRule` · `EvalContext`
+`ScoredRule` · `EvalContext` · `AuditOutcome` · `AuditOptions` ·
+`JsonReport` · `SarifLog` · the snapshot and evolution types.

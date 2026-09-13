@@ -142,7 +142,19 @@ Every new capability must be recorded with:
 }
 ```
 
-This metadata is maintained in `capabilities/registry.json` (or a similar persistent location).
+A capability reaches production one of two ways, and both keep a permanent
+record:
+
+- **Shipped directly** — a reviewed pack/detector lands in `rules/` and is
+  recorded in `rules/index.yaml` (the on-disk registry is the source of truth).
+- **Through the evolution loop** — a proposal is benchmarked and released as a
+  `data` capability; the run and its result are recorded content-addressed in
+  the local `Store` (`usa evolve --store`). See
+  [EVOLUTION.md](EVOLUTION.md) and ADR-0013..0016.
+
+There is no separate `capabilities/registry.json`: the rule registry
+(`rules/index.yaml`) plus the append-only evolution `Store` are the durable
+records. Adding a parallel JSON registry would be a second source of truth.
 
 ---
 

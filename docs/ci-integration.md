@@ -16,14 +16,14 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
 
       - name: Run USA
         id: usa
-        run: npx --yes @xenos1996/usa@1 audit . --depth standard --out AUDIT.md
+        run: npx --yes @xenos1996/usa@2 audit . --depth standard --out AUDIT.md
 
       - name: Publish to job summary
         if: always()
@@ -37,11 +37,31 @@ jobs:
           path: AUDIT.md
 ```
 
+### Publish findings to GitHub code scanning (SARIF)
+
+USA emits SARIF 2.1.0, so findings appear in the repo's **Security → Code
+scanning** tab. No engine change and no extra service — just two flags:
+
+```yaml
+- name: USA audit (SARIF)
+  run: npx --yes @xenos1996/usa@2 audit . --out usa.sarif
+
+- name: Upload SARIF
+  if: always()
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: usa.sarif
+```
+
+`--format json` (or an `.json` `--out`) emits the same report as a stable JSON
+document for dashboards, with schema `usa-report-json-v1`. The format is
+inferred from the `--out` extension, so `--out report.sarif` needs no flag.
+
 ### Quality gate
 
 ```yaml
 - name: Quality gate
-  run: npx --yes @xenos1996/usa@1 audit . --fail-on high
+  run: npx --yes @xenos1996/usa@2 audit . --fail-on high
 ```
 
 | Exit | Meaning                                   |
@@ -66,7 +86,7 @@ is clear. Never start at `medium` — you will teach the team to bypass the chec
 ### Composite action
 
 ```yaml
-- uses: Er-Sajan-PLG/universal-software-auditor@v1
+- uses: Er-Sajan-PLG/universal-software-auditor@v2
   with:
     depth: standard
     fail-on: high
@@ -83,7 +103,7 @@ usa-audit:
   image: node:20
   stage: test
   script:
-    - npx --yes @xenos1996/usa@1 audit . --out usa-report.md --fail-on critical
+    - npx --yes @xenos1996/usa@2 audit . --out usa-report.md --fail-on critical
   artifacts:
     when: always
     paths: [usa-report.md]
@@ -106,12 +126,12 @@ on:
 jobs:
   audit:
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
-      - run: npx --yes @xenos1996/usa@1 audit . --out reports/$(date +%Y-%m).md
+      - run: npx --yes @xenos1996/usa@2 audit . --out reports/$(date +%Y-%m).md
       - run: |
           PREV=$(ls reports/*.md | tail -2 | head -1)
-          npx --yes @xenos1996/usa@1 diff "$PREV" "reports/$(date +%Y-%m).md" --out DIFF.md || true
+          npx --yes @xenos1996/usa@2 diff "$PREV" "reports/$(date +%Y-%m).md" --out DIFF.md || true
           cat DIFF.md >> "$GITHUB_STEP_SUMMARY"
       - uses: peter-evans/create-pull-request@v6
         with:
@@ -178,7 +198,7 @@ before the first OIDC publish succeeds.
   anything, which is why it is safe on private repositories.
 - **`--allow-commands` in CI.** Only if you trust the target repo — it shells out for
   checks like `npm audit`. Off by default; those rules report ❓ NEEDS REVIEW instead.
-- **Pin the version** in production pipelines (`@xenos1996/usa@1`, not `@latest`) so a
+- **Pin the version** in production pipelines (`@xenos1996/usa@2`, not `@latest`) so a
   rule-pack change cannot fail your build without a commit.
 - **Commit `.usa.yaml`.** Suppressions and overrides without a commit are invisible
   decisions, and they are the first thing a reviewer asks about.

@@ -88,7 +88,7 @@ For each item:
 
 ## Step 4 — Report
 
-Follow the Section 14 template in `USA.md`:
+Follow the report output template in `USA.md`:
 
 1. CRITICAL and security-HIGH findings first — with location and fix
 2. Section-by-section findings

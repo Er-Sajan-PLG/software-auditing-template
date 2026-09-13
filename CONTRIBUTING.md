@@ -73,7 +73,7 @@ version:
 - `id` — prefix matches the pack (`SEC-`, `WEB-`, `PY-`, `AI-`…)
 - `title` — the _desired state_, not the defect
 - `section` and `class`
-- `check` — one of the 15 kinds in [`docs/rule-packs.md`](docs/rule-packs.md)
+- `check` — one of the 16 kinds in [`docs/rule-packs.md`](docs/rule-packs.md)
 - `why` — one sentence, or the rule does not earn its place
 - `remediation` — something a person can actually do
 - `evidence` — **required** for `manual` checks; this is the prompt a reviewer works from
@@ -82,13 +82,14 @@ CI enforces most of this (see `tests/e2e.test.ts`).
 
 ## Contributor gates (all enforced in CI)
 
-| Gate              | Rule                                                                                                                            | Where                               |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Complexity budget | Functions stay at cyclomatic complexity ≤ 10 (warn-only). Over? Split: one branch = one function, dispatch tables over switches | `eslint.config.mjs`, PR #10 pattern |
-| Coverage ratchet  | Thresholds sit at the measured number and only rise (`vitest.config.ts`). Lowering a threshold needs an ADR-level reason        | `npm run test:cov`                  |
-| ADR hygiene       | Filenames sequential, title numbers match, Date + Status present, index complete                                                | `node scripts/check-adrs.mjs`       |
-| Doc sync          | README rule-count floor holds; every section id appears in `USA.md`; every `--flag` in docs exists in `--help`                  | `node scripts/check-docs.mjs`       |
-| CLI reference     | `docs/reference/cli.md` is generated — never hand-edit it; regenerate and commit                                                | `node scripts/gen-cli-docs.mjs`     |
+| Gate              | Rule                                                                                                                            | Where                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Complexity budget | Functions stay at cyclomatic complexity ≤ 10 (warn-only). Over? Split: one branch = one function, dispatch tables over switches | `eslint.config.mjs`             |
+| Coverage ratchet  | Thresholds sit at the measured number and only rise (`vitest.config.ts`). Lowering a threshold needs an ADR-level reason        | `npm run test:cov`              |
+| Rule fixtures     | Every automatable rule ships a `tests/fixtures/rules/<ID>.yaml` fixture; the coverage gate fails an untested rule (ADR-0017)    | `tests/rule-fixtures.test.ts`   |
+| ADR hygiene       | Filenames sequential, title numbers match, Date + Status present, index complete                                                | `node scripts/check-adrs.mjs`   |
+| Doc sync          | README rule-count floor holds; every section id appears in `USA.md`; every `--flag` in docs exists in `--help`                  | `node scripts/check-docs.mjs`   |
+| CLI reference     | `docs/reference/cli.md` is generated — never hand-edit it; regenerate and commit                                                | `node scripts/gen-cli-docs.mjs` |
 
 **Fixing a rule that over/under-fires** (the highest-value rule contribution):
 

@@ -61,7 +61,7 @@ record `file:line` plus one sentence of reasoning.
 
 ### 4 · Report
 
-Follow the Section 14 template (`references/report-template.md`). CRITICAL and
+Follow the report output template (`references/report-template.md`). CRITICAL and
 security-HIGH first, then section-by-section, then the roadmap, then the judgement
 queue with your evidence filled in.
 

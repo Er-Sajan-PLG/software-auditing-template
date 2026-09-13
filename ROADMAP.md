@@ -7,30 +7,46 @@ Items graduate to ADRs when decided and to `CHANGELOG.md` when shipped.
 > Charter constraint (ADR-0011): no CVE database, no resolver, no dataflow
 > engine, no signer. Proposals crossing that line re-open ADR-0011 first.
 
-## Next: rule coverage (the product)
+## Shipped
+
+Rule coverage (the product):
 
 - [x] **`usa bootstrap` self-extension** — curated starter packs for
       uncovered stacks (php/ruby/cpp/csharp/swift + fallback), fail-closed
-      per ADR-0012, proven on Vapor. _(shipped)_
+      per ADR-0012, proven on Vapor.
 - [x] **Honest scale limits** — truncation/oversize warnings instead of
-      silent absorption. _(shipped)_
+      silent absorption.
 - [x] **First graduation** — Swift pack + vapor/platform/executable
       detectors shipped from the bootstrap proof; catalog entry replaced.
-      _(shipped — the standing rule: every bigger repo expands the template)_
-
-- [x] **SARIF + JSON renderers** — findings already carry file/line/severity/
-      rule identity; add renderers so USA composes with dashboards and code
-      scanning. Engine unchanged. _(shipped — `--format md|json|sarif`, `--out`
-      extension inference; SARIF 2.1.0 schema-validated; ADR-0018 supersedes
-      ADR-0004)_
+      _(the standing rule: every bigger repo expands the template)_
+- [x] **SARIF + JSON renderers** — `--format md|json|sarif`, `--out`
+      extension inference; SARIF 2.1.0 schema-validated. ADR-0018 supersedes
+      ADR-0004.
 - [x] **Per-rule expected-finding fixtures** — positive/negative fixture per
-      rule run in CI (`codeql test` model). Rule packs are the highest FP/FN
-      risk in the system; fixtures catch silent rule rot. _(shipped — 174
-      automatable rules fixtured, coverage gate blocks untested rules; ADR-0017)_
-- [x] **Oracle-ingestion check kinds** — `evidence: { source: sarif|json }`
-      for coverage numbers, CVE counts, attestation verification. Opt-in,
-      offline-by-default preserved. _(shipped — `oracle` check kind ingests a
-      committed SARIF/JSON artifact and asserts a bound; ADR-0019)_
+      automatable rule, coverage gate blocks untested rules. ADR-0017.
+- [x] **Oracle-ingestion check kind** — `oracle` ingests a committed
+      SARIF/JSON artifact and asserts a bound; offline-by-default preserved.
+      ADR-0019.
+
+Automation and governance:
+
+- [x] **Complexity budget** — warn-only `complexity` rule + dispatch-table
+      refactors; lint is warning-free.
+- [x] **Self-audit correctness hardening** — 27-finding adversarial review
+      (fail-closed inputs, expiry-aware suppressions, fixed-point detection,
+      trailer hygiene).
+- [x] **release-please + commitlint** — reviewable Release PRs (version +
+      CHANGELOG + tag atomically); human gate kept on rule-content releases.
+- [x] **Trusted publishing + npm provenance + SBOM** — OIDC (no long-lived
+      `NPM_TOKEN`), `--provenance`, CycloneDX SBOM artifact on every release.
+- [x] **Generated CLI reference + diff gate** — `docs/reference/cli.md`
+      regenerated from the real parser and asserted with `--check` in CI.
+- [x] **Coverage thresholds** — ratcheted at the measured number.
+- [x] **OpenSSF Scorecard action** — monthly + on push, SARIF to the
+      Security tab.
+
+## Next: rule coverage
+
 - [ ] **Catalogue pinning + automatability tags** — `catalogue: asvs@5.0.0`,
       `automatability: full|assist|manual` per rule; makes
       `docs/standards-mapping.md` machine-checkable. _(S)_
@@ -48,23 +64,10 @@ verify` success, attestation/VSA presence where network allows; existence
 
 ## Next: automation and governance
 
-- [x] **Complexity budget** — warn-only `complexity` rule + dispatch-table
-      refactors; lint is warning-free. _(shipped)_
-- [x] **Self-audit correctness hardening** — 27-finding adversarial review
-      fixed (fail-closed inputs, expiry-aware suppressions, fixed-point
-      detection, trailer hygiene). _(shipped)_
-- [x] **release-please + commitlint** — reviewable Release PRs (version +
-      CHANGELOG + tag atomically); keep the human gate on rule-content
-      releases. Not semantic-release (wrong risk profile for curated rules).
-- [ ] **Trusted publishing + npm provenance + SBOM + attestation** — remove
-      the long-lived `NPM_TOKEN`; close the preach/practice gap on S3.
-- [ ] **Generated CLI reference + diff gate** — `docs/reference/cli.md`
-      regenerated from the real parser, asserted with `diff --exit-code`.
-- [ ] **Coverage thresholds** — ratchet at today's number once measured.
-- [ ] **OpenSSF Scorecard action + Best Practices badge** — fix expected
-      findings (unpinned SHAs, branch protection), then self-certify.
+- [ ] **OpenSSF Best Practices badge** — self-certify the CII baseline
+      (the Scorecard action and branch protection are already in place). _(S)_
 - [ ] **Signed reports (Sigstore)** — optional detached signature for
-      `AUDIT.md` as supply-chain-grade evidence.
+      `AUDIT.md` as supply-chain-grade evidence. _(M)_
 - [ ] **MADR/log4brains** — only when the ADR corpus triples or decisions
       become routinely contested. Not now.
 
@@ -75,3 +78,5 @@ verify` success, attestation/VSA presence where network allows; existence
 - Compliance certification (USA maps to standards; auditors certify)
 - Full DORA platform (no deployment to measure at this scale)
 - Renovate migration (no problem to solve at ~10 dependencies)
+- HTML / JUnit renderers (JSON and SARIF feed standards-based consumers;
+  HTML/JUnit would only feed bespoke ones — ADR-0018)

@@ -9,7 +9,8 @@ npm i -D @xenos1996/usa             # or per project, so CI and laptops agree
 ```
 
 Requires Node 20+. No network access is needed at audit time, and USA never
-uploads anything — it reads files and writes one Markdown file.
+uploads anything — it reads files and writes one report (Markdown by default;
+JSON or SARIF via `--format`).
 
 ## Your first audit
 
@@ -89,7 +90,8 @@ usa diff reports/2026-06.md reports/2026-09.md
 ```
 
 The diff reads the YAML trailer embedded in every report — so a Markdown report is
-still the only artefact you need to keep.
+still the only artefact you need to keep. (If you also emit SARIF/JSON for
+dashboards, the Markdown stays the human-readable source of truth.)
 
 ## Next steps
 

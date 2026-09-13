@@ -151,11 +151,14 @@ private-repo complement — run both.
 ### On SARIF
 
 SARIF 2.1.0 is the right interchange format for static-analysis _results_, and most
-SAST tools emit it. USA reports are prose-oriented — a scored, prioritised document
-for humans and agents, not a machine-ingestible findings stream. If you need to feed
-results into a dashboard, that is a small renderer away
-(`src/report/`); the internal model already carries file, line, severity, and rule
-identity for every finding. Contributions welcome.
+SAST tools emit it. USA's primary artefact stays a prose-oriented, scored document
+for humans and agents — but it now **emits** SARIF and JSON too
+(`usa audit . --format sarif|json`, or infer the format from the `--out`
+extension), and it can **ingest** an oracle's SARIF/JSON as evidence via the
+`oracle` check kind. The internal finding model already carries file, line,
+severity, and rule identity for every finding, so both directions are pure
+projections. See [ADR-0018](adr/0018-json-and-sarif-renderers.md) and
+[ADR-0019](adr/0019-oracle-evidence-ingestion.md).
 
 ---
 

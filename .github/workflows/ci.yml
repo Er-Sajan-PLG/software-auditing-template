@@ -109,7 +109,7 @@ jobs:
   # explicitly). These two scripts assert the machine-checkable invariants:
   # the README rule-count floor, USA.md section coverage, and ADR
   # numbering/index completeness. See scripts/check-docs.mjs,
-  # scripts/check-adrs.mjs, ROADMAP.md ("doc sync") and PLAN.md.
+  # scripts/check-adrs.mjs, and ROADMAP.md ("doc sync").
   # Commit messages drive releases (release-please reads them), so they are
   # linted like code. PR-only: master receives squash/rebase merges whose
   # messages GitHub derives from PR titles — lint the PR commits, not merges.

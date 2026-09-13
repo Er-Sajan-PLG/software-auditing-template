@@ -5,6 +5,10 @@ pipeline** (see [ADR-0013](adr/0013-deterministic-evolution-loop.md)). No LLM,
 no database, no network. The proof that "USA got better" is a before/after
 measurement, not an assertion.
 
+> This is the **automated** loop. For the human/agent-driven research process
+> used on capability-stress experiments (the `experiments/` runs), see the
+> [Experiment protocol](EXPERIMENT_PROTOCOL.md).
+
 > Status legend used throughout: `[IMPLEMENTED]` / `[PARTIALLY IMPLEMENTED]` /
 > `[PLANNED]` / `[DEFERRED]`.
 

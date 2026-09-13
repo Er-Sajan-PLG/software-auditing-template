@@ -80,7 +80,7 @@ You are auditing this repository with USA (Universal Software Auditor).
    - record file:line evidence and one sentence of reasoning
    - if you cannot determine it, say UNKNOWN and say what you would need
 
-5. Produce a final report that follows the Section 14 template in USA.md:
+5. Produce a final report that follows the report output template in USA.md:
    - CRITICAL and HIGH findings first, with location and fix
    - then section-by-section
    - then the roadmap
@@ -96,7 +96,7 @@ Rules:
 ## Using the API directly
 
 ```ts
-import { runAudit, renderMarkdown, loadProfiles } from 'usa';
+import { runAudit, renderMarkdown, loadProfiles } from '@xenos1996/usa';
 
 const { report, profile, warnings } = runAudit({
   target: process.cwd(),
@@ -105,7 +105,7 @@ const { report, profile, warnings } = runAudit({
   profile: 'auto',
   config: { version: 1 },
   allowCommands: false,
-  usaVersion: '1.0.0',
+  usaVersion: '2.0.1',
 });
 
 console.log(report.score.overall); // 71.4

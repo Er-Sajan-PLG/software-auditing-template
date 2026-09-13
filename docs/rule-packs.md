@@ -281,9 +281,9 @@ ADR-0009. What to know as an author:
   the whole repo.
 - Duplicate rule IDs across packs: first definition wins, later ones warn.
 - Override `severity` must be on the ladder and `weight` a finite number
-  ≥ 0, or the override is ignored with a warning. Run `node
-scripts/check-docs.mjs`-adjacent `usa rules` after editing: the shipped
-  packs must load with **zero warnings** (enforced by `tests/e2e.test.ts`).
+  ≥ 0, or the override is ignored with a warning. After editing a shipped
+  pack, run `usa rules` and confirm it loads with **zero warnings** (the
+  `tests/e2e.test.ts` suite enforces this for the in-tree packs).
 
 ---
 

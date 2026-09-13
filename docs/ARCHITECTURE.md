@@ -36,22 +36,24 @@ new framework is a five-line YAML diff rather than a release.
                                  └────────────┬─────────────┘
                                               ▼
                                  ┌──────────────────────────┐
-                                 │  Scoring → Markdown      │
+                                 │  Scoring → report        │
+                                 │  Markdown · JSON · SARIF │
                                  └──────────────────────────┘
 ```
 
-| Module        | File                     | Responsibility                                                                                    |
-| ------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
-| Project index | `src/util/project.ts`    | One pass over the tree. Honours `.gitignore` + user ignores. Caches reads. Never greps lockfiles. |
-| Glob matcher  | `src/util/glob.ts`       | Dependency-free glob → RegExp. Handles `**`, `{a,b}`, `[abc]`, `?`.                               |
-| YAML shape    | `src/util/yaml.ts`       | Makes the parse boundary explicit, so a typo in a pack is a warning, not `undefined`.             |
-| Detection     | `src/detect/index.ts`    | Evaluates 230 detector primitives into a fact set, then classifies maturity.                      |
-| Pack loading  | `src/engine/loader.ts`   | Parses + validates packs, applies user overrides. Bad packs warn, never crash.                    |
-| Evaluation    | `src/engine/evaluate.ts` | Runs one check against the index; resolves `applies_when` predicates.                             |
-| Maturity      | `src/engine/maturity.ts` | Dampens severity by lifecycle stage. CRITICAL is never dampened.                                  |
-| Scoring       | `src/engine/score.ts`    | Weighted credit arithmetic. Returns `null` for unverified sections.                               |
-| Report        | `src/report/markdown.ts` | Deterministic Markdown + a machine-readable YAML trailer.                                         |
-| Diff          | `src/engine/diff.ts`     | Compares two reports via their trailers.                                                          |
+| Module        | File                                            | Responsibility                                                                                    |
+| ------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Project index | `src/util/project.ts`                           | One pass over the tree. Honours `.gitignore` + user ignores. Caches reads. Never greps lockfiles. |
+| Glob matcher  | `src/util/glob.ts`                              | Dependency-free glob → RegExp. Handles `**`, `{a,b}`, `[abc]`, `?`.                               |
+| YAML shape    | `src/util/yaml.ts`                              | Makes the parse boundary explicit, so a typo in a pack is a warning, not `undefined`.             |
+| Detection     | `src/detect/index.ts`                           | Evaluates 236 detector primitives into a fact set, then classifies maturity.                      |
+| Pack loading  | `src/engine/loader.ts`                          | Parses + validates packs, applies user overrides. Bad packs warn, never crash.                    |
+| Evaluation    | `src/engine/evaluate.ts`                        | Runs one check against the index; resolves `applies_when` predicates.                             |
+| Maturity      | `src/engine/maturity.ts`                        | Dampens severity by lifecycle stage. CRITICAL is never dampened.                                  |
+| Scoring       | `src/engine/score.ts`                           | Weighted credit arithmetic. Returns `null` for unverified sections.                               |
+| Report        | `src/report/`                                   | Deterministic Markdown (+ YAML trailer), JSON, and SARIF 2.1.0 — three views of one report.       |
+| Diff          | `src/engine/diff.ts`                            | Compares two reports via their trailers.                                                          |
+| Evolution     | `src/evolution/`, `src/store/`, `src/snapshot/` | Optional self-extension loop; see [EVOLUTION.md](EVOLUTION.md).                                   |
 
 ## Why the fact system
 
@@ -104,8 +106,10 @@ seconds; the cost is `O(patterns × matching files)`, not `O(patterns × repo)`.
 - **No network calls.** Ever. An audit must be reproducible offline.
 - **No auto-fixing.** USA reports; humans decide. (It does print the exact
   remediation text, which is the part that actually helps.)
-- **No daemon, no database, no config server.** One process, one tree, one
-  Markdown file.
+- **No daemon, no config server.** One process, one tree, one report. The
+  optional [evolution loop](EVOLUTION.md) can persist runs to a local,
+  content-addressed store (`--store`), but a plain `usa audit` touches nothing
+  outside the target tree and its `--out` file.
 
 ## Extension points
 

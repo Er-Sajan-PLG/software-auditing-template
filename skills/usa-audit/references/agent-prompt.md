@@ -38,7 +38,7 @@ For each item:
 
 **Step 4 — write the final report.**
 
-Follow the Section 14 structure:
+Follow the report output structure:
 
 1. Header: project, commit, detected stack, maturity, depth
 2. Executive summary: overall score, expected band, per-section table with confidence

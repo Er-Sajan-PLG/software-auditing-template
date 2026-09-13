@@ -7,21 +7,21 @@
 | **Project** | `demo-app` |
 | **Path** | `/home/user/universal-software-auditor/examples/demo-app` |
 | **Commit** | n/a (detached) |
-| **Date** | 2026-09-08T15:00:10.313Z |
-| **USA version** | 1.0.0 |
+| **Date** | 2026-09-13T02:06:54.434Z |
+| **USA version** | 2.0.1 |
 | **Detected type** | unclassified |
-| **Platform** | unclassified |
+| **Platform** | server |
 | **Stack** | javascript, express |
 | **Maturity** | Prototype / Spike *(auto-detected)* |
 | **Depth** | standard |
 
 ## 📊 Executive Summary
 
-### Overall Health Score: **47.9/100**
+### Overall Health Score: **45.2/100**
 
 `███████████░░░░░░░░░░░░░`
 
-Verified automatically: **66.7%** of applicable checks. 21 checks need a human — see the judgement queue.
+Verified automatically: **65.8%** of applicable checks. 27 checks need a human — see the judgement queue.
 
 Expected band for **Prototype / Spike**: 30–65 — **within the expected band** 👍
 
@@ -30,32 +30,32 @@ Expected band for **Prototype / Spike**: 30–65 — **within the expected band*
 | Dimension | Score | Confidence |
 |---|---|---|
 | S1 · Repository & Project Structure | 7.2/10 | 83.3% |
-| S2 · Security | 5.3/10 | 90% |
+| S2 · Security | 4.9/10 | 92.9% |
 | S3 · Supply Chain & Build Provenance | 0/10 | 100% |
-| S4 · Architecture & Design | 10/10 | 50% |
-| S5 · Code Quality | 4.6/10 | 100% |
+| S4 · Architecture & Design | 8/10 | 60% |
+| S5 · Code Quality | 3.5/10 | 87.5% |
 | S6 · Data & Database | 1.3/10 | 66.7% |
 | S7 · Testing & Quality Assurance | 0/10 † | 33.3% |
-| S8 · CI/CD, Infrastructure & Observability | 0/10 | 50% |
+| S8 · CI/CD, Infrastructure & Observability | 3.3/10 | 66.7% |
 | S9 · Release & Change Management | — not verified | 0% |
 | S10 · Dependencies & Third-Party | 10/10 † | 25% |
 | S12 · Documentation & Knowledge | 10/10 † | 25% |
-| S15 · Platform-Specific | 7/10 | 100% |
+| S15 · Platform-Specific | 5.1/10 | 50% |
 | S16 · Future Readiness | — not verified | 0% |
 
-*Confidence = share of applicable rules the engine could verify automatically; unverified checks are excluded from the score rather than counted as passes. **†** = fewer than half of that section's applicable checks could be verified. Automation coverage: **66.7%**. The rest is in the judgement queue below.*
+*Confidence = share of applicable rules the engine could verify automatically; unverified checks are excluded from the score rather than counted as passes. **†** = fewer than half of that section's applicable checks could be verified. Automation coverage: **65.8%**. The rest is in the judgement queue below.*
 
 ## 🏷️ Findings Summary
 
 | Status | Count | | Severity (open findings) | Count |
 |---|--:|-|---|--:|
-| ✅ GOOD | 18 | : | 🔴 CRITICAL | 2 |
-| 🔴 FAIL | 3 | : | 🟠 HIGH | 0 |
-| ⚠️ WRONG | 4 | : | 🟡 MEDIUM | 6 |
-| 🚫 MISSING | 16 | : | 🟢 LOW | 7 |
-| 💀 DEPRECATED | 1 | : | 🔵 FUTURE | 9 |
+| ✅ GOOD | 20 | : | 🔴 CRITICAL | 2 |
+| 🔴 FAIL | 4 | : | 🟠 HIGH | 0 |
+| ⚠️ WRONG | 5 | : | 🟡 MEDIUM | 7 |
+| 🚫 MISSING | 22 | : | 🟢 LOW | 12 |
+| 💀 DEPRECATED | 1 | : | 🔵 FUTURE | 11 |
 | 🧪 EXPERIMENTAL | 0 | : |   |  |
-| ❓ NEEDS REVIEW | 21 | : |   |  |
+| ❓ NEEDS REVIEW | 27 | : |   |  |
 
 ## 🚨 Immediate Action Required
 
@@ -103,7 +103,7 @@ Expected band for **Prototype / Spike**: 30–65 — **within the expected band*
 
 ### S2 · Security
 
-**Score 5.3/10** · `█████████████░░░░░░░░░░░` · 5 passed / 4 open / 1 to review
+**Score 4.9/10** · `████████████░░░░░░░░░░░░` · 6 passed / 7 open / 1 to review
 
 - 🔴 **No hardcoded credentials in source** `SEC-001` — 2 occurrence(s): `api_key: 'example_key_not_real_12345',` at src/config.js:3 (+1 more).
   - 📍 `src/config.js:3`, `src/config.js:4`
@@ -113,6 +113,11 @@ Expected band for **Prototype / Spike**: 30–65 — **within the expected band*
   - 📍 `src/db.js:15`
   - 🛠️ Use parameterised queries ($1, ?, :name) or the ORM query API. Never interpolate user input into SQL text.
   - 📚 CWE-89 · ASVS-5.3.4 · OWASP-A03:2021
+- 🔴 **No plaintext HTTP endpoints in configuration** `SEC-003` — 2 occurrence(s): `endpoint: 'http://api.internal.example.com/v1/orders',` at src/config.js:5 (+1 more).
+  - 📍 `src/config.js:5`, `src/legacy.js:5`
+  - 🪶 Downgraded HIGH → MEDIUM by the Prototype / Spike profile
+  - 🛠️ Move every non-localhost URL to https://. Terminate TLS at the edge and keep it on internally too.
+  - 📚 CWE-319 · ASVS-9.1.1
 - ⚠️ **No unsafe dynamic code execution** `SEC-006` — 1 instance(s) of an incorrect implementation: `return eval(expr);` at src/express.js:7.
   - 📍 `src/express.js:7`
   - 🪶 Downgraded HIGH → MEDIUM by the Prototype / Spike profile
@@ -122,13 +127,23 @@ Expected band for **Prototype / Spike**: 30–65 — **within the expected band*
   - 🪶 Downgraded HIGH → MEDIUM by the Prototype / Spike profile
   - 🛠️ Define schemas at the edge (HTTP handler, queue consumer, CLI arg parser) and parse before use.
   - 📚 CWE-20 · ASVS-5.1.1 · OWASP-A03:2021
+- 🚫 **Security headers are set** `SEC-018` — Not detected — pattern not found in **/*.{ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,kt,yml,yaml,json,conf,nginx,toml}.
+  - 🪶 Downgraded MEDIUM → LOW by the Prototype / Spike profile
+  - 🛠️ Use helmet (Node) or equivalent; add HSTS (max-age ≥31536000; includeSubDomains), X-Content-Type-Options: nosniff, Referrer-Policy, and a CSP.
+  - 📚 ASVS-14.4.3 · OWASP-Secure-Headers
+- ⚠️ **Errors do not leak internals to clients** `SEC-020` — 1 instance(s) of an incorrect implementation: `res.status(500).json({ error: err.message });` at src/server.js:14.
+  - 📍 `src/server.js:14`
+  - 🪶 Downgraded MEDIUM → LOW by the Prototype / Spike profile
+  - 🛠️ Return a generic error plus a correlation ID; log the detail server-side only.
+  - 📚 CWE-209 · ASVS-7.4.1
 
-<details><summary>5 check(s) passing in S2</summary>
+<details><summary>6 check(s) passing in S2</summary>
 
 - ✅ Shell commands are not built from user input `SEC-007`
 - ✅ Sensitive data is not written to logs `SEC-002`
 - ✅ TLS verification is not disabled `SEC-004`
 - ✅ Path traversal is prevented on filesystem access `SEC-010`
+- ✅ CORS is not a wildcard `SEC-017`
 - ✅ Cryptographic randomness for tokens and IDs `SEC-021`
 
 </details>
@@ -153,14 +168,28 @@ Expected band for **Prototype / Spike**: 30–65 — **within the expected band*
 
 ### S4 · Architecture & Design
 
-**Score 10/10** · `████████████████████████` · 2 passed / 0 open / 2 to review
+**Score 8/10** · `███████████████████░░░░░` · 2 passed / 1 open / 2 to review
 
-No open findings in this section. ✅
+- 🚫 **Async work is offloaded to a queue** `ARCH-010` — Not detected — pattern not found in **/*.{ts,tsx,js,jsx,py,go,rs,rb}.
+  - 🪶 Downgraded LOW → FUTURE by the Prototype / Spike profile
+  - 🛠️ Move email, image processing, webhooks, and report generation onto a queue with retries and a DLQ.
+  - 📚 12-Factor:Processes
+
+<details><summary>2 check(s) passing in S4</summary>
+
+- ✅ No god files `ARCH-003`
+- ✅ Configuration is externalised `ARCH-007`
+
+</details>
 
 ### S5 · Code Quality
 
-**Score 4.6/10** · `███████████░░░░░░░░░░░░░` · 1 passed / 4 open / 0 to review
+**Score 3.5/10** · `████████░░░░░░░░░░░░░░░░` · 1 passed / 6 open / 1 to review
 
+- 🚫 **There is a central error handler** `CQ-006` — Not detected — pattern not found in **/*.{ts,tsx,js,jsx,py,go,rs,java,kt,rb,php}.
+  - 🪶 Downgraded MEDIUM → LOW by the Prototype / Spike profile
+  - 🛠️ Add a framework-level error handler and an ErrorBoundary (React); report to your error tracker.
+  - 📚 ASVS-7.4.1
 - 🚫 **A linter is configured** `CQ-001` — Not detected — no files matching .eslintrc*, eslint.config.*, biome.json*, .ruff.toml, ruff.toml, .flake8, setup.cfg, .pylintrc, pyproject.toml, .golangci*, clippy.toml, .rustfmt.toml, rustfmt.toml, .rubocop.yml, phpcs.xml*, detekt.yml, .swiftlint.yml.
   - 🪶 Downgraded MEDIUM → FUTURE by the Prototype / Spike profile
   - 🛠️ Add the standard linter for your stack, start with its recommended config, fix what it finds.
@@ -169,6 +198,10 @@ No open findings in this section. ✅
   - 🪶 Downgraded LOW → FUTURE by the Prototype / Spike profile
   - 🛠️ Prettier/Black/gofmt/rustfmt — pick the default config and stop discussing it.
   - 📚 NIST-SSDF-PW.7
+- 🚫 **Requests carry a correlation/trace ID** `CQ-008` — Not detected — pattern not found in **/*.{ts,tsx,js,jsx,py,go,rs,java,kt}.
+  - 🪶 Downgraded LOW → FUTURE by the Prototype / Spike profile
+  - 🛠️ Generate an ID per request, put it in every log line and in the response header.
+  - 📚 OpenTelemetry · W3C-Trace-Context
 - 🔴 **Debug statements are not left in production paths** `CQ-009` — 1 occurrence(s): `app.listen(3000, () => console.log('listening on 3000'));` at src/server.js:24.
   - 📍 `src/server.js:24`
   - 🪶 Downgraded LOW → FUTURE by the Prototype / Spike profile
@@ -221,19 +254,25 @@ No open findings in this section. ✅
 
 **Score 0/10** · `░░░░░░░░░░░░░░░░░░░░░░░░` · 0 passed / 1 open / 2 to review
 
-- 🚫 **A test suite exists** `TEST-001` — Not detected — no files matching **/*.test.{ts,tsx,js,jsx,mjs,cjs}, **/*.spec.{ts,tsx,js,jsx,mjs,cjs}, **/test_*.py, **/*_test.py, **/*_test.go, **/*_spec.rb, **/*Test.java, **/*Test.kt, **/*Test.php, **/tests/**/*.rs, **/__tests__/**.
+- 🚫 **A test suite exists** `TEST-001` — Not detected — no files matching **/*.test.{ts,tsx,js,jsx,mjs,cjs}, **/*.spec.{ts,tsx,js,jsx,mjs,cjs}, **/test_*.py, **/*_test.py, **/*_test.go, **/*_spec.rb, **/*Test.java, **/*Test.kt, **/*Test.php, **/tests/**/*.rs, **/__tests__/**, **/Tests/**/*.swift, **/*Tests.swift.
   - 🪶 Downgraded HIGH → MEDIUM by the Prototype / Spike profile
   - 🛠️ Start with the happy path of the main flow and every bug you have already fixed once.
   - 📚 OpenSSF-Scorecard:CI-Tests · NIST-SSDF-RV.1.1
 
 ### S8 · CI/CD, Infrastructure & Observability
 
-**Score 0/10** · `░░░░░░░░░░░░░░░░░░░░░░░░` · 0 passed / 1 open / 1 to review
+**Score 3.3/10** · `████████░░░░░░░░░░░░░░░░` · 1 passed / 1 open / 1 to review
 
 - 🚫 **A CI pipeline exists** `CICD-001` — Not detected — no files matching .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml, Jenkinsfile, .circleci/config.yml, .buildkite/**, azure-pipelines.yml, .drone.yml, bitbucket-pipelines.yml.
   - 🪶 Downgraded HIGH → LOW by the Prototype / Spike profile
   - 🛠️ Add a minimal pipeline first: install → lint → test → build. Expand from there.
   - 📚 OpenSSF-Scorecard:CI-Tests · DORA
+
+<details><summary>1 check(s) passing in S8</summary>
+
+- ✅ Health check endpoints exist `CICD-007`
+
+</details>
 
 ### S9 · Release & Change Management
 
@@ -255,8 +294,16 @@ No open findings in this section. ✅
 
 ### S15 · Platform-Specific
 
-**Score 7/10** · `█████████████████░░░░░░░` · 1 passed / 2 open / 0 to review
+**Score 5.1/10** · `████████████░░░░░░░░░░░░` · 1 passed / 4 open / 5 to review
 
+- 🚫 **Unhandled promise rejections are handled** `NODE-003` — Not detected — pattern not found in **/*.{ts,js,mjs,cjs}.
+  - 🪶 Downgraded MEDIUM → LOW by the Prototype / Spike profile
+  - 🛠️ Register process handlers for unhandledRejection/uncaughtException that log and exit non-zero so the orchestrator restarts cleanly.
+  - 📚 CWE-248 · Node-Docs
+- 🚫 **Environment variables are validated at startup** `NODE-006` — Not detected — pattern not found in **/*.{ts,js,mjs,cjs}.
+  - 🪶 Downgraded MEDIUM → LOW by the Prototype / Spike profile
+  - 🛠️ Parse process.env against a schema at boot and exit with a clear message on failure.
+  - 📚 12-Factor:Config
 - 🚫 **Node runtime version is pinned** `NODE-001` — Not detected — pattern not found in package.json, .nvmrc, .node-version, .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml.
   - 🪶 Downgraded MEDIUM → FUTURE by the Prototype / Spike profile
   - 🛠️ Add .nvmrc plus "engines": { "node": ">=20" } and node-version-file: .nvmrc in CI.
@@ -295,9 +342,12 @@ each one records the evidence required. **RULE 4: never mark ✅ without evidenc
 | `TEST-008` Security-relevant behaviour is tested | S7 | 🟢 LOW | Authorization regressions are silent: nothing crashes, someone just sees data they should not. | Tests asserting that user A cannot read or modify user B's resources, and that unauthenticated calls are rejected. |
 | `CICD-010` Backups exist AND restores have been tested | S8 | 🟢 LOW | Nobody has ever been fired for having backups. Plenty of teams have died from never testing the restore. | Backup schedule, retention, encryption at rest, and — critically — the date of the last successful restore drill. |
 | `REL-006` Migrations are separated from application deploys | S9 | 🟢 LOW | Deploying code and schema simultaneously means the old code briefly runs against the new schema. | Deploy order: does the schema change ship before the code that requires it? |
+| `API-002` Request timeouts are configured | S15 | 🟢 LOW | No timeout means one slow dependency exhausts your entire worker pool. | Server request timeout, upstream client timeouts, and DB statement timeouts — all three, with values. |
+| `API-004` Write operations are idempotent | S15 | 🟢 LOW | Networks retry. Clients double-click. Only one of those should create two orders. | An idempotency-key mechanism (or natural-key upsert) on POST/PUT endpoints that create resources. |
 | `REPO-015` Commit history is meaningful | S1 | 🔵 FUTURE | Commit messages are the only history most projects ever write down. "fix stuff" costs the next person an afternoon. | Last 20 commit messages. Are they descriptive and consistently formatted? |
 | `ARCH-004` Layers are separated (transport / domain / data) | S4 | 🔵 FUTURE | Business logic mixed into HTTP handlers cannot be tested, reused, or moved — and every new transport duplicates it. | Directory layout or file:line showing HTTP handlers delegating to a domain/service layer rather than querying the DB inline. |
 | `ARCH-008` Side effects are isolated and testable | S4 | 🔵 FUTURE | Side effects called inline cannot be tested without the network, the clock, or the database. That is why tests get slow and flaky. | Examples of I/O (network, disk, clock, randomness) being injected or wrapped rather than called inline from business logic. |
+| `CQ-007` Logging is structured and levelled | S5 | 🔵 FUTURE | Unstructured logs cannot be queried, alerted on, or correlated. At 3am, grep is not a strategy. | Sample log output: JSON or key=value, with DEBUG/INFO/WARN/ERROR used consistently. |
 | `DATA-003` Indexes exist on queried columns | S6 | 🔵 FUTURE | Most "the database is slow" incidents are one missing index on one column. | The five heaviest queries and their EXPLAIN plans. Any sequential scan on a large table needs a justification. |
 | `DATA-009` Delete strategy is defined | S6 | 🔵 FUTURE | "Delete the account" needs a defined answer before a regulator or a customer asks for it. | Whether records are hard-deleted or soft-deleted, and how that interacts with retention and erasure requests. |
 | `DEP-004` No obviously redundant dependencies | S10 | 🔵 FUTURE | Two HTTP clients means two sets of CVEs, two upgrade paths, and an argument every PR. | Two libraries doing the same job (e.g. both axios and node-fetch; both moment and date-fns). |
@@ -305,6 +355,9 @@ each one records the evidence required. **RULE 4: never mark ✅ without evidenc
 | `DOC-001` README covers what / install / run / contribute | S12 | 🔵 FUTURE | A README that only says the project name is a README-shaped placeholder. | The four headings. If any is missing, the README fails this check. |
 | `DOC-002` Setup instructions have been verified recently | S12 | 🔵 FUTURE | Setup docs rot faster than any other file, and the cost lands on whoever joins next. | A clean-machine clone-and-run within the last quarter, or CI that installs from scratch on every PR. |
 | `DOC-004` Complex logic is explained at the point of use | S12 | 🔵 FUTURE | Code tells you what it does. Only a comment can tell you why the obvious solution was wrong. | Two non-obvious modules: does a comment explain WHY, not WHAT? |
+| `API-003` Retries are bounded with jitter | S15 | 🔵 FUTURE | Retrying a POST three times can create three charges. Retrying without jitter synchronises your thundering herd. | Retry configuration: max attempts, backoff strategy, and whether retries are applied to non-idempotent calls. |
+| `API-005` Response format is consistent | S15 | 🔵 FUTURE | Clients should not need per-endpoint parsing logic. | One success envelope, one error envelope (code, message, details, requestId) used everywhere. |
+| `API-008` Health and readiness endpoints are unauthenticated but minimal | S15 | 🔵 FUTURE | A verbose /health endpoint is a free architecture diagram for an attacker. | /health returns no version strings, dependency names, or configuration details to anonymous callers. |
 | `FUT-002` No core technology is at or near end of life | S16 | 🔵 FUTURE | Node 16, Python 3.8, and CentOS 7 all had an EOL date that everyone knew about in advance. | Runtime version, framework major versions, and their upstream EOL dates. |
 | `FUT-003` Data archiving strategy exists | S16 | 🔵 FUTURE | A table nobody can archive eventually makes every query slow and every migration terrifying. | Retention policy per table/dataset and where cold data goes. |
 
@@ -327,6 +380,7 @@ Nothing here. ✅
 
 *MEDIUM gaps — schedule them or they never happen.*
 
+- 🟡 `SEC-003` No plaintext HTTP endpoints in configuration → Move every non-localhost URL to https://. Terminate TLS at the edge and keep it on internally too.
 - 🟡 `SEC-006` No unsafe dynamic code execution → Replace with explicit parsing, a lookup table, or a sandboxed expression evaluator with a capability allowlist.
 - 🟡 `SEC-008` User input is validated at a trust boundary → Define schemas at the edge (HTTP handler, queue consumer, CLI arg parser) and parse before use.
 - 🟡 `SUP-001` A lockfile is committed → Commit the lockfile for your package manager and install with the frozen/immutable flag in CI.
@@ -340,15 +394,22 @@ Nothing here. ✅
 
 - 🟢 `REPO-005` LICENSE present → Add MIT / Apache-2.0 / GPL-3.0 as appropriate. Choose at choosealicense.com.
 - 🟢 `REPO-006` .env.example documents required configuration → Add .env.example listing every variable the app reads, with safe placeholder values and a comment per var.
+- 🟢 `SEC-018` Security headers are set → Use helmet (Node) or equivalent; add HSTS (max-age ≥31536000; includeSubDomains), X-Content-Type-Options: nosniff, Referrer-Policy, and a CSP.
+- 🟢 `SEC-020` Errors do not leak internals to clients → Return a generic error plus a correlation ID; log the detail server-side only.
 - 🟢 `SUP-003` Dependency versions are pinned, not floating → Pin exact versions for applications. Ranges are acceptable for published libraries with a lockfile.
 - 🟢 `SUP-004` Automated dependency updates are configured → Enable Dependabot or Renovate with grouped PRs and a weekly schedule.
+- 🟢 `CQ-006` There is a central error handler → Add a framework-level error handler and an ErrorBoundary (React); report to your error tracker.
 - 🟢 `DATA-002` Foreign keys / relations are defined → Declare constraints at the DB level; add a periodic orphan-row check if you cannot.
 - 🟢 `DATA-005` List queries are paginated → Enforce a default and maximum page size on every list endpoint; prefer cursor pagination.
 - 🟢 `CICD-001` A CI pipeline exists → Add a minimal pipeline first: install → lint → test → build. Expand from there.
+- 🟢 `NODE-003` Unhandled promise rejections are handled → Register process handlers for unhandledRejection/uncaughtException that log and exit non-zero so the orchestrator restarts cleanly.
+- 🟢 `NODE-006` Environment variables are validated at startup → Parse process.env against a schema at boot and exit with a clear message on failure.
 - 🔵 `REPO-013` .editorconfig present → Add a 6-line .editorconfig (charset, EOL, indent style/size, trailing whitespace, final newline).
 - 🔵 `REPO-018` Agent instruction file present (AGENTS.md / CLAUDE.md) → Add AGENTS.md: setup, build/test/lint commands, conventions, and explicit no-go areas.
+- 🔵 `ARCH-010` Async work is offloaded to a queue → Move email, image processing, webhooks, and report generation onto a queue with retries and a DLQ.
 - 🔵 `CQ-001` A linter is configured → Add the standard linter for your stack, start with its recommended config, fix what it finds.
 - 🔵 `CQ-002` A formatter is configured → Prettier/Black/gofmt/rustfmt — pick the default config and stop discussing it.
+- 🔵 `CQ-008` Requests carry a correlation/trace ID → Generate an ID per request, put it in every log line and in the response header.
 - 🔵 `CQ-009` Debug statements are not left in production paths → Use the project logger, or delete the line. Add a lint rule to keep it out.
 - 🔵 `CQ-010` TODO/FIXME debt is tracked, not just annotated → Convert each one to a tracked issue with a link in the comment, or delete it if it no longer applies.
 - 🔵 `DATA-008` No SELECT * in hot paths → Select the columns you use.
@@ -377,7 +438,7 @@ languages: [javascript]
 frameworks: [express]
 package_managers: [node]
 databases: [mysql]
-platforms: []
+platforms: [server]
 flags: [has:database]
 metrics:
   commits: 0
@@ -400,9 +461,9 @@ Maturity signals:
 - +0 contributing guide (absent)
 - maturity score 0.0/7.5 → prototype
 
-Rule packs loaded (13): core/repo, core/security, core/supply-chain, core/architecture, core/code-quality, core/testing, core/cicd, core/release, core/dependencies, core/documentation, core/future-readiness, stacks/node-typescript, stacks/data
+Rule packs loaded (14): core/repo, core/security, core/supply-chain, core/architecture, core/code-quality, core/testing, core/cicd, core/release, core/dependencies, core/documentation, core/future-readiness, stacks/node-typescript, stacks/data, stacks/api-backend
 
-Rule packs skipped as not applicable (14): stacks/python, stacks/go, stacks/rust, stacks/jvm, stacks/web-frontend, stacks/mobile, stacks/containers, stacks/iac, stacks/solidity, stacks/ml-ai, stacks/cli, stacks/api-backend, stacks/compliance, stacks/ai-era
+Rule packs skipped as not applicable (14): stacks/python, stacks/go, stacks/rust, stacks/jvm, stacks/web-frontend, stacks/mobile, stacks/containers, stacks/iac, stacks/solidity, stacks/ml-ai, stacks/cli, stacks/compliance, stacks/ai-era, stacks/swift
 
 </details>
 
@@ -413,92 +474,108 @@ Rule packs skipped as not applicable (14): stacks/python, stacks/go, stacks/rust
 <!-- USA:TRAILER:BEGIN -->
 ```yaml
 schema: usa-report-v1
-generated_at: 2026-09-08T15:00:10.313Z
-usa_version: 1.0.0
-overall: 47.9
+generated_at: 2026-09-13T02:06:54.434Z
+usa_version: 2.0.1
+overall: 45.2
 sections:
   S1: {score: 7.2, open: 4, review: 2}
-  S2: {score: 5.3, open: 4, review: 1}
+  S2: {score: 4.9, open: 7, review: 1}
   S3: {score: 0, open: 3, review: 0}
-  S4: {score: 10, open: 0, review: 2}
-  S5: {score: 4.6, open: 4, review: 0}
+  S4: {score: 8, open: 1, review: 2}
+  S5: {score: 3.5, open: 6, review: 1}
   S6: {score: 1.3, open: 5, review: 3}
   S7: {score: 0, open: 1, review: 2}
-  S8: {score: 0, open: 1, review: 1}
+  S8: {score: 3.3, open: 1, review: 1}
   S9: {score: null, open: 0, review: 2}
   S10: {score: 10, open: 0, review: 3}
   S12: {score: 10, open: 0, review: 3}
-  S15: {score: 7, open: 2, review: 0}
+  S15: {score: 5.1, open: 4, review: 5}
   S16: {score: null, open: 0, review: 2}
 severity_totals:
   CRITICAL: 2
   HIGH: 0
-  MEDIUM: 6
-  LOW: 7
-  FUTURE: 9
+  MEDIUM: 7
+  LOW: 12
+  FUTURE: 11
 rules:
-  REPO-001: {status: PASS, severity: CRITICAL, section: S1}
-  REPO-002: {status: PASS, severity: CRITICAL, section: S1}
-  REPO-003: {status: UNKNOWN, severity: CRITICAL, section: S1}
-  SEC-001: {status: FAIL, severity: CRITICAL, section: S2}
-  SEC-005: {status: WRONG, severity: CRITICAL, section: S2}
-  SEC-007: {status: PASS, severity: CRITICAL, section: S2}
-  NODE-004: {status: PASS, severity: CRITICAL, section: S15}
-  REPO-004: {status: PASS, severity: HIGH, section: S1}
-  REPO-007: {status: PASS, severity: HIGH, section: S1}
-  SEC-002: {status: PASS, severity: HIGH, section: S2}
-  SEC-004: {status: PASS, severity: HIGH, section: S2}
-  SEC-010: {status: PASS, severity: HIGH, section: S2}
-  CQ-005: {status: PASS, severity: HIGH, section: S5}
-  REPO-008: {status: PASS, severity: MEDIUM, section: S1}
-  REPO-017: {status: PASS, severity: MEDIUM, section: S1}
-  SEC-006: {status: WRONG, severity: MEDIUM, section: S2}
-  SEC-008: {status: MISSING, severity: MEDIUM, section: S2}
-  SEC-015: {status: UNKNOWN, severity: MEDIUM, section: S2}
-  SEC-021: {status: PASS, severity: MEDIUM, section: S2}
-  SUP-001: {status: MISSING, severity: MEDIUM, section: S3}
-  ARCH-003: {status: PASS, severity: MEDIUM, section: S4}
-  ARCH-007: {status: PASS, severity: MEDIUM, section: S4}
-  DATA-001: {status: MISSING, severity: MEDIUM, section: S6}
-  DATA-006: {status: PASS, severity: MEDIUM, section: S6}
-  DATA-007: {status: MISSING, severity: MEDIUM, section: S6}
-  TEST-001: {status: MISSING, severity: MEDIUM, section: S7}
-  REL-005: {status: UNKNOWN, severity: MEDIUM, section: S9}
-  DEP-001: {status: PASS, severity: MEDIUM, section: S10}
-  DEP-002: {status: UNKNOWN, severity: MEDIUM, section: S10}
-  REPO-005: {status: MISSING, severity: LOW, section: S1}
-  REPO-006: {status: MISSING, severity: LOW, section: S1}
-  SUP-003: {status: FAIL, severity: LOW, section: S3}
-  SUP-004: {status: MISSING, severity: LOW, section: S3}
-  DATA-002: {status: MISSING, severity: LOW, section: S6}
-  DATA-004: {status: UNKNOWN, severity: LOW, section: S6}
-  DATA-005: {status: MISSING, severity: LOW, section: S6}
-  TEST-006: {status: UNKNOWN, severity: LOW, section: S7}
-  TEST-008: {status: UNKNOWN, severity: LOW, section: S7}
-  CICD-001: {status: MISSING, severity: LOW, section: S8}
-  CICD-010: {status: UNKNOWN, severity: LOW, section: S8}
-  REL-006: {status: UNKNOWN, severity: LOW, section: S9}
-  DOC-005: {status: PASS, severity: LOW, section: S12}
-  REPO-013: {status: MISSING, severity: FUTURE, section: S1}
-  REPO-015: {status: UNKNOWN, severity: FUTURE, section: S1}
-  REPO-018: {status: MISSING, severity: FUTURE, section: S1}
-  ARCH-004: {status: UNKNOWN, severity: FUTURE, section: S4}
-  ARCH-008: {status: UNKNOWN, severity: FUTURE, section: S4}
-  CQ-001: {status: MISSING, severity: FUTURE, section: S5}
-  CQ-002: {status: MISSING, severity: FUTURE, section: S5}
-  CQ-009: {status: FAIL, severity: FUTURE, section: S5}
-  CQ-010: {status: WRONG, severity: FUTURE, section: S5}
-  DATA-003: {status: UNKNOWN, severity: FUTURE, section: S6}
-  DATA-008: {status: WRONG, severity: FUTURE, section: S6}
-  DATA-009: {status: UNKNOWN, severity: FUTURE, section: S6}
-  DEP-004: {status: UNKNOWN, severity: FUTURE, section: S10}
-  DEP-006: {status: UNKNOWN, severity: FUTURE, section: S10}
-  DOC-001: {status: UNKNOWN, severity: FUTURE, section: S12}
-  DOC-002: {status: UNKNOWN, severity: FUTURE, section: S12}
-  DOC-004: {status: UNKNOWN, severity: FUTURE, section: S12}
-  NODE-001: {status: MISSING, severity: FUTURE, section: S15}
-  NODE-005: {status: DEPRECATED, severity: FUTURE, section: S15}
-  FUT-002: {status: UNKNOWN, severity: FUTURE, section: S16}
-  FUT-003: {status: UNKNOWN, severity: FUTURE, section: S16}
+  "REPO-001": {status: PASS, severity: CRITICAL, section: S1}
+  "REPO-002": {status: PASS, severity: CRITICAL, section: S1}
+  "REPO-003": {status: UNKNOWN, severity: CRITICAL, section: S1}
+  "SEC-001": {status: FAIL, severity: CRITICAL, section: S2}
+  "SEC-005": {status: WRONG, severity: CRITICAL, section: S2}
+  "SEC-007": {status: PASS, severity: CRITICAL, section: S2}
+  "NODE-004": {status: PASS, severity: CRITICAL, section: S15}
+  "REPO-004": {status: PASS, severity: HIGH, section: S1}
+  "REPO-007": {status: PASS, severity: HIGH, section: S1}
+  "SEC-002": {status: PASS, severity: HIGH, section: S2}
+  "SEC-004": {status: PASS, severity: HIGH, section: S2}
+  "SEC-010": {status: PASS, severity: HIGH, section: S2}
+  "SEC-017": {status: PASS, severity: HIGH, section: S2}
+  "CQ-005": {status: PASS, severity: HIGH, section: S5}
+  "REPO-008": {status: PASS, severity: MEDIUM, section: S1}
+  "REPO-017": {status: PASS, severity: MEDIUM, section: S1}
+  "SEC-003": {status: FAIL, severity: MEDIUM, section: S2}
+  "SEC-006": {status: WRONG, severity: MEDIUM, section: S2}
+  "SEC-008": {status: MISSING, severity: MEDIUM, section: S2}
+  "SEC-015": {status: UNKNOWN, severity: MEDIUM, section: S2}
+  "SEC-021": {status: PASS, severity: MEDIUM, section: S2}
+  "SUP-001": {status: MISSING, severity: MEDIUM, section: S3}
+  "ARCH-003": {status: PASS, severity: MEDIUM, section: S4}
+  "ARCH-007": {status: PASS, severity: MEDIUM, section: S4}
+  "DATA-001": {status: MISSING, severity: MEDIUM, section: S6}
+  "DATA-006": {status: PASS, severity: MEDIUM, section: S6}
+  "DATA-007": {status: MISSING, severity: MEDIUM, section: S6}
+  "TEST-001": {status: MISSING, severity: MEDIUM, section: S7}
+  "CICD-007": {status: PASS, severity: MEDIUM, section: S8}
+  "REL-005": {status: UNKNOWN, severity: MEDIUM, section: S9}
+  "DEP-001": {status: PASS, severity: MEDIUM, section: S10}
+  "DEP-002": {status: UNKNOWN, severity: MEDIUM, section: S10}
+  "REPO-005": {status: MISSING, severity: LOW, section: S1}
+  "REPO-006": {status: MISSING, severity: LOW, section: S1}
+  "SEC-018": {status: MISSING, severity: LOW, section: S2}
+  "SEC-020": {status: WRONG, severity: LOW, section: S2}
+  "SUP-003": {status: FAIL, severity: LOW, section: S3}
+  "SUP-004": {status: MISSING, severity: LOW, section: S3}
+  "CQ-006": {status: MISSING, severity: LOW, section: S5}
+  "DATA-002": {status: MISSING, severity: LOW, section: S6}
+  "DATA-004": {status: UNKNOWN, severity: LOW, section: S6}
+  "DATA-005": {status: MISSING, severity: LOW, section: S6}
+  "TEST-006": {status: UNKNOWN, severity: LOW, section: S7}
+  "TEST-008": {status: UNKNOWN, severity: LOW, section: S7}
+  "CICD-001": {status: MISSING, severity: LOW, section: S8}
+  "CICD-010": {status: UNKNOWN, severity: LOW, section: S8}
+  "REL-006": {status: UNKNOWN, severity: LOW, section: S9}
+  "DOC-005": {status: PASS, severity: LOW, section: S12}
+  "API-002": {status: UNKNOWN, severity: LOW, section: S15}
+  "API-004": {status: UNKNOWN, severity: LOW, section: S15}
+  "NODE-003": {status: MISSING, severity: LOW, section: S15}
+  "NODE-006": {status: MISSING, severity: LOW, section: S15}
+  "REPO-013": {status: MISSING, severity: FUTURE, section: S1}
+  "REPO-015": {status: UNKNOWN, severity: FUTURE, section: S1}
+  "REPO-018": {status: MISSING, severity: FUTURE, section: S1}
+  "ARCH-004": {status: UNKNOWN, severity: FUTURE, section: S4}
+  "ARCH-008": {status: UNKNOWN, severity: FUTURE, section: S4}
+  "ARCH-010": {status: MISSING, severity: FUTURE, section: S4}
+  "CQ-001": {status: MISSING, severity: FUTURE, section: S5}
+  "CQ-002": {status: MISSING, severity: FUTURE, section: S5}
+  "CQ-007": {status: UNKNOWN, severity: FUTURE, section: S5}
+  "CQ-008": {status: MISSING, severity: FUTURE, section: S5}
+  "CQ-009": {status: FAIL, severity: FUTURE, section: S5}
+  "CQ-010": {status: WRONG, severity: FUTURE, section: S5}
+  "DATA-003": {status: UNKNOWN, severity: FUTURE, section: S6}
+  "DATA-008": {status: WRONG, severity: FUTURE, section: S6}
+  "DATA-009": {status: UNKNOWN, severity: FUTURE, section: S6}
+  "DEP-004": {status: UNKNOWN, severity: FUTURE, section: S10}
+  "DEP-006": {status: UNKNOWN, severity: FUTURE, section: S10}
+  "DOC-001": {status: UNKNOWN, severity: FUTURE, section: S12}
+  "DOC-002": {status: UNKNOWN, severity: FUTURE, section: S12}
+  "DOC-004": {status: UNKNOWN, severity: FUTURE, section: S12}
+  "API-003": {status: UNKNOWN, severity: FUTURE, section: S15}
+  "API-005": {status: UNKNOWN, severity: FUTURE, section: S15}
+  "API-008": {status: UNKNOWN, severity: FUTURE, section: S15}
+  "NODE-001": {status: MISSING, severity: FUTURE, section: S15}
+  "NODE-005": {status: DEPRECATED, severity: FUTURE, section: S15}
+  "FUT-002": {status: UNKNOWN, severity: FUTURE, section: S16}
+  "FUT-003": {status: UNKNOWN, severity: FUTURE, section: S16}
 ```
 <!-- USA:TRAILER:END -->
