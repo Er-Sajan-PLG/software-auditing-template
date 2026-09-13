@@ -20,6 +20,14 @@ export { runAudit } from './engine/audit.js';
 export { score } from './engine/score.js';
 export { evaluateRule, evalPredicate, ruleApplies, packApplies } from './engine/evaluate.js';
 export { renderMarkdown, parseTrailer, trailer } from './report/markdown.js';
+export {
+  renderJson,
+  toJsonReport,
+  JSON_SCHEMA,
+  type JsonReport,
+  type JsonFinding,
+} from './report/json.js';
+export { renderSarif, toSarif, SARIF_VERSION, type SarifLog } from './report/sarif.js';
 export { diffReports } from './engine/diff.js';
 export { evaluateGate, blockingFindings } from './engine/gate.js';
 export { loadConfig, EXAMPLE_CONFIG, CONFIG_FILE } from './config.js';

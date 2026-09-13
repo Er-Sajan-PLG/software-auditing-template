@@ -9,6 +9,9 @@ import { loadDetectorFile } from './detect/index.js';
 import { Project } from './util/project.js';
 import { detect } from './detect/index.js';
 import { renderMarkdown, parseTrailer } from './report/markdown.js';
+import { renderJson } from './report/json.js';
+import { renderSarif } from './report/sarif.js';
+import type { MaturityProfile } from './engine/maturity.js';
 import { diffReports } from './engine/diff.js';
 import { bootstrapPacks, writeBootstrapPacks } from './bootstrap/index.js';
 import { EXAMPLE_CONFIG, loadConfig } from './config.js';
@@ -130,16 +133,30 @@ export function main(argv: string[]): number {
 
 /* ------------------------------------------------------------------ audit -- */
 
+type OutputFormat = 'md' | 'json' | 'sarif';
+
+const FORMATS: OutputFormat[] = ['md', 'json', 'sarif'];
+
 interface AuditCliOptions {
   target: string;
   rulesDir: string;
   depth: Depth;
   profileArg: string;
   out: string;
+  format: OutputFormat;
   failOn: string;
   quiet: boolean;
   maxFiles?: number;
   maxBytes?: number;
+}
+
+/** Resolves the report format from an explicit flag, else the --out suffix. */
+function resolveFormat(flag: string | undefined, out: string): OutputFormat {
+  if (flag) return flag.toLowerCase() as OutputFormat;
+  const ext = path.extname(out).toLowerCase();
+  if (ext === '.json') return 'json';
+  if (ext === '.sarif') return 'sarif';
+  return 'md';
 }
 
 function parseCountFlag(v: string | undefined): number | undefined {
@@ -149,12 +166,14 @@ function parseCountFlag(v: string | undefined): number | undefined {
 }
 
 function readAuditOptions(args: Args): AuditCliOptions {
+  const out = str(args, 'out', 'AUDIT.md') ?? 'AUDIT.md';
   return {
     target: (args._[1] as string | undefined) ?? '.',
     rulesDir: path.resolve(str(args, 'rules-dir', DEFAULT_RULES_DIR) ?? DEFAULT_RULES_DIR),
     depth: (str(args, 'depth', 'standard') as Depth) ?? 'standard',
     profileArg: str(args, 'profile', 'auto') ?? 'auto',
-    out: str(args, 'out', 'AUDIT.md') ?? 'AUDIT.md',
+    out,
+    format: resolveFormat(str(args, 'format'), out),
     failOn: (str(args, 'fail-on', 'none') ?? 'none').toLowerCase(),
     quiet: bool(args, 'quiet'),
     maxFiles: parseCountFlag(str(args, 'max-files')),
@@ -167,6 +186,7 @@ function validateAuditOptions(o: AuditCliOptions): string | null {
   if (o.profileArg !== 'auto' && !MATURITIES.includes(o.profileArg as Maturity)) {
     return `--profile must be auto or one of ${MATURITIES.join('|')}`;
   }
+  if (!FORMATS.includes(o.format)) return `--format must be one of ${FORMATS.join('|')}`;
   if (o.maxFiles !== undefined && !(o.maxFiles > 0)) return '--max-files must be a positive number';
   if (o.maxBytes !== undefined && !(o.maxBytes > 0)) return '--max-bytes must be a positive number';
   return null;
@@ -210,8 +230,8 @@ function cmdAudit(args: Args): number {
 
   for (const w of warnings) console.error(`warning: ${w}`);
 
-  const markdown = renderMarkdown(report, profile);
-  fs.writeFileSync(o.out, markdown, 'utf8');
+  const rendered = renderReport(report, profile, o.format);
+  fs.writeFileSync(o.out, rendered, 'utf8');
 
   if (!o.quiet) {
     console.log(summaryLine(report));
@@ -219,6 +239,17 @@ function cmdAudit(args: Args): number {
   }
 
   return evaluateGate(report, o.failOn, o.quiet);
+}
+
+function renderReport(report: AuditReport, profile: MaturityProfile, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return renderJson(report);
+    case 'sarif':
+      return renderSarif(report);
+    default:
+      return renderMarkdown(report, profile);
+  }
 }
 
 function summaryLine(report: AuditReport): string {
@@ -712,6 +743,7 @@ learn options
 
 audit options
   --out <file>        Report path (default AUDIT.md)
+  --format <fmt>      md | json | sarif        (default: inferred from --out)
   --depth <level>     quick | standard | deep          (default standard)
   --profile <stage>   auto | prototype | mvp | beta | production | legacy
   --rules-dir <dir>   Rule pack directory             (default bundled rules/)

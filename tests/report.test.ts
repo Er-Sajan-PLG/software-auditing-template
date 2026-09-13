@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderMarkdown, parseTrailer } from '../src/report/markdown.js';
+import { renderJson, toJsonReport } from '../src/report/json.js';
+import { renderSarif, toSarif } from '../src/report/sarif.js';
 import { loadProfiles } from '../src/engine/maturity.js';
 import type { AuditReport, Finding } from '../src/types.js';
 
@@ -256,5 +258,124 @@ describe('markdown report', () => {
     expect(doc.schema).toBe('usa-report-v1');
     expect(doc.overall).toBe(71.4);
     expect(doc.rules).toBeTypeOf('object');
+  });
+});
+
+describe('json report', () => {
+  it('serializes the report with the stable schema and no loss', () => {
+    const doc = toJsonReport(baseReport([finding({}), finding({ ruleId: 'SEC-001' })]));
+    expect(doc.schema).toBe('usa-report-json-v1');
+    expect(doc.findings).toHaveLength(2);
+    expect(doc.findings[0]!.ruleId).toBe('X-001');
+    expect(doc.score.overall).toBe(71.4);
+    expect(renderJson(baseReport([])).endsWith('\n')).toBe(true);
+  });
+
+  it('omits optional finding fields that are unset', () => {
+    const doc = toJsonReport(baseReport([finding({})]));
+    expect(doc.findings[0]).not.toHaveProperty('remediation');
+    expect(doc.findings[0]).not.toHaveProperty('references');
+  });
+
+  it('carries optional fields through when present', () => {
+    const f = finding({ remediation: 'do X', why: 'because', references: ['OWASP'] });
+    const doc = toJsonReport(baseReport([f]));
+    expect(doc.findings[0]!.remediation).toBe('do X');
+    expect(doc.findings[0]!.why).toBe('because');
+    expect(doc.findings[0]!.references).toEqual(['OWASP']);
+  });
+
+  it('is deterministic for identical reports', () => {
+    const r = baseReport([finding({}), finding({ ruleId: 'SEC-001', status: 'FAIL' })]);
+    expect(renderJson(r)).toBe(renderJson(r));
+  });
+});
+
+describe('sarif report', () => {
+  it('emits a SARIF 2.1.0 log with the driver populated', () => {
+    const log = toSarif(baseReport([finding({ status: 'FAIL' })]));
+    expect(log.version).toBe('2.1.0');
+    expect(log.$schema).toContain('sarif-schema-2.1.0.json');
+    expect(log.runs[0]!.tool.driver.name).toContain('USA');
+    expect(log.runs[0]!.tool.driver.version).toBe('1.0.0');
+  });
+
+  it('reports only actionable findings, not PASS or NOT_APPLICABLE', () => {
+    const log = toSarif(
+      baseReport([
+        finding({ ruleId: 'A-001', status: 'FAIL' }),
+        finding({ ruleId: 'A-002', status: 'PASS' }),
+        finding({ ruleId: 'A-003', status: 'NOT_APPLICABLE' }),
+      ]),
+    );
+    expect(log.runs[0]!.results.map((r) => r.ruleId)).toEqual(['A-001']);
+  });
+
+  it('maps severity to SARIF level and UNKNOWN to informational note', () => {
+    const log = toSarif(
+      baseReport([
+        finding({ ruleId: 'C-001', severity: 'CRITICAL', status: 'FAIL' }),
+        finding({ ruleId: 'M-001', severity: 'MEDIUM', status: 'FAIL' }),
+        finding({ ruleId: 'L-001', severity: 'LOW', status: 'FAIL' }),
+        finding({ ruleId: 'U-001', severity: 'HIGH', status: 'UNKNOWN' }),
+      ]),
+    );
+    const byId = Object.fromEntries(log.runs[0]!.results.map((r) => [r.ruleId, r]));
+    expect(byId['C-001']!.level).toBe('error');
+    expect(byId['M-001']!.level).toBe('warning');
+    expect(byId['L-001']!.level).toBe('note');
+    expect(byId['U-001']!.level).toBe('note');
+    expect(byId['U-001']!.kind).toBe('informational');
+    expect(byId['C-001']!.kind).toBe('fail');
+  });
+
+  it('deduplicates rules into the driver and indexes results', () => {
+    const log = toSarif(
+      baseReport([
+        finding({ ruleId: 'A-001', status: 'FAIL' }),
+        finding({ ruleId: 'A-001', status: 'WRONG' }),
+        finding({ ruleId: 'B-001', status: 'MISSING' }),
+      ]),
+    );
+    const { rules } = log.runs[0]!.tool.driver;
+    expect(rules.map((r) => r.id)).toEqual(['A-001', 'B-001']);
+    const idx = Object.fromEntries(rules.map((r, i) => [r.id, i]));
+    for (const res of log.runs[0]!.results) {
+      expect(res.ruleIndex).toBe(idx[res.ruleId]);
+    }
+  });
+
+  it('emits normalized repo-relative URIs and line regions', () => {
+    const log = toSarif(
+      baseReport([
+        finding({
+          status: 'FAIL',
+          locations: [{ file: './src/api/routes.ts', line: 42 }],
+        }),
+      ]),
+    );
+    const loc = log.runs[0]!.results[0]!.locations[0]!;
+    expect(loc.physicalLocation.artifactLocation.uri).toBe('src/api/routes.ts');
+    expect(loc.physicalLocation.region).toEqual({ startLine: 42 });
+  });
+
+  it('marks suppressed findings with an external suppression', () => {
+    const log = toSarif(
+      baseReport([finding({ status: 'FAIL', suppressedReason: 'accepted risk' })]),
+    );
+    expect(log.runs[0]!.results[0]!.suppressions).toEqual([
+      { kind: 'external', justification: 'accepted risk' },
+    ]);
+  });
+
+  it('produces no results for an all-clean report', () => {
+    const log = toSarif(baseReport([finding({ status: 'PASS' })]));
+    expect(log.runs[0]!.results).toEqual([]);
+    expect(log.runs[0]!.tool.driver.rules).toEqual([]);
+  });
+
+  it('is deterministic for identical reports', () => {
+    const r = baseReport([finding({ ruleId: 'A-001', status: 'FAIL' })]);
+    expect(renderSarif(r)).toBe(renderSarif(r));
   });
 });

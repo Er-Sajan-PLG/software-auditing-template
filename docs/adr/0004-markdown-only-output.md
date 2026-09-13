@@ -1,7 +1,7 @@
 # 4. Markdown is the only output format
 
 - **Date:** 2026-09-08
-- **Status:** Accepted
+- **Status:** Superseded by [0018](0018-json-and-sarif-renderers.md)
 
 ## Context
 

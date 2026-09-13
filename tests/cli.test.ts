@@ -59,6 +59,45 @@ describe('global flags', () => {
     expect(badBytes.err).toContain('--max-bytes must be a positive number');
   });
 
+  it('rejects an unknown --format', () => {
+    const r = run(['audit', '.', '--format', 'xml']);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain('--format must be one of md|json|sarif');
+  });
+
+  describe('report format selection', () => {
+    it('infers json and sarif from the --out extension, md otherwise', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'usa-format-'));
+      try {
+        const cases: [string, (raw: string) => void][] = [
+          ['out.json', (raw) => expect(JSON.parse(raw).schema).toBe('usa-report-json-v1')],
+          ['out.sarif', (raw) => expect(JSON.parse(raw).version).toBe('2.1.0')],
+          ['out.md', (raw) => expect(raw).toContain('# ')],
+        ];
+        for (const [name, check] of cases) {
+          const out = path.join(dir, name);
+          const r = run(['audit', '.', '--out', out, '--quiet']);
+          expect(r.code, `${name} exited ${r.code}: ${r.err}`).toBe(0);
+          check(fs.readFileSync(out, 'utf8'));
+        }
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('--format overrides the --out extension', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'usa-format-'));
+      try {
+        const out = path.join(dir, 'named-like-markdown.md');
+        const r = run(['audit', '.', '--out', out, '--format', 'json', '--quiet']);
+        expect(r.code).toBe(0);
+        expect(JSON.parse(fs.readFileSync(out, 'utf8')).schema).toBe('usa-report-json-v1');
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('entry-point guard (npm bin symlink regression)', () => {
     // Regression: npm installs the `usa` bin as a symlink to dist/cli.js.
     // process.argv[1] is then the symlink path while import.meta.url is the

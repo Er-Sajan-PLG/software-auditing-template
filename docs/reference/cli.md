@@ -35,6 +35,7 @@ learn options
 
 audit options
   --out <file>        Report path (default AUDIT.md)
+  --format <fmt>      md | json | sarif        (default: inferred from --out)
   --depth <level>     quick | standard | deep          (default standard)
   --profile <stage>   auto | prototype | mvp | beta | production | legacy
   --rules-dir <dir>   Rule pack directory             (default bundled rules/)
